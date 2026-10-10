@@ -1,0 +1,24 @@
+{
+ "run_id": "T-dev",
+ "steps": 300,
+ "crash_start_step": 150,
+ "bars": 1500,
+ "orders": 38,
+ "approved": 35,
+ "reduced": 2,
+ "rejected": 1,
+ "duplicates": 5,
+ "final_equity_usd": 9486.23392,
+ "ledger_digest": "aa520a9ce245dd390e63e64b0c4d6e80e261e72751c808c42a1c3052f9c893a8",
+ "head_hash": "2425cc934a87686e91bbd98cb2df6ee1de36a6843b8f97b15647bd8892df3eaf",
+ "verify": {
+  "events": 1601,
+  "chain_ok": true,
+  "error": null,
+  "replayed_digest": "aa520a9ce245dd390e63e64b0c4d6e80e261e72751c808c42a1c3052f9c893a8",
+  "stored_digest": "aa520a9ce245dd390e63e64b0c4d6e80e261e72751c808c42a1c3052f9c893a8",
+  "match": true,
+  "head_hash": "2425cc934a87686e91bbd98cb2df6ee1de36a6843b8f97b15647bd8892df3eaf"
+ },
+ "elapsed_s": 5.31
+}

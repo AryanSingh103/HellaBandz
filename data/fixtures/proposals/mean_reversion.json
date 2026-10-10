@@ -1,0 +1,7 @@
+{
+  "family": "zscore_reversion",
+  "universe": ["AAPL", "MSFT", "SPY"],
+  "param_grid": {"lookback": [20, 35, 50, 80], "entry_z": [1.5, 2.0, 2.5], "exit_z": [-0.25, 0.0, 0.5]},
+  "rationale": "Single names have negative lag-1 return autocorrelation and high idiosyncratic volatility, so large deviations from a rolling mean should partially revert within days. Long-only: buy oversold, exit on reversion.",
+  "evidence": ["negative lag1 autocorrelation in AAPL and MSFT", "idiosyncratic vol well above index vol"]
+}

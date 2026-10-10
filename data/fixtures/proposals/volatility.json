@@ -1,0 +1,7 @@
+{
+  "family": "vol_target",
+  "universe": ["SPY", "QQQ"],
+  "param_grid": {"vol_lookback": [20, 50, 100], "trend_lookback": [100, 200, 400], "target_vol": [0.08, 0.12, 0.18]},
+  "rationale": "Scale index exposure inversely to realized volatility and only hold when price is above its trend average. This cuts exposure in turbulent regimes, which is where the training window's drawdowns came from.",
+  "evidence": ["drawdowns cluster in high-volatility regimes", "index annualized vol near 0.18"]
+}

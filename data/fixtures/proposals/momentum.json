@@ -1,0 +1,7 @@
+{
+  "family": "sma_crossover",
+  "universe": ["SPY", "QQQ", "NVDA"],
+  "param_grid": {"fast": [10, 20, 35, 50], "slow": [80, 120, 200, 300]},
+  "rationale": "Index ETFs and NVDA show positive lag-7 autocorrelation and spend most of the training window above their 200-bar average, so a slow moving-average crossover should capture multi-week trends while staying flat in downtrends.",
+  "evidence": ["frac_above_sma200 > 0.5 for SPY/QQQ", "positive lag7 autocorrelation in QQQ and NVDA"]
+}
