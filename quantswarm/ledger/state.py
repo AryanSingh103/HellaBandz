@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from copy import deepcopy
 from dataclasses import asdict, dataclass, field, fields
 from typing import Any
 
@@ -68,6 +69,8 @@ class PortfolioState:
     orders: dict[str, OpenOrder] = field(default_factory=dict)
     last_bar: dict[str, list[int]] = field(default_factory=dict)  # symbol -> [ts, close]
     decisions: dict[str, dict] = field(default_factory=dict)  # client_order_id -> summary
+    agent_basis: dict[str, int] = field(default_factory=dict)
+    agent_reserved_cash: dict[str, int] = field(default_factory=dict)
     seq: int = 0
     head_hash: str = GENESIS_HASH
 
@@ -87,20 +90,33 @@ class PortfolioState:
 
     def agent_exposure(self, agent_id: str) -> int:
         """Cost-based exposure: basis of held positions + cash locked by open buys."""
-        exp = sum(p.basis for k, p in self.positions.items() if k.startswith(agent_id + "|"))
-        exp += sum(o.reserved_cash for o in self.orders.values() if o.agent_id == agent_id)
-        return exp
+        return self.agent_basis.get(agent_id, 0) + self.agent_reserved_cash.get(agent_id, 0)
 
     def snapshot(self, include_decisions: bool = True) -> dict:
         d = {f.name: getattr(self, f.name) for f in fields(self)
-             if f.name not in ("allocations", "positions", "orders", "last_bar", "decisions")}
+             if f.name not in ("allocations", "positions", "orders", "last_bar", "decisions",
+                               "agent_basis", "agent_reserved_cash")}
+        d["agent_basis"] = dict(self.agent_basis)
+        d["agent_reserved_cash"] = dict(self.agent_reserved_cash)
         d["allocations"] = dict(self.allocations)
         d["last_bar"] = {k: list(v) for k, v in self.last_bar.items()}
         d["positions"] = {k: asdict(v) for k, v in sorted(self.positions.items()) if v.qty or v.reserved or v.basis}
         d["orders"] = {k: asdict(v) for k, v in sorted(self.orders.items())}
         if include_decisions:
-            d["decisions"] = dict(self.decisions)
+            d["decisions"] = deepcopy(self.decisions)
         return d
+
+    @classmethod
+    def from_snapshot(cls, snapshot: dict) -> PortfolioState:
+        """Restore a complete checkpoint, including retry decisions and risk caches."""
+        data = deepcopy(snapshot)
+        if set(data) != {f.name for f in fields(cls)}:
+            raise LedgerInvariantError("checkpoint has missing or unknown state fields")
+        data["positions"] = {k: Position(**v) for k, v in data["positions"].items()}
+        data["orders"] = {k: OpenOrder(**v) for k, v in data["orders"].items()}
+        state = cls(**data)
+        check_invariants(state)
+        return state
 
     def digest(self) -> str:
         """Digest of economic state: cash, reservations, positions, working orders,
@@ -110,6 +126,10 @@ class PortfolioState:
         snap = self.snapshot(include_decisions=False)
         snap.pop("head_hash")
         snap.pop("seq")
+        # Caches are validated against the underlying positions/orders. Excluding
+        # them preserves digests of logs written before incremental sums existed.
+        snap.pop("agent_basis")
+        snap.pop("agent_reserved_cash")
         return sha256_hex(canonical(snap))
 
 
@@ -143,6 +163,17 @@ def check_invariants(s: PortfolioState) -> None:
         if p.reserved != sell_reserved.get(k, 0) or p.reserved > p.qty:
             fail(f"position {k} reserved {p.reserved} mismatch")
     basis = sum(p.basis for p in s.positions.values())
+    agent_basis: dict[str, int] = {}
+    agent_reserved: dict[str, int] = {}
+    for key, p in s.positions.items():
+        agent = key.split("|", 1)[0]
+        agent_basis[agent] = agent_basis.get(agent, 0) + p.basis
+    for o in s.orders.values():
+        agent_reserved[o.agent_id] = agent_reserved.get(o.agent_id, 0) + o.reserved_cash
+    if {k: v for k, v in s.agent_basis.items() if v} != {k: v for k, v in agent_basis.items() if v}:
+        fail("incremental agent basis differs from full recomputation")
+    if {k: v for k, v in s.agent_reserved_cash.items() if v} != {k: v for k, v in agent_reserved.items() if v}:
+        fail("incremental agent reservations differ from full recomputation")
     if s.cash + basis != s.initial_cash + s.realized_pnl - s.fees_paid:
         fail("accounting identity violated: cash + basis != initial + realized - fees")
 
@@ -167,6 +198,7 @@ def apply_event(s: PortfolioState, ev: dict) -> None:
         )
         if ev["side"] == "BUY":
             s.reserved_cash += ev["reserved_cash"]
+            _add(s.agent_reserved_cash, ev["agent_id"], ev["reserved_cash"])
         else:
             s.positions.setdefault(pos_key(ev["agent_id"], ev["symbol"]), Position()).reserved += ev["qty"]
     elif t == "OrderRejected":
@@ -190,9 +222,12 @@ def apply_event(s: PortfolioState, ev: dict) -> None:
             s.cash -= cost
             p.qty += q
             p.basis += q * px
+            _add(s.agent_reserved_cash, o.agent_id, -cost)
+            _add(s.agent_basis, o.agent_id, q * px)
         else:
             removed = p.basis * q // p.qty
             p.basis -= removed
+            _add(s.agent_basis, o.agent_id, -removed)
             p.qty -= q
             p.reserved -= q
             s.realized_pnl += q * px - removed
@@ -203,6 +238,7 @@ def apply_event(s: PortfolioState, ev: dict) -> None:
     elif t == "OrderClosed":
         o = s.orders.pop(ev["order_id"])
         s.reserved_cash -= o.reserved_cash
+        _add(s.agent_reserved_cash, o.agent_id, -o.reserved_cash)
         if o.side == "SELL":
             s.positions[pos_key(o.agent_id, o.symbol)].reserved -= o.remaining
     elif t == "KillSwitchSet":
@@ -210,6 +246,14 @@ def apply_event(s: PortfolioState, ev: dict) -> None:
         s.kill_reason = ev["reason"] if ev["on"] else ""
     else:
         raise ValueError(f"unknown event type {t}")
+
+
+def _add(totals: dict[str, int], agent: str, delta: int) -> None:
+    value = totals.get(agent, 0) + delta
+    if value:
+        totals[agent] = value
+    else:
+        totals.pop(agent, None)
 
 
 def append(s: PortfolioState, ev: dict) -> dict:
@@ -222,9 +266,10 @@ def append(s: PortfolioState, ev: dict) -> dict:
     return stamped
 
 
-def replay(events: list[dict], verify_chain: bool = True) -> PortfolioState:
+def replay(events: list[dict], verify_chain: bool = True,
+           initial_state: PortfolioState | None = None) -> PortfolioState:
     """Rebuild state from a stored event log, verifying the hash chain."""
-    s = PortfolioState()
+    s = initial_state if initial_state is not None else PortfolioState()
     for stored in events:
         ev = {k: v for k, v in stored.items() if k not in ("seq", "prev_hash", "hash")}
         if verify_chain:

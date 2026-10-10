@@ -50,12 +50,14 @@ Before merging anything, run `make prove` (all tests must stay green).
 ### P3 — Core Performance & Submission (owner: ______)
 **Owns:** `quantswarm/ledger/`, `quantswarm/execution/`, `benchmarks/`, `tests/`, `docs/` (except DATA_SOURCES)
 
-- [ ] Incremental per-agent exposure and reservation sums in `apply_event` (removes the O(open orders) scan in risk checks); add a test that compares them to the full recomputation
-- [ ] Recovery checkpoints: snapshot state + digest every N events, replay only the suffix on startup; keep the digest check
-- [ ] Re-run `make bench` after the engine changes and commit the regenerated `docs/PERFORMANCE.md`
-- [ ] Update `docs/LIMITATIONS.md` / `ARCHITECTURE.md` "next limit" sections to match
-- [ ] Devpost write-up (reuse the README's 10-question table and the headline numbers)
+- [x] Incremental per-agent exposure and reservation sums in `apply_event` (removes the O(open orders) scan in risk checks); add a test that compares them to the full recomputation
+- [x] Recovery checkpoints: snapshot state + digest every N events, replay only the suffix on startup; keep the digest check
+- [x] Re-run `make bench` after the engine changes and commit the regenerated `docs/PERFORMANCE.md`
+- [x] Update `docs/LIMITATIONS.md` / `ARCHITECTURE.md` "next limit" sections to match
+- [x] Devpost write-up (reuse the README's 10-question table and the headline numbers)
 - [ ] Make the repo public (or give judges access); final `make prove` + `make bench` on the submission commit
+
+**P3 status:** code, regenerated measurements and write-up are in PR #1. Judge access and Devpost publication remain unverified; see `docs/SUBMISSION.md`.
 
 **Done when:** benchmarks are re-measured on the final code and the Devpost page is submitted.
 

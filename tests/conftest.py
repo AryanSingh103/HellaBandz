@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import signal
 import socket
 import subprocess
 import sys
@@ -64,12 +63,15 @@ class Stack:
 
     def kill_worker(self) -> None:
         if self.worker and self.worker.poll() is None:
-            self.worker.send_signal(signal.SIGKILL)
+            self.worker.kill()  # SIGKILL on POSIX, TerminateProcess on Windows
             self.worker.wait()
 
     def start_api(self) -> None:
+        # psycopg async connections require a selector loop on Windows. Uvicorn
+        # defaults to ProactorEventLoop there; Docker/Linux keeps its normal loop.
+        loop_args = ["--loop", "asyncio:SelectorEventLoop"] if sys.platform == "win32" else []
         self.api = subprocess.Popen([sys.executable, "-m", "uvicorn", "quantswarm.api.app:app", "--port",
-                                     str(self.port), "--log-level", "warning"], cwd=ROOT, env=self.env(),
+                                     str(self.port), "--log-level", "warning", *loop_args], cwd=ROOT, env=self.env(),
                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         for _ in range(200):
             try:
