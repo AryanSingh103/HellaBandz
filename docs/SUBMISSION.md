@@ -1,33 +1,47 @@
-# P3 submission handoff
+# Submission status
 
-P3 work is on branch `p3-core`, in [PR #1](https://github.com/AryanSingh103/QuantSwarm/pull/1).
-This is not a claim that P1/P2 or the overall HackRU submission are complete.
+P1, P2 and P3 implementation work is combined on `main` and `p1-demo`. The combined checkout
+`45e51e701ea64d7fc3bdf2898a179c34278bcf6e` was verified on October 10, 2026.
+This is not yet a claim that the HackRU submission is complete.
 
-## Implemented and tested
+## Combined verification
 
-- Event-maintained per-agent cost basis and buy reservations; full recomputation checks and working-order scaling benchmark.
-- Atomic complete recovery checkpoints, including retry decisions; verified suffix replay and final digest comparison.
-- Corruption, rollback, before/after-commit crash and repeated-termination coverage; independent full-history audit retained.
-- `make prove`: 73 passed, zero failed, zero skipped, all 11 invariant categories passing on Windows with a real TimescaleDB container.
-- Economic digest compatibility checked against the original ledger implementation on a buy/fill/sell event log.
-- Updated architecture and limitations; Devpost copy in [DEVPOST.md](DEVPOST.md).
+- `make setup` and `make up` passed; API, worker, database and production terminal started.
+- `make prove` on Windows and `make prove-docker` on Linux each passed **92 tests**, with zero
+  failures/skips and all 11 invariant categories passing.
+- Live OpenAI research, supervisor, crisis responses and `/v1/ask` passed; ElevenLabs smoke and
+  gateway `/v1/speak` returned audio. The WebSocket stream delivered events.
+- Alpaca SIP ingestion downloaded 32,865 bars with no validation warnings. Live-LLM tournaments
+  and 350-step sessions ran on synthetic and real equity data; both session replay digests matched.
+- The demo worker was killed mid-session: five commands queued while it was down, restart recovered
+  the ledger, the session finished and pending commands returned to zero.
+- Browser checks passed for concurrent retries, oversized orders, stale data, unallocated agents,
+  short sales, kill-switch enforcement and independent replay. No browser console errors were observed.
+- The existing Solana commitment for `T20261010194733` was read back from Devnet and verified.
+- `make bench` completed all engine, durable and recovery workloads. All 12 durable runs and eight
+  recovery comparisons matched replay, and all result files share the combined source hash.
 
-## Recorded performance
+See [VERIFICATION.md](VERIFICATION.md) for exact run records. Local credentials and wallet keys are
+gitignored. Raw Alpaca/Binance snapshots are not redistributed.
 
-`make bench` completed all engine, durable and recovery workloads. All 12 durable runs and every recovery comparison passed verification; the three JSON artifacts share one source hash. At 105,000 events, full recovery measured 6.61 s versus 1.55 s from checkpoint + 5,000-event suffix. Durable medians were 57/231/181 orders per second at 1/10/50 clients. See [PERFORMANCE.md](PERFORMANCE.md) for hardware, percentiles and methodology.
+## Remaining gates
 
-## Submission gates still requiring external action
+- **Judge access:** the repository is private. The authenticated collaborator has push access but no
+  admin/maintain access. The owner must make it public or grant judges access.
+- **Devpost:** [DEVPOST.md](DEVPOST.md) contains prepared copy; publication/submission has not been verified.
+- **New Solana commitments:** the local Devnet wallet reports zero balance. The automatic airdrop failed;
+  an existing on-chain commitment verifies, but the new tournament hashes have not been committed.
+  A new commitment requires funded Devnet test SOL. It is outside the deterministic execution path.
 
-- **Judge access:** the repository is private. The authenticated collaborator has push access but no admin/maintain access. The repository owner must make it public or grant judges access.
-- **Devpost:** the write-up is prepared in the repo, not submitted. A project/submission URL has not been supplied, and attempts to control the open Devpost tab timed out. A teammate with working Devpost access must publish/submit the final project and verify its status.
-- **P1/P2:** their demo, terminal and keyed integration checks remain separate work. This P3 verification does not certify those milestones.
+Tiger Cloud, an Anchor registry, Kalshi and API authentication remain optional/stretch work.
+Combined measurements are recorded in [PERFORMANCE.md](PERFORMANCE.md), with matching Devpost
+headlines. Run the required final `make prove` and `make bench` on the chosen submission commit. Runtime
+changes require fresh measurements. Do not mark the overall submission complete until judge access and Devpost status are verified.
 
 ## Reproduction
 
 Follow the README setup, then run `make prove` and `make bench`. For the large real-data benchmarks,
 first run `uv run python scripts/ingest_binance.py`; downloads are checksum-verified and excluded from
 timing. Without it, the committed synthetic fixture works offline and unavailable larger sizes are disclosed.
-`docs/PERFORMANCE.md` is generated from `benchmarks/results/*.json`; source hashes must agree before a report
-can be generated. Core changes after these measurements require another benchmark run.
-
-Do not mark P3 or the overall submission complete until the access and Devpost gates are visibly verified.
+Performance results must share the current source hash. Runtime changes after measurement require another
+benchmark run; documentation-only changes do not change that hash.

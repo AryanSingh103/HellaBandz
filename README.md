@@ -22,11 +22,11 @@ and `kill -9`.
 | **Core claim** | No sequence of duplicated, concurrent, malformed, delayed, or crash-interrupted commands can create cash or shares from nothing or apply a fill twice, and the ledger can always be rebuilt bit-for-bit from its event log. |
 | **Boundary** | Bar-based simulated fills (no order book or queue position), long-only cash account, 5 symbols, no auth. See [LIMITATIONS](docs/LIMITATIONS.md). |
 | **Correctness** | 11 invariants (idempotency, cash/position safety, risk enforcement, fill validity, determinism, accounting identity, recovery, causality, audit integrity, ordering): [INVARIANTS](docs/INVARIANTS.md). |
-| **Evidence** | 60+ tests: unit, property-based (random command programs checked after every step), real-Postgres concurrency, SIGKILL fault injection, tamper detection. `make prove` prints the invariant table. |
+| **Evidence** | 92 passing tests on the combined branch: unit, property-based (random command programs checked after every step), real-Postgres concurrency, SIGKILL fault injection, tamper detection. `make prove` prints the invariant table. |
 | **Interfaces** | HTTP API ⇄ Postgres command log ⇄ execution worker; agents and UI are API clients. [ARCHITECTURE](docs/ARCHITECTURE.md). |
 | **Measurement** | Risk-check latency, durable order throughput at 1/10/50 clients, replay speed on 131k real Binance bars, recovery time vs ledger size, all under fixed container limits: [PERFORMANCE](docs/PERFORMANCE.md). |
 | **Failure behavior** | Invalid ⇒ 422 or recorded rejection with rule code. Duplicate ⇒ original decision. Same id, new payload ⇒ 409. Stale or future signal ⇒ R7. Out-of-order bar ⇒ rejected, no effect. Worker down ⇒ commands queue (HTTP 202) and drain in order on restart. Corrupted checkpoint, suffix or projection ⇒ worker refuses to start; full-history verification audits the saved prefix. |
-| **Reproduction** | Five commands below, no API keys needed (committed dataset + recorded agent proposals). |
+| **Reproduction** | Commands below, no API keys needed (committed dataset + recorded agent proposals). |
 | **Next limit** | Incremental agent exposure and recovery checkpoints are implemented. Next: shard portfolios, profile position/fill/projection scans, and archive growing event and retry histories. |
 
 ## Quickstart
@@ -66,6 +66,9 @@ proposals), `ELEVENLABS_API_KEY` (spoken answers), `ALPACA_API_KEY_ID/SECRET` (r
 
 ## Demo script (5 minutes)
 
+The example strategy numbers below describe the recorded-fixture run. With `OPENAI_API_KEY` configured,
+proposals, allocations and results vary; use the values shown by that run rather than quoting these examples.
+
 **Before you present** (about 5 minutes, not part of the demo): `make reset up tournament`, open
 http://localhost:3000, and run `make prove` (or `make prove-docker`) in a second terminal so the invariant
 table is already on screen. Keep one terminal free for the commands below. The header should show two
@@ -78,7 +81,7 @@ green dots and the Portfolio panel should say the portfolio is not open yet.
 | 1:30 | **Crisis** | About 45 s in, a −16% crash hits (Agent channel shows it). Momentum tries to triple its exposure ("buy the dip"); the risk engine reduces two orders and rejects one (R1/R2 rule codes in the channel and in Order decisions). Volatility de-risks and is approved. |
 | 2:15 | **Adversarial console** | The session prints `verify: True`. Click *Same order ×100*: 1 new command, 99 duplicates, one effect. *Oversized order* is cut to what the allocation allows (R2). *Stale-data*, *Unallocated agent* and *Short sale* are rejected with rule codes. *Kill switch ON*, then *Oversized order* again: rejected (R9). Turn the kill switch OFF. |
 | 3:15 | **Chaos** | `make crash-worker`. Within ≈6 s the header shows "execution worker DOWN". Click *Stale-data order*: after 5 s it returns HTTP 202 queued and "pending commands" goes up. `make restart-worker` prints the replay check (`"match": true`); the pill turns green and pending returns to 0. Press *Replay & verify*: digests match, chain intact. |
-| 4:15 | **Evidence** | Show the `make prove` table from the other terminal (56 tests, 11 invariants PROVEN), then `docs/PERFORMANCE.md`. If there is time: an "Ask" question (spoken if the browser allows it), or `make verify-solana`. |
+| 4:15 | **Evidence** | Show the `make prove` table from the other terminal (92 tests, 11 invariants PROVEN), then `docs/PERFORMANCE.md`. If there is time: an "Ask" question (spoken if the browser allows it), or `make verify-solana`. |
 
 Rehearsed timings on a laptop: tournament 76 s, session 88 s (crash at 44 s), worker shown as down 6 s after
 the kill, restart and replay under 5 s. The crash can also be done *during* the session: the session slows
