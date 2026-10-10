@@ -221,11 +221,13 @@ class Worker:
         elif t == "OrderFilled":
             fills.append((_ts(e["bar_ts"]), self.pid, e["seq"], e["order_id"], e["agent_id"], e["symbol"], e["side"],
                           e["qty"], e["px"], e["fee"]))
-            order_updates.append(("UPDATE orders SET filled_qty = filled_qty + %s, updated_at = now() WHERE order_id = %s",
-                                  (e["qty"], e["order_id"])))
+            order_updates.append(("UPDATE orders SET filled_qty = filled_qty + %s, updated_at = now() "
+                                  "WHERE portfolio_id = %s AND order_id = %s",
+                                  (e["qty"], self.pid, e["order_id"])))
         elif t == "OrderClosed":
-            order_updates.append(("UPDATE orders SET status = %s, updated_at = now() WHERE order_id = %s",
-                                  (e["reason"], e["order_id"])))
+            order_updates.append(("UPDATE orders SET status = %s, updated_at = now() "
+                                  "WHERE portfolio_id = %s AND order_id = %s",
+                                  (e["reason"], self.pid, e["order_id"])))
 
     def run_forever(self, idle_wait_s: float = 0.5) -> None:
         listen = psycopg.connect(database_url(), autocommit=True)

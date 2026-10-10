@@ -3,14 +3,17 @@
 API ?= http://localhost:8000
 RUN ?= $(shell uv run python -c "import glob, os; f = [p for p in glob.glob('data/manifests/T*.json') if p.count('.') == 1]; print(max(f, key=os.path.getmtime).replace(os.sep, '/') if f else '')")
 
-.PHONY: check-integrations setup up down reset fixture tournament session demo web test prove prove-docker bench report crash-worker restart-worker solana-commit verify-solana
+.PHONY: check-integrations setup up backend down reset fixture tournament session demo web test prove prove-docker bench report crash-worker restart-worker
 
 setup:            ## install Python + web dependencies
 	uv sync
 	cd apps/web && npm ci --no-audit --no-fund
 
-up:               ## start TimescaleDB, execution worker, API and the terminal on http://localhost:3000
-	docker compose up -d --build db worker api web
+up:               ## start the persisted stack and local job manager on http://localhost:3000
+	docker compose up -d --build db worker api manager web
+
+backend:          ## rebuild backend services in place, preserving the database volume
+	docker compose up -d --build db worker api manager
 
 down:
 	docker compose down
@@ -57,11 +60,5 @@ restart-worker:   ## restart it: replays the hash-chained log, verifies the dige
 	docker compose start worker
 	@uv run python -c "import httpx, json, time; time.sleep(3); print(json.dumps({'health': httpx.get('$(API)/v1/health').json(), 'verify': httpx.get('$(API)/v1/verify').json()}, indent=1))"
 
-solana-commit:    ## publish sha256(manifest) to Solana Devnet as an SPL Memo
-	uv run python -m quantswarm.audit.solana commit $(RUN) --api $(API)
-
 check-integrations: ## which optional keys are configured + one live smoke call each
 	uv run python scripts/check_integrations.py
-
-verify-solana:    ## recompute manifest hash and compare with the on-chain memo
-	uv run python -m quantswarm.audit.solana verify $(RUN)

@@ -46,6 +46,28 @@ services:
       retries: 30
     cpus: 1
     mem_limit: 512m
+    volumes:
+      - ./data/snapshots:/app/data/snapshots:ro
+      - ./data/manifests:/app/data/manifests
+
+  manager:
+    build: .
+    init: true
+    stop_grace_period: 45s
+    command: ["python", "-m", "quantswarm.execution.manager"]
+    environment:
+      DATABASE_URL: ${QS_DATABASE_URL:-postgresql://quantswarm:quantswarm@db:5432/quantswarm}
+      QS_API: http://api:8000
+      QS_TOURNAMENT_PROCS: 2
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      QS_OPENAI_MODEL: ${QS_OPENAI_MODEL:-gpt-4.1-mini}
+    volumes:
+      - ./data/snapshots:/app/data/snapshots:ro
+      - ./data/manifests:/app/data/manifests
+    depends_on: { api: { condition: service_healthy } }
+    cpus: 2
+    mem_limit: 1g
+    restart: unless-stopped
 
   web:
     # trading terminal; the browser calls the API directly, so NEXT_PUBLIC_API is a host URL baked in at build time

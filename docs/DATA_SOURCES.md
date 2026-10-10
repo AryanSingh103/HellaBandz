@@ -46,8 +46,27 @@ Validation (hard failures): empty data, unsorted rows, duplicate timestamps per 
 `low > min(open, close)` or `high < max(open, close)`, negative volume. Intraday gaps are reported as
 warnings and never filled, because filling would invent prices.
 
-Binance specifics: spot files switched from millisecond to microsecond timestamps in 2025; the parser
-detects the unit. Volume is converted to 0.001-base-unit lots because the engine trades whole units.
+Binance spot files switched from millisecond to microsecond timestamps in 2025; the parser detects the unit.
+New snapshots use `bars-v2-lots` / `base-lot-v2`: one execution lot is exactly 0.001 base units, and
+`lots_per_base_unit` is 1000. Prices are integer micro-USDT **per lot**, rounded half-even from the raw
+decimal price. Volume is integer lots rounded down. Order quantities, positions, sizing, reservations,
+fills, fees and analytics all use that same lot; display quantity = lots / 1000 and display base-asset
+price = price_micros * 1000 / 1,000,000. USDT remains the quote currency; no USD peg is assumed.
+Equities retain whole shares and micro-USD per share. Legacy metrics with `_usd` suffixes carry quote
+currency amounts for crypto; interpret them using the registered dataset's `quote_currency`.
+
+The existing execution model charges 5,000 micro quote units per execution lot: 0.005 USD per equity
+share or 0.005 USDT per crypto lot (5 USDT per BTC). Slippage and reservation rules apply to per-lot
+prices. For raw volume 21.167 BTC, normalized volume is 21,167 lots and the 1% cap is floor(211.67) =
+211 lots = 0.211 BTC, never above 0.21167 BTC. Integer sizing can now buy fractional BTC under the
+10,000 quote-unit virtual-capital policy. See `tests/unit/test_crypto_units.py` for parser, participation,
+fees, limits, partial fills, cancellation, cash/position accounting and repeatability regressions.
+
+Older Binance snapshots multiplied volume without scaling prices. `load_snapshot` refuses those
+incompatible snapshots, and the registry shows them as unavailable. Re-ingest the original archive with
+`uv run python scripts/ingest_binance.py --symbol BTCUSDT --months 2024-01` to create a distinct
+`-lot-v2` snapshot. Existing snapshots and ledgers are not rewritten; a second v2 write to an existing
+snapshot is rejected. The schema version participates in the content hash.
 
 ## Terms
 

@@ -23,13 +23,18 @@ import numpy as np
 
 from quantswarm.agents import llm
 from quantswarm.backtester import SnapshotProvider, rebalance_order
-from quantswarm.contracts import MICROS, Bar, StrategySpec
-from quantswarm.ingestion.dataset import load_snapshot
+from pydantic import TypeAdapter
+from quantswarm.contracts import MICROS, Bar, Ident, StrategySpec
+from quantswarm.ingestion.dataset import load_snapshot, unit_context
 from quantswarm.ledger.state import Position
 from quantswarm.strategies import Series, signal
 
 log = logging.getLogger("session")
 ROOT = Path(__file__).resolve().parents[2]
+
+
+class SessionStopped(Exception):
+    """Stop future production while preserving already queued commands."""
 
 
 class ApiState:
@@ -76,12 +81,14 @@ FALLBACK_CRISIS = {
 }
 
 
-def decide_crisis(agent: str, held: dict[str, int], alloc_usd: float, prices: dict[str, float]) -> dict:
+def decide_crisis(agent: str, held: dict[str, int], allocation_quote: float, prices: dict[str, float],
+                  units: dict | None = None) -> dict:
     """LLM crisis decision, validated; deterministic fallback on any failure."""
     if llm.available():
         try:
             raw, meta = llm.chat_json(SYSTEM_CRISIS.format(agent=agent), json.dumps(
-                {"holdings": held, "allocation_usd": alloc_usd, "prices": prices}))
+                {"holdings_execution_lots": held, "allocation_quote": allocation_quote,
+                 "prices_quote_per_execution_lot": prices, "units": units or unit_context({})}))
             action = raw["action"]
             if action not in ("buy_dip", "reduce", "hold"):
                 raise ValueError(f"unknown action {action!r}")
@@ -94,12 +101,22 @@ def decide_crisis(agent: str, held: dict[str, int], alloc_usd: float, prices: di
 
 
 class Session:
-    def __init__(self, api: str, manifest: dict, dataset_dir: Path, portfolio: str = "main"):
-        self.c = httpx.Client(base_url=api, timeout=60)
+    def __init__(self, api: str, manifest: dict, dataset_dir: Path, portfolio: str = "main",
+                 stop_requested=lambda: False, progress=lambda *args: None):
+        TypeAdapter(Ident).validate_python(portfolio)
+        self.c = httpx.Client(base_url=api, timeout=60, params={"portfolio_id": portfolio},
+                             event_hooks={"response": [lambda r: r.raise_for_status()]})
         self.m = manifest
         self.run_id = manifest["run_id"]
         self.pid = portfolio
-        self.p = SnapshotProvider(load_snapshot(dataset_dir)[0])
+        table, dataset = load_snapshot(dataset_dir)
+        if manifest["dataset"]["content_sha256"] != dataset["content_sha256"]:
+            raise ValueError("manifest and snapshot hashes do not match")
+        self.p = SnapshotProvider(table)
+        self.units = unit_context(dataset)
+        self.price_tick = 1 if dataset.get("unit_version") == "base-lot-v2" else 10000
+        self.stop_requested = stop_requested
+        self.progress = progress
         self.specs = {f["spec"]["agent_id"]: StrategySpec.model_validate(f["spec"]) for f in manifest["fitted"]}
         self.alloc = {self.specs[a].agent_id: manifest["allocations"]["by_strategy"][s.strategy_id]["capital_micros"]
                       for a, s in self.specs.items()}
@@ -109,23 +126,41 @@ class Session:
         log.info("[%s] %s %s", agent, role, json.dumps(content, default=str)[:200])
         try:
             self.c.post("/v1/agent-messages", json={"run_id": self.run_id, "agent_id": agent, "role": role,
-                                                     "content": content})
+                                                     "content": content, "portfolio_id": self.pid})
         except httpx.HTTPError:
             pass
 
+    def post(self, path: str, **kwargs) -> dict:
+        if self.stop_requested():
+            raise SessionStopped()
+        result = self.c.post(path, params={"wait": False}, **kwargs).json()
+        seq = result.get("command_seq", result.get("last_command_seq"))
+        deadline = time.monotonic() + 300
+        while seq and (result.get("status") == "queued" or result.get("processed") is False):
+            if self.stop_requested():
+                raise SessionStopped()
+            if time.monotonic() > deadline:
+                raise TimeoutError("execution command still queued; restart the selected portfolio worker")
+            self.progress("waiting_for_execution", None, None)
+            time.sleep(0.2)
+            command = self.c.get(f"/v1/commands/{seq}").json()
+            if command["status"] == "done":
+                return {**result, **command["response"], "processed": True}
+        return result
+
     def setup(self) -> None:
-        r = self.c.post(f"/v1/admin/portfolio?portfolio_id={self.pid}", json={"initial_cash_usd": "10000"}).json()
+        r = self.post("/v1/admin/portfolio", json={"initial_cash_usd": "10000"})
         log.info("open portfolio: %s", r.get("status"))
         for agent, cap in sorted(self.alloc.items()):
-            r = self.c.post(f"/v1/admin/allocations?portfolio_id={self.pid}",
+            r = self.post("/v1/admin/allocations",
                             json={"agent_id": agent, "capital_usd": f"{cap / MICROS:.6f}"},
-                            headers={"Idempotency-Key": f"{self.run_id}:{agent}"}).json()
-            log.info("allocation %s = $%.2f: %s", agent, cap / MICROS, r.get("status"))
+                            headers={"Idempotency-Key": f"{self.run_id}:{agent}"})
+            log.info("allocation %s = %.2f %s: %s", agent, cap / MICROS, self.units["quote_currency"], r.get("status"))
 
     def submit(self, agent: str, sym: str, side: str, qty: int, ts: datetime, tag: str = "") -> dict:
         body = {"client_order_id": f"{self.run_id}.{agent}.{sym}.{int(ts.timestamp())}{tag}", "agent_id": agent,
                 "symbol": sym, "side": side, "qty": qty, "signal_bar_ts": ts.isoformat()}
-        r = self.c.post(f"/v1/orders?portfolio_id={self.pid}", json=body).json()
+        r = self.post("/v1/orders", json=body)
         self.stats["orders"] += 1
         self.stats["duplicates"] += bool(r.get("duplicate_request"))
         key = {"APPROVE": "approved", "REDUCE": "reduced", "REJECT": "rejected"}.get(r.get("outcome"), "rejected")
@@ -137,7 +172,7 @@ class Session:
             spec = self.specs[agent]
             held = {s: state.position(agent, s).qty for s in spec.universe}
             act = decide_crisis(agent, held, self.alloc[agent] / MICROS,
-                                {s: closes.get(s, 0) / MICROS for s in spec.universe})
+                                {s: closes.get(s, 0) / MICROS for s in spec.universe}, self.units)
             frac = min(max(act["fraction"], 0.0), 1.0)
             results = []
             for sym in spec.universe:
@@ -152,7 +187,7 @@ class Session:
                     qty = max(1, int(held[sym] * frac))
                     results.append({"symbol": sym, "side": "SELL", "qty": qty,
                                     **self.submit(agent, sym, "SELL", qty, ts, ".crisis")})
-            self.say(agent, "crisis_response", {"decision": act, "orders": [
+            self.say(agent, "crisis_response", {"decision": act, "units": self.units, "orders": [
                 {k: r.get(k) for k in ("symbol", "side", "qty", "status", "outcome", "approved_qty", "rules")}
                 for r in results]})
 
@@ -168,44 +203,48 @@ class Session:
         if max_steps:
             groups = groups[:max_steps]
         crash_start = int(len(groups) * crash_at) if crash_at is not None else None
-        r = self.c.get(f"/v1/portfolio?portfolio_id={self.pid}")
+        r = self.c.get("/v1/portfolio")
         seen = max((v[0] for v in r.json()["state"].get("last_bar", {}).values()), default=0) if r.status_code == 200 else 0
         if groups and seen >= groups[0][0].ts.timestamp():
             # bars are idempotent and ordered, so a second replay cannot move the ledger: every order would be stale (R7)
-            raise SystemExit(f"portfolio {self.pid!r} has already replayed this period; "
-                             "run `make reset up tournament` for a fresh ledger, then `make session`")
+            raise ValueError(f"portfolio {self.pid!r} has already replayed this period; select a fresh portfolio")
         self.say("system", "session_start", {"steps": len(groups), "crash_start_step": crash_start,
+                                             "units": self.units,
                                              "speed_steps_per_s": speed})
         base_hist = {sym: self.p.history(sym, te[0])[0] for sym in self.p.symbols()}
         live_close: dict[str, list[float]] = {s: [] for s in self.p.symbols()}
         live_high: dict[str, list[float]] = {s: [] for s in self.p.symbols()}
         live_low: dict[str, list[float]] = {s: [] for s in self.p.symbols()}
         t_start = time.perf_counter()
+        completed_steps = 0
         for i, g in enumerate(groups):
+            if self.stop_requested():
+                break
             f = crash_factor(i, crash_start) if crash_start is not None else 1.0
             stress = crash_start is not None and crash_start <= i < crash_start + 4
             pub = []
             for b in g:
-                o, h, lo, c = (int(round(x * f / 10_000)) * 10_000 for x in (b.open, b.high, b.low, b.close))
+                from decimal import Decimal, ROUND_HALF_EVEN
+                tick = self.price_tick
+                o, h, lo, c = (int((Decimal(x) * Decimal(str(f)) / tick).to_integral_value(rounding=ROUND_HALF_EVEN)) * tick
+                               for x in (b.open, b.high, b.low, b.close))
                 pub.append(Bar(symbol=b.symbol, ts=b.ts, open=o, high=max(h, o, c), low=min(lo, o, c), close=c,
                                volume=b.volume * (3 if stress else 1), stress=stress))
-            r = self.c.post(f"/v1/bars?portfolio_id={self.pid}",
+            r = self.post("/v1/bars",
                             json={"dataset_id": f"session:{self.run_id}",
-                                  "bars": [json.loads(b.model_dump_json()) for b in pub]}).json()
+                                  "bars": [json.loads(b.model_dump_json()) for b in pub]})
             self.stats["bars"] += len(pub)
-            if not r.get("processed"):
-                log.warning("worker lagging (bars queued); continuing")
             closes = {b.symbol: b.close for b in pub}
             for b in pub:
                 live_close[b.symbol].append(b.close / MICROS)
                 live_high[b.symbol].append(b.high / MICROS)
                 live_low[b.symbol].append(b.low / MICROS)
-            st = ApiState(self.c.get(f"/v1/portfolio?portfolio_id={self.pid}").json()["state"])
+            st = ApiState(self.c.get("/v1/portfolio").json()["state"])
             if crash_start is not None and i == crash_start:
                 self.say("system", "market_crash", {"step": i, "ts": pub[0].ts.isoformat(),
                                                      "overlay": "-16% over 4 bars, 3x volume, stress slippage"})
                 self.crisis(pub[0].ts, closes, st)
-                st = ApiState(self.c.get(f"/v1/portfolio?portfolio_id={self.pid}").json()["state"])
+                st = ApiState(self.c.get("/v1/portfolio").json()["state"])
             for agent in sorted(self.specs):
                 spec = self.specs[agent]
                 if self.alloc[agent] <= 0:
@@ -229,11 +268,19 @@ class Session:
                                  {"symbol": sym, "side": act[0], "qty": act[1], "approved_qty": res.get("approved_qty"),
                                   "rules": res.get("rules")})
             if speed > 0:
-                time.sleep(max(0.0, (i + 1) / speed - (time.perf_counter() - t_start)))
-        v = self.c.get(f"/v1/verify?portfolio_id={self.pid}").json()
-        port = self.c.get(f"/v1/portfolio?portfolio_id={self.pid}").json()
-        summary = {"run_id": self.run_id, "steps": len(groups), "crash_start_step": crash_start, **self.stats,
-                   "final_equity_usd": port["equity"] / MICROS, "ledger_digest": port["digest"],
+                delay = max(0.0, (i + 1) / speed - (time.perf_counter() - t_start))
+                while delay > 0 and not self.stop_requested():
+                    time.sleep(min(delay, 0.2))
+                    delay -= 0.2
+            completed_steps = i + 1
+            self.progress("replaying", completed_steps, len(groups))
+        v = self.c.get("/v1/verify").json()
+        port = self.c.get("/v1/portfolio").json()
+        summary = {"run_id": self.run_id, "portfolio_id": self.pid, "steps": completed_steps,
+                   "stopped": self.stop_requested(), "crash_start_step": crash_start, **self.stats,
+                   "final_equity_usd": port["equity"] / MICROS, "final_equity_quote": port["equity"] / MICROS,
+                   "units": self.units, "legacy_usd_fields": "quote amounts; use units.quote_currency",
+                   "ledger_digest": port["digest"],
                    "head_hash": port["head_hash"], "verify": v,
                    "elapsed_s": round(time.perf_counter() - t_start, 2)}
         self.say("system", "session_summary", summary)
@@ -265,7 +312,8 @@ def main() -> None:
     s = Session(a.api, m, Path(a.dataset), a.portfolio)
     s.setup()
     out = s.run(a.steps or None, a.speed, None if a.no_crash else a.crash_at)
-    path = ROOT / f"data/manifests/{m['run_id']}.{a.portfolio}.session.json"
+    from quantswarm.ingestion.registry import MANIFESTS
+    path = MANIFESTS / f"{m['run_id']}.{a.portfolio}.session.json"
     path.write_text(json.dumps(out, indent=1, default=str))
     print(json.dumps({k: v for k, v in out.items() if k != "verify"}, indent=1, default=str))
     print("verify:", out["verify"]["match"], out["verify"]["replayed_digest"])

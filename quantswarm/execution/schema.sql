@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS ledger_checkpoints (
 );
 
 CREATE TABLE IF NOT EXISTS orders (
-    order_id       TEXT PRIMARY KEY,
+    order_id       TEXT NOT NULL,
     portfolio_id   TEXT NOT NULL,
     agent_id       TEXT NOT NULL,
     symbol         TEXT NOT NULL,
@@ -71,9 +71,19 @@ CREATE TABLE IF NOT EXISTS orders (
     outcome        TEXT NOT NULL,
     rules          TEXT[] NOT NULL,
     signal_ts      TIMESTAMPTZ,
-    updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (portfolio_id, order_id)
 );
 CREATE INDEX IF NOT EXISTS orders_agent ON orders (portfolio_id, agent_id);
+
+-- Additive projection migration: ledger/checkpoint bytes are never rewritten.
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'orders'::regclass
+               AND contype = 'p' AND array_length(conkey, 1) = 1) THEN
+        ALTER TABLE orders DROP CONSTRAINT orders_pkey;
+        ALTER TABLE orders ADD PRIMARY KEY (portfolio_id, order_id);
+    END IF;
+END $$;
 
 -- Time-series (hypertables).
 CREATE TABLE IF NOT EXISTS fills (
@@ -141,3 +151,46 @@ CREATE TABLE IF NOT EXISTS agent_messages (
     content     JSONB NOT NULL,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+ALTER TABLE agent_messages ADD COLUMN IF NOT EXISTS portfolio_id TEXT;
+
+CREATE TABLE IF NOT EXISTS portfolio_context (
+    portfolio_id TEXT PRIMARY KEY,
+    run_id TEXT REFERENCES tournaments(run_id),
+    dataset_id TEXT,
+    session_job_id TEXT,
+    provenance TEXT NOT NULL DEFAULT 'browser',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS managed_workers (
+    portfolio_id TEXT PRIMARY KEY,
+    desired TEXT NOT NULL DEFAULT 'running' CHECK (desired IN ('running', 'down')),
+    status TEXT NOT NULL DEFAULT 'starting',
+    generation BIGINT NOT NULL DEFAULT 0,
+    error TEXT,
+    started_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE managed_workers ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ;
+CREATE TABLE IF NOT EXISTS jobs (
+    job_id TEXT PRIMARY KEY,
+    request_id TEXT NOT NULL UNIQUE,
+    kind TEXT NOT NULL CHECK (kind IN ('research', 'session')),
+    dataset_id TEXT NOT NULL,
+    run_id TEXT NOT NULL,
+    portfolio_id TEXT,
+    config JSONB NOT NULL,
+    status TEXT NOT NULL DEFAULT 'queued',
+    stage TEXT NOT NULL DEFAULT 'queued',
+    progress INTEGER NOT NULL DEFAULT 0,
+    total INTEGER,
+    stop_requested BOOLEAN NOT NULL DEFAULT FALSE,
+    result JSONB,
+    error TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    started_at TIMESTAMPTZ,
+    finished_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS jobs_active_portfolio ON jobs (portfolio_id)
+    WHERE kind = 'session' AND status IN ('queued', 'running');
+CREATE INDEX IF NOT EXISTS jobs_queue ON jobs (created_at) WHERE status = 'queued';

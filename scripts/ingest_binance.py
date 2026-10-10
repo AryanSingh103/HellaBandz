@@ -14,6 +14,7 @@ import hashlib
 import io
 import time
 import zipfile
+from decimal import Decimal, ROUND_FLOOR, ROUND_HALF_EVEN
 from pathlib import Path
 
 import httpx
@@ -22,6 +23,7 @@ from quantswarm.ingestion.dataset import BarTable, write_snapshot
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "https://data.binance.vision/data/spot/monthly/klines"
+SUPPORTED_SYMBOLS = ("BTCUSDT", "ETHUSDT")
 
 
 def fetch(symbol: str, interval: str, month: str, raw_dir: Path) -> Path:
@@ -41,6 +43,8 @@ def fetch(symbol: str, interval: str, month: str, raw_dir: Path) -> Path:
 
 
 def parse(zpath: Path, symbol: str) -> list[tuple]:
+    if symbol not in SUPPORTED_SYMBOLS:
+        raise ValueError("supported USDT pairs are BTCUSDT and ETHUSDT")
     rows = []
     with zipfile.ZipFile(zpath) as z:
         with z.open(z.namelist()[0]) as f:
@@ -50,16 +54,19 @@ def parse(zpath: Path, symbol: str) -> list[tuple]:
                 t = int(rec[0])
                 # Binance spot files switched from milliseconds to microseconds in 2025
                 ts = t // 1_000_000 if t > 10**14 else t // 1_000
-                o, h, lo, c = (int(round(float(x) * 1_000_000)) for x in rec[1:5])
-                vol = int(float(rec[5]) * 1_000)  # base-asset volume in milli-units (whole-unit engine)
+                # One execution lot = 0.001 base units. Every price is per lot;
+                # volume rounds down, so the participation cap cannot overfill.
+                o, h, lo, c = (int((Decimal(x) * 1000).to_integral_value(rounding=ROUND_HALF_EVEN))
+                              for x in rec[1:5])
+                vol = int((Decimal(rec[5]) * 1000).to_integral_value(rounding=ROUND_FLOOR))
                 rows.append((symbol, ts, o, h, lo, c, vol))
     return rows
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--symbol", default="BTCUSDT")
-    ap.add_argument("--interval", default="1m")
+    ap.add_argument("--symbol", default="BTCUSDT", choices=SUPPORTED_SYMBOLS)
+    ap.add_argument("--interval", default="1m", choices=("1m",))
     ap.add_argument("--months", nargs="+", default=["2024-01", "2024-02", "2024-03"])
     a = ap.parse_args()
     raw = ROOT / "data/raw/binance"
@@ -69,11 +76,13 @@ def main() -> None:
     t_dl = time.perf_counter() - t0
     rows = [r for f in files for r in parse(f, a.symbol)]
     t = BarTable.from_rows(rows)
-    dataset_id = f"binance-{a.symbol.lower()}-{a.interval}-{a.months[0]}-{a.months[-1]}"
+    dataset_id = f"binance-{a.symbol.lower()}-{a.interval}-{a.months[0]}-{a.months[-1]}-lot-v2"
     m = write_snapshot(t, ROOT / "data/snapshots" / dataset_id, {
         "dataset_id": dataset_id, "source": f"data.binance.vision spot klines {a.symbol} {a.interval}",
         "interval_s": 60, "adjustment": "none (spot)", "files": [f.name for f in files],
-        "units": "prices in micro-USDT; volume in 0.001 base units"})
+        "schema_version": "bars-v2-lots", "unit_version": "base-lot-v2", "quote_currency": "USDT",
+        "base_units_per_lot": "0.001", "lots_per_base_unit": 1000,
+        "units": "prices in micro-USDT per 0.001-base-asset lot; volume and quantities in integer lots"})
     print(f"{dataset_id}: {m['row_count']} rows, sha256 {m['content_sha256'][:16]}..., download+verify {t_dl:.1f}s")
 
 

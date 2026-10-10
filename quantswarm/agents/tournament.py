@@ -237,7 +237,7 @@ class TState(TypedDict, total=False):
 def build_graph(emit=lambda *a: None):
     def summarize(st: TState) -> TState:
         p = SnapshotProvider(load_snapshot(Path(st["dataset_dir"]))[0])
-        summ = train_summary(p, st["manifest_in"]["splits"]["train"][1])
+        summ = train_summary(p, st["manifest_in"]["splits"]["train"][1], st["manifest_in"])
         emit("system", "summary", summ)
         return {"summary": summ}
 
@@ -297,8 +297,12 @@ def build_graph(emit=lambda *a: None):
         return {"ranked": ranked}
 
     def supervisor(st: TState) -> TState:
+        from quantswarm.ingestion.dataset import unit_context
         view = [{k: r[k] for k in ("strategy_id", "family", "params", "validation", "stability", "score", "gates")}
                 for r in st["ranked"]]
+        for result in view:
+            result["units"] = unit_context(st["manifest_in"])
+            result["legacy_usd_fields"] = "quote amounts; use units.quote_currency"
         sup = supervise(view)
         emit("supervisor", "allocation_advice", sup)
         return {"supervisor": sup}
@@ -330,7 +334,9 @@ def build_graph(emit=lambda *a: None):
             "run_id": st["run_id"],
             "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "code_version": _git_sha(),
-            "dataset": {k: st["manifest_in"][k] for k in ("dataset_id", "content_sha256", "splits", "source")},
+            "dataset": {k: st["manifest_in"][k] for k in ("dataset_id", "content_sha256", "splits", "source",
+                        "interval_s", "unit_version", "quote_currency", "lots_per_base_unit", "base_units_per_lot")
+                        if k in st["manifest_in"]},
             "engine_config": EngineConfig().__dict__, "engine_config_digest": EngineConfig().digest(),
             "policy": {"min_fills": MIN_FILLS, "max_dd": MAX_DD, "cap_per_strategy": CAP_PER_STRATEGY,
                        "deployable": DEPLOYABLE, "supervisor_band": SUPERVISOR_BAND, "initial_cash_micros": INITIAL_CASH},
@@ -376,7 +382,8 @@ def manifest_hash(m: dict) -> str:
     return sha256_hex(canonical(m))
 
 
-def run(dataset_dir: Path = DEFAULT_DATASET, run_id: str | None = None, api: str | None = None) -> dict:
+def run(dataset_dir: Path = DEFAULT_DATASET, run_id: str | None = None, api: str | None = None,
+        progress=lambda *args: None) -> dict:
     _, dm = load_snapshot(dataset_dir)
     run_id = run_id or "T" + datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     msgs: list[tuple] = []
@@ -384,6 +391,7 @@ def run(dataset_dir: Path = DEFAULT_DATASET, run_id: str | None = None, api: str
     def emit(agent: str, role: str, content: Any) -> None:
         msgs.append((agent, role, content))
         log.info("[%s] %s", agent, role)
+        progress(agent, role, content)
         if api:
             import httpx
             try:
@@ -397,12 +405,13 @@ def run(dataset_dir: Path = DEFAULT_DATASET, run_id: str | None = None, api: str
                                     "proposals": []})
     m = out["manifest"]
     h = manifest_hash(m)
-    out_dir = ROOT / "data/manifests"
+    from quantswarm.ingestion.registry import MANIFESTS
+    out_dir = MANIFESTS
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / f"{run_id}.json").write_text(json.dumps(m, indent=1, sort_keys=True))
     if api:
         import httpx
-        httpx.post(f"{api}/v1/tournaments", json={"run_id": run_id, "manifest": m, "manifest_hash": h}, timeout=30)
+        httpx.post(f"{api}/v1/tournaments", json={"run_id": run_id, "manifest": m, "manifest_hash": h}, timeout=30).raise_for_status()
     return {"run_id": run_id, "manifest_hash": h, "manifest": m}
 
 

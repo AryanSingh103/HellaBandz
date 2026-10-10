@@ -12,7 +12,7 @@ boundary, not the model.
                     │   → fit: deterministic grid search on TRAIN                                 │
                     │   → rank: deterministic backtests on VALIDATION + 3 stability folds + gates │
                     │   → supervisor (LLM, advisory) → deterministic allocator → test ONCE         │
-                    │   → manifest (sha256) ──────────────────────────► Solana Devnet memo (opt.) │
+                    │   → finalized immutable manifest (canonical sha256)                        │
                     │                                                                             │
                     │  Session runner: replays held-out bars + crash overlay, turns frozen        │
                     │  strategy signals (and LLM crisis responses) into ordinary HTTP orders      │
@@ -56,13 +56,14 @@ boundary, not the model.
 | Backtester | `quantswarm/backtester/` | `DataProvider`, `Strategy`, `ExecutionModel`, `Portfolio`, `ResultStore` over the same engine | No second implementation of fills or accounting |
 | Strategies | `quantswarm/strategies/` | Whitelisted causal families; agents choose parameters only | LLMs never ship executable code |
 | Agents | `quantswarm/agents/` | LangGraph tournament, live session client, grounded Q&A | Nondeterministic, so kept strictly upstream of the command log |
-| Audit | `quantswarm/audit/solana.py` | Manifest hash → SPL Memo on Devnet; verifier | Optional, outside the core path |
-| Terminal | `apps/web/` | Dashboards, adversarial console, event inspector, voice Q&A | Observation and manual commands only, through the public API |
+| Local manager | `quantswarm/execution/manager.py` | Durable research/session jobs and explicitly owned execution children | API stays responsive; workers retain independent single-writer locks |
+| Browser workflows | `quantswarm/api/workflows.py` | Registered datasets, jobs, runtime controls, paged history, read-only selected-event replay and ledger analytics | Financial mutations still use the command queue |
+| Terminal | `apps/web/` | Strategy browsing, historical runs, manual simulated orders, history and voice Q&A | Uses the public API; provider keys stay server-side |
 
 ## Data flow of one order
 
 1. Agent (or the UI) posts `OrderRequest{client_order_id, agent_id, symbol, side, qty, type, limit, signal_bar_ts}`.
-2. API inserts `commands(command_id="order:<client_order_id>")`. A retry hits `ON CONFLICT` and returns the
+2. API inserts `commands(command_id="<portfolio_id>:order:<client_order_id>")`. A retry hits `ON CONFLICT` and returns the
    original decision; a different payload under the same id returns 409.
 3. Worker claims the command, runs `evaluate_order` (R0–R9). Outcome is APPROVE, REDUCE (quantity cut to the
    tightest limit) or REJECT, recorded as an event either way. Buys reserve cash at last close + 2% + fees.
@@ -110,7 +111,8 @@ Equal-timestamp ordering (I-11): bars sorted by `(ts, symbol)`; at each timestam
 
 - **Postgres as the queue** (commands + `FOR UPDATE SKIP LOCKED` + LISTEN/NOTIFY) instead of Kafka/Redis:
   one durable store gives atomic "consume command + write ledger" without two-phase commit.
-- **Integer micro-dollars and whole shares**; rounding is always against the trader (buy fills round up,
+- **Integer micro quote units and integer execution lots**; equities use whole shares, versioned crypto
+  snapshots use fixed base lots (see DATA_SOURCES). Rounding is against the trader (buy fills round up,
   sell fills round down) and documented in `INVARIANTS.md`.
 - **TimescaleDB hypertables** for time-series (fills, equity, bars, telemetry); relational tables for
   everything that needs uniqueness or foreign keys.

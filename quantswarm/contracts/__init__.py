@@ -1,7 +1,8 @@
 """Versioned message contracts shared by every QuantSwarm component.
 
-Money is integer micro-dollars (1 USD = 1_000_000 micros). Quantities are whole
-shares. Timestamps are timezone-aware UTC. Nothing in the financial core uses
+Money is integer micro quote units (1 quote unit = 1_000_000 micros). Quantities
+are integer execution lots: whole equity shares or versioned crypto base lots.
+Timestamps are timezone-aware UTC. Nothing in the financial core uses
 floats.
 """
 
@@ -31,7 +32,16 @@ def usd_to_micros(x: str | int | float) -> int:
     """Convert a decimal dollar string (or number) to micros with round-half-even."""
     from decimal import ROUND_HALF_EVEN, Decimal
 
-    return int((Decimal(str(x)) * MICROS).quantize(Decimal(1), rounding=ROUND_HALF_EVEN))
+    try:
+        value = Decimal(str(x))
+        if not value.is_finite() or abs(value) > Decimal(2**63 - 1) / MICROS:
+            raise ValueError("money must be finite and fit signed 64-bit micro-units")
+        result = int((value * MICROS).quantize(Decimal(1), rounding=ROUND_HALF_EVEN))
+        if abs(result) > 2**63 - 1:
+            raise ValueError("money is out of range")
+        return result
+    except (ArithmeticError, ValueError) as exc:
+        raise ValueError("money must be a finite decimal in signed 64-bit micro-units") from exc
 
 
 def micros_to_usd(m: int) -> float:

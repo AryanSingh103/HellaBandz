@@ -1,0 +1,61 @@
+"use client";
+import { useState } from "react";
+import { CircleStop, Play, ShieldCheck, Plus, Power } from "lucide-react";
+import { Analytics, Dataset, Event, Portfolio, Runtime, Verification, money, moneyInput, validId, stamp } from "./model";
+import { useCommand, useResource } from "./data";
+import { Chart, Empty, JsonView, Metric, Notice } from "./ui";
+import { History } from "./orders";
+
+export function PortfolioView({ pid, port, runtime, dataset, refresh, onSelect }: { pid: string; port?: Portfolio | null; runtime?: Runtime | null; dataset?: Dataset; refresh: () => void; onSelect: (p:string)=>void }) {
+  const c = useCommand(pid), create = useCommand();
+  const [newId, setNewId] = useState(""), [capital, setCapital] = useState("10000"), [agent, setAgent] = useState(""), [allocation, setAllocation] = useState("0");
+  const [error, setError] = useState("");
+  const s = port?.state, currency = dataset?.quote_currency || "USD", lots = dataset?.lots_per_base_unit || 1;
+  const history = useResource<Analytics>("/v1/analytics/history", { portfolio_id: pid }, 10000);
+  async function action(path: string, body: unknown) { await c.send(path, body); refresh(); }
+  return <><div className="section-title"><h1>Portfolio</h1><span className="muted">{pid} / {port ? `Sequence ${port.seq}` : "Not opened"}</span></div>
+    {!port ? <Notice>{port === null ? "This portfolio has no ledger yet. Open it with virtual capital or launch an isolated session from Run." : "Portfolio data unavailable."}</Notice> : <>
+      <div className="metrics"><Metric label="Equity" value={money(port.equity,currency)} /><Metric label="Available cash" value={money(s!.cash-s!.reserved_cash,currency)} /><Metric label="Reserved cash" value={money(s!.reserved_cash,currency)} /><Metric label="Market value" value={money(s!.market_value,currency)} /><Metric label="Realized P&L" value={money(s!.realized_pnl,currency)} /><Metric label="Fees / slippage" value={`${money(s!.fees_paid,currency)} / ${money(s!.slippage_cost,currency)}`} /></div>
+      {history.error && <Notice error>{history.error}</Notice>}<Chart currency={currency} series={[{name:"Portfolio equity",color:"#00ae7a",values:history.data?.points.map(p=>[p.ts,p.equity]) || []}]} />
+      <section><h2>Holdings</h2><div className="table-scroll"><table><thead><tr><th>Agent</th><th>Symbol</th><th>Quantity ({lots>1 ? "base units" : "shares"})</th><th>Reserved</th><th>Value</th><th>Unrealized P&L</th></tr></thead><tbody>{Object.entries(s!.positions).filter(([,p])=>p.qty>0).map(([k,p])=>{const [a,symbol]=k.split("|"), value=p.qty*(s!.last_bar[symbol]?.[1]||0); return <tr key={k}><td>{a}</td><td>{symbol}</td><td>{p.qty/lots}</td><td>{p.reserved/lots}</td><td>{money(value,currency)}</td><td>{money(value-p.basis,currency)}</td></tr>;})}</tbody></table></div>{!Object.values(s!.positions).some(p=>p.qty>0) && <Empty>No open holdings.</Empty>}</section>
+      <section><h2>Agent allocations</h2><div className="table-scroll"><table><thead><tr><th>Agent</th><th>Capital</th></tr></thead><tbody>{Object.entries(s!.allocations).map(([a,n])=><tr key={a}><td>{a}</td><td>{money(n,currency)}</td></tr>)}</tbody></table></div></section>
+    </>}
+    <section><div className="section-title"><h2>Execution runtime</h2><span className="badge">{runtime?.ownership || "unknown ownership"}</span></div><div className="metrics"><Metric label="Readiness" value={!runtime ? "Unknown" : runtime.ready ? "Ready" : runtime.intentional_down ? "Intentionally down" : "Not ready"} /><Metric label="Heartbeat" value={stamp(runtime?.worker_last_heartbeat)} /><Metric label="Pending commands" value={runtime?.pending_commands ?? "Unknown"} /><Metric label="Local manager" value={!runtime ? "Unknown" : runtime.manager_alive ? "Healthy" : "Unavailable"} /></div>
+      <div className="row"><button disabled={c.pending || runtime?.ownership!=="supervisor" || runtime.intentional_down} onClick={()=>action("/v1/runtime",{action:"crash"})}><CircleStop size={16} />Crash worker</button><button disabled={c.pending || runtime?.ownership!=="supervisor"} onClick={()=>action("/v1/runtime",{action:"restart"})}><Play size={16} />Restart worker</button></div>
+      {runtime?.ownership==="external" && <p className="muted">Externally managed worker. Process controls unavailable.</p>}<JsonView label="Recovery details" value={runtime?.recovery} />{runtime?.managed?.error && <Notice error>{runtime.managed.error}</Notice>}
+    </section>
+    <section><h2>Virtual capital & controls</h2><div className="operational-grid">
+      <form onSubmit={e=>{e.preventDefault(); if(!moneyInput(capital,true)){setError("Opening capital must be positive, finite and representable to six decimals.");return;} setError(""); void action("/v1/admin/portfolio",{initial_cash_usd:capital});}}><h3>Open selected portfolio</h3><label>Opening capital ({currency})<input aria-label="Opening capital" value={capital} onChange={e=>setCapital(e.target.value)} inputMode="decimal" /></label><button disabled={!!port || c.pending} type="submit"><Power size={16} />Open portfolio</button></form>
+      <form onSubmit={e=>{e.preventDefault(); if(!validId(agent)||!moneyInput(allocation)){setError("Use a valid agent ID and nonnegative capital with up to six decimals. Zero deallocates.");return;} setError(""); void action("/v1/admin/allocations",{agent_id:agent,capital_usd:allocation});}}><h3>Set allocation</h3><label>Agent<input aria-label="Allocation agent" value={agent} onChange={e=>setAgent(e.target.value)} list="allocated-agents" /><datalist id="allocated-agents">{Object.keys(s?.allocations||{}).map(a=><option key={a}>{a}</option>)}</datalist></label><label>Capital ({currency})<input aria-label="Allocation capital" value={allocation} onChange={e=>setAllocation(e.target.value)} inputMode="decimal" /></label><button disabled={!port||c.pending}>Set allocation</button></form>
+      <form onSubmit={async e=>{e.preventDefault();if(!validId(newId)){setError("Enter a valid fresh portfolio ID.");return;}setError("");const r=await create.send("/v1/portfolios",{portfolio_id:newId});if(r){refresh();onSelect(newId);}}}><h3>New isolated portfolio</h3><label>Portfolio ID<input aria-label="New portfolio ID" value={newId} onChange={e=>setNewId(e.target.value)} /></label><button disabled={create.pending}><Plus size={16} />Create portfolio</button></form>
+    </div><div className="row"><label className="toggle"><input type="checkbox" aria-label="Kill switch" disabled={!port||c.pending} checked={!!s?.kill_switch} onChange={e=>action("/v1/admin/kill-switch",{on:e.target.checked,reason:"browser operator"})} />Kill switch</label>{s?.kill_switch && <span className="bad">Active: {s.kill_reason}</span>}</div>
+      {(error||c.error||create.error) && <Notice error>{error||c.error||create.error}</Notice>}{c.result && <JsonView label={`Command: ${String(c.result.status || c.result.outcome || "processed")}`} value={c.result} />}
+    </section></>;
+}
+
+export function AuditView({pid,port,events,streamStatus}:{pid:string;port?:Portfolio|null;events:Event[];streamStatus:string}) {
+  const [revision, refresh] = useState(0);
+  const verify = useResource<Verification>("/v1/verify", {portfolio_id:pid}, 0, revision);
+  return <><div className="section-title"><h1>Audit</h1><button onClick={()=>refresh(n=>n+1)} disabled={verify.loading}><ShieldCheck size={16} />Verify full ledger</button></div>
+    {verify.error && <Notice error>{verify.error}</Notice>}
+    {verify.data && <Notice error={verify.data.status!=="not_opened" && !verify.data.match}>{verify.data.status==="not_opened" ? "Not opened: no ledger to verify." : verify.data.match && verify.data.chain_ok ? `Verified: ${verify.data.events} events, hash chain intact, projection matches replay.` : `Integrity mismatch. ${verify.data.error || "Projection or hash chain differs."}`}</Notice>}
+    {verify.data && <JsonView label="Verification digests" value={verify.data} />}
+    <section><div className="section-title"><h2>Recent ledger stream</h2><span className="muted">{streamStatus} / {events.length} recent events</span></div><div className="table-scroll bounded"><table><thead><tr><th>Sequence</th><th>Type</th><th>Event & hash</th></tr></thead><tbody>{events.map(e=><tr key={e.seq}><td>{e.seq}</td><td>{e.type}</td><td><JsonView value={e} label="Event details" /></td></tr>)}</tbody></table></div></section>
+    <h2>Full event history</h2>{port===null ? <Empty>No ledger. Event replay becomes available after opening this portfolio.</Empty> : <History key={pid} pid={pid} initialCollection="events" />}
+  </>;
+}
+
+export function AnalyticsView({pid,currency}:{pid:string;currency:string}) {
+  const data = useResource<Analytics>("/v1/analytics/history",{portfolio_id:pid},10000);
+  const rejects = useResource<{rule:string;n:number}[]>("/v1/analytics/rejections",{portfolio_id:pid},10000);
+  const throughput = useResource<{bucket:string;commands:number}[]>("/v1/analytics/throughput",{portfolio_id:pid},10000);
+  const stats = useResource<{agent_id:string;approved:number;reduced:number;rejected:number;filled_qty:number}[]>("/v1/analytics/agents",{portfolio_id:pid},10000);
+  const points = data.data?.points || [], agents = Array.from(new Set(points.flatMap(p=>Object.keys(p.agents))));
+  const colors = ["#00ae7a","#3473dc","#c73e64","#ae7e16"], benchmark = data.data?.benchmark;
+  return <><div className="section-title"><h1>Analytics</h1><span className="muted">{pid} / Ledger-derived history</span></div>{[data.error,rejects.error,throughput.error,stats.error].filter(Boolean).map((e,i)=><Notice error key={i}>{e}</Notice>)}
+    <section><h2>Agent P&L</h2><Chart currency={currency} series={agents.map((a,i)=>({name:a,color:colors[i%colors.length],values:points.filter(p=>p.agents[a]).map(p=>[p.ts,p.agents[a].pnl])}))} /><p className="muted">{data.data?.definitions.agent_pnl}</p></section>
+    <section><h2>Exposure</h2><Chart currency={currency} series={[{name:"Portfolio exposure",color:colors[0],values:points.map(p=>[p.ts,p.exposure])},...agents.map((a,i)=>({name:a,color:colors[(i+1)%colors.length],values:points.filter(p=>p.agents[a]).map(p=>[p.ts,p.agents[a].exposure] as [number,number])}))]} /><p className="muted">{data.data?.definitions.exposure}</p></section>
+    <section><h2>Frozen-period benchmark</h2>{benchmark?.status==="available" ? <><p className="muted">{stamp(benchmark.start_ts)} to {stamp(benchmark.end_ts)}</p><Chart currency={currency} series={[{name:"Equal-weight buy-and-hold",color:colors[1],values:benchmark.baseline?.map(p=>[p.ts,p.equity])||[]},{name:"Frozen research portfolio",color:colors[0],values:benchmark.strategy?.ts.map((t,i)=>[t,benchmark.strategy!.equity[i]])||[]}]} /><p>{benchmark.assumptions}</p></> : <Empty>{benchmark?.reason || "Matching baseline unavailable."}</Empty>}</section>
+    <section className="operational-grid"><div><h2>Risk decisions</h2><div className="table-scroll"><table><thead><tr><th>Agent</th><th>Approved</th><th>Reduced</th><th>Rejected</th></tr></thead><tbody>{stats.data?.map(a=><tr key={a.agent_id}><td>{a.agent_id}</td><td>{a.approved}</td><td>{a.reduced}</td><td>{a.rejected}</td></tr>)}</tbody></table></div><h3>Rule breakdown</h3>{rejects.data?.length ? rejects.data.map(r=><div className="list-row" key={r.rule}><span>{r.rule}</span><b>{r.n}</b></div>) : <Empty>No recorded rejection or reduction rules.</Empty>}</div><div><h2>Command throughput</h2><p className="muted">{data.data?.definitions.throughput || "Processed commands per 10-second wall-clock bucket"}</p><div className="table-scroll bounded"><table><thead><tr><th>Bucket</th><th>Commands / 10s</th></tr></thead><tbody>{throughput.data?.map(p=><tr key={p.bucket}><td>{stamp(p.bucket)}</td><td>{p.commands}</td></tr>)}</tbody></table></div></div></section>
+  </>;
+}

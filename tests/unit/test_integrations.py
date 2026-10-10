@@ -137,7 +137,7 @@ def test_ask_uses_llm_only_to_phrase_facts(fake_llm):
     assert "10000.0" in calls[0][1]  # facts were sent, not raw tables
     queue.append(RuntimeError("quota"))
     r = answer("what is our equity?", ctx)
-    assert r["mode"].startswith("deterministic") and "$10,000.00" in r["answer"]
+    assert r["mode"].startswith("deterministic") and "USD 10,000.00" in r["answer"]
 
 
 def test_reasoning_models_get_no_temperature(monkeypatch):

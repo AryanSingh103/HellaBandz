@@ -33,18 +33,19 @@ RULE_TEXT = {
 
 
 def facts(ctx: dict) -> dict:
-    out: dict = {}
+    from quantswarm.ingestion.dataset import unit_context
+    out: dict = {"units": ctx.get("units") or unit_context({})}
     p = ctx.get("portfolio")
     if p:
         st = p["state"]
         pos = {k: v["qty"] for k, v in st.get("positions", {}).items() if v.get("qty")}
         out["portfolio"] = {
-            "equity_usd": round(p["equity"] / 1e6, 2), "cash_usd": round(st["cash"] / 1e6, 2),
-            "market_value_usd": round(st.get("market_value", 0) / 1e6, 2),
+            "equity_quote": round(p["equity"] / 1e6, 2), "cash_quote": round(st["cash"] / 1e6, 2),
+            "market_value_quote": round(st.get("market_value", 0) / 1e6, 2),
             "exposure_pct": round(100 * st.get("market_value", 0) / max(1, p["equity"]), 1),
-            "positions": pos, "open_orders": len(st.get("orders", {})), "kill_switch": st.get("kill_switch"),
-            "kill_reason": st.get("kill_reason"), "realized_pnl_usd": round(st.get("realized_pnl", 0) / 1e6, 2),
-            "fees_usd": round(st.get("fees_paid", 0) / 1e6, 2), "ledger_digest": p["digest"][:16],
+            "positions_execution_lots": pos, "open_orders": len(st.get("orders", {})), "kill_switch": st.get("kill_switch"),
+            "kill_reason": st.get("kill_reason"), "realized_pnl_quote": round(st.get("realized_pnl", 0) / 1e6, 2),
+            "fees_quote": round(st.get("fees_paid", 0) / 1e6, 2), "ledger_digest": p["digest"][:16],
         }
     flagged = [o for o in ctx.get("recent_orders", []) if o["outcome"] in ("REJECT", "REDUCE")]
     out["recent_rejected_or_reduced"] = [
@@ -68,13 +69,15 @@ def facts(ctx: dict) -> dict:
 def deterministic_answer(q: str, f: dict) -> str:
     ql = q.lower()
     parts: list[str] = []
+    currency = f.get("units", {}).get("quote_currency", "USD")
+    quantity_label = f.get("units", {}).get("quantity_label", "shares")
     if any(w in ql for w in ("reject", "why", "denied", "blocked", "reduce")):
         rr = f.get("recent_rejected_or_reduced") or []
         if not rr:
             parts.append("No orders have been rejected or reduced recently.")
         for o in rr[:3]:
             verdict = "rejected" if o["outcome"] == "REJECT" else f"reduced to {o['approved']}"
-            parts.append(f"{o['agent']}'s {o['side']} of {o['requested']} {o['symbol']} was {verdict} because "
+            parts.append(f"{o['agent']}'s {o['side']} of {o['requested']} {quantity_label} of {o['symbol']} was {verdict} because "
                          + " and ".join(o["why"]) + ".")
     if any(w in ql for w in ("best", "perform", "win", "tournament", "agent", "strategy")) and f.get("tournament"):
         t = f["tournament"]
@@ -88,12 +91,12 @@ def deterministic_answer(q: str, f: dict) -> str:
         parts.append(f"The frozen allocation returned {t['held_out_return']:.1%} on the held-out period.")
     if any(w in ql for w in ("exposure", "position", "cash", "equity", "hold", "portfolio", "kill")) and f.get("portfolio"):
         p = f["portfolio"]
-        parts.append(f"Equity is ${p['equity_usd']:,.2f} with ${p['cash_usd']:,.2f} cash; exposure is {p['exposure_pct']}% "
-                     f"across {len(p['positions'])} positions. Kill switch is {'ON (' + str(p['kill_reason']) + ')' if p['kill_switch'] else 'off'}.")
+        parts.append(f"Equity is {currency} {p['equity_quote']:,.2f} with {currency} {p['cash_quote']:,.2f} cash; exposure is {p['exposure_pct']}% "
+                     f"across {len(p['positions_execution_lots'])} positions. Kill switch is {'ON (' + str(p['kill_reason']) + ')' if p['kill_switch'] else 'off'}.")
     if not parts:
         p = f.get("portfolio")
         parts.append("I can answer questions about rejected orders, agent performance, and current exposure."
-                     + (f" Right now equity is ${p['equity_usd']:,.2f}." if p else ""))
+                     + (f" Right now equity is {currency} {p['equity_quote']:,.2f}." if p else ""))
     return " ".join(parts)
 
 
@@ -103,13 +106,25 @@ exactly, and never give investment advice. Everything is paper trading."""
 
 
 def answer(question: str, ctx: dict) -> dict:
+    if "reject" in question.lower() and any(w in question.lower() for w in ("last", "latest", "recent")):
+        row = ctx.get("latest_rejection")
+        if not row:
+            return {"answer": "No OrderRejected event exists in this portfolio.", "mode": "deterministic", "facts": {}}
+        ev = row["event"]
+        label = ctx.get("units", {}).get("quantity_label", "shares")
+        why = "; ".join(f"{r}: {RULE_TEXT.get(r, r)}" for r in ev["rules"])
+        return {"answer": f"Order {ev['order_id']} at ledger sequence {row['seq']} was rejected: "
+                          f"{ev['agent_id']} requested {ev['side']} {ev['requested_qty']} {label} of {ev['symbol']}. {why}.",
+                "mode": "deterministic ledger", "facts": {"latest_rejection": row, "units": ctx.get("units")}}
     f = facts(ctx)
     base = deterministic_answer(question, f)
     if llm.available():
         try:
             raw, meta = llm.chat_json(SYSTEM + ' Respond as JSON {"answer": str}.',
                                       json.dumps({"question": question, "facts": f}), temperature=0.2, timeout=20)
-            return {"answer": str(raw.get("answer", base)), "mode": "llm", "llm": meta, "facts": f}
+            if not isinstance(raw, dict) or not isinstance(raw.get("answer"), str) or not raw["answer"].strip():
+                raise ValueError("provider returned no valid answer")
+            return {"answer": raw["answer"], "mode": "llm", "llm": meta, "facts": f}
         except Exception as e:
             return {"answer": base, "mode": f"deterministic (llm error: {type(e).__name__})", "facts": f}
     return {"answer": base, "mode": "deterministic", "facts": f}

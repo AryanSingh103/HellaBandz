@@ -2,7 +2,7 @@ import "./globals.css";
 import type { ReactNode } from "react";
 
 export const metadata = {
-  title: "QuantSwarm Terminal",
+  title: "QuantSwarm | Browse Strategies",
   description: "Autonomous strategy agents on deterministic, fault-tolerant trading infrastructure (paper trading only).",
 };
 
