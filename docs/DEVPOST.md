@@ -2,6 +2,15 @@
 
 **Autonomous AI strategy agents on trading infrastructure they cannot break.**
 
+## Measured results
+
+- **Pre-trade risk check:** p50 3.6 µs, p99 8.5 µs (in-process).
+- **Durable order path** (HTTP → Postgres command log → worker → atomic ledger commit → response), 1 vCPU worker + 1 vCPU API + 2 vCPU DB: **181 orders/s** at 50 concurrent clients (p99 315 ms); 16.5 ms p50 for a single client.
+- **Crash recovery:** 105,000-event ledger restored from checkpoint + 5,000-event verified suffix in 1.55 s; container restart to ready 5.4 s.
+- **Replay:** 131,040 real Binance 1-minute bars backtested at 21,778 bars/s; event-log replay 57,444 events/s.
+
+These are Windows/i9 measurements on the updated core. Container limits: worker and API each 1 vCPU/512 MiB, DB 2 vCPU/2 GiB, load client 1 vCPU/512 MiB. See PERFORMANCE.md for repetitions, percentiles, scaling tables and source hash.
+
 ## Inspiration
 
 An autonomous trading agent can produce a convincing explanation and still submit a dangerous order.
@@ -20,6 +29,21 @@ The default dataset is synthetic and the default agent proposals are recorded fi
 Binance bars support the replay benchmark. Optional live LLM, voice, Alpaca and Solana Devnet paths are
 separate integrations; their presence in the code is not a claim that every keyed service was exercised
 in this core-performance verification. There are no real orders, funds or brokerage connections.
+
+## The 10 questions
+
+| | |
+|---|---|
+| **User and problem** | A desk letting autonomous agents propose trades needs a hard boundary that keeps a buggy or overconfident agent from overspending, double-filling, shorting, or corrupting the books. |
+| **Core claim** | No sequence of duplicated, concurrent, malformed, delayed, or crash-interrupted commands can create cash or shares from nothing or apply a fill twice, and the ledger can always be rebuilt bit-for-bit from its event log. |
+| **Boundary** | Bar-based simulated fills (no order book or queue position), long-only cash account, 5 symbols, no auth. See [LIMITATIONS](LIMITATIONS.md). |
+| **Correctness** | 11 invariants (idempotency, cash/position safety, risk enforcement, fill validity, determinism, accounting identity, recovery, causality, audit integrity, ordering): [INVARIANTS](INVARIANTS.md). |
+| **Evidence** | 73 passing tests: unit, property-based (random command programs checked after every step), real-Postgres concurrency, SIGKILL fault injection, tamper detection. `make prove` prints the invariant table. |
+| **Interfaces** | HTTP API ⇄ Postgres command log ⇄ execution worker; agents and UI are API clients. [ARCHITECTURE](ARCHITECTURE.md). |
+| **Measurement** | Risk-check latency, durable order throughput at 1/10/50 clients, replay speed on 131k real Binance bars, recovery time vs ledger size, all under fixed container limits: [PERFORMANCE](PERFORMANCE.md). |
+| **Failure behavior** | Invalid ⇒ 422 or recorded rejection with rule code. Duplicate ⇒ original decision. Same id, new payload ⇒ 409. Stale or future signal ⇒ R7. Out-of-order bar ⇒ rejected, no effect. Worker down ⇒ commands queue (HTTP 202) and drain in order on restart. Corrupted checkpoint, suffix or projection ⇒ worker refuses to start; full-history verification audits the saved prefix. |
+| **Reproduction** | Commands below, no API keys needed (committed dataset + recorded agent proposals). |
+| **Next limit** | Incremental agent exposure and recovery checkpoints are implemented. Next: shard portfolios, profile position/fill/projection scans, and archive growing event and retry histories. |
 
 ## How we built it
 
