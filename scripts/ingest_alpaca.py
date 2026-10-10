@@ -7,8 +7,10 @@ committed (provider terms); this script plus the manifest hash make the dataset 
 
 Notes: the Basic plan serves SIP historical data older than 15 minutes; `--feed iex`
 is available if SIP is not entitled. Bars are split/dividend adjusted (`adjustment=all`)
-and hourly bars are filtered to regular trading hours (09:30-16:00 America/New_York on
-weekdays; exchange holidays simply have no bars).
+and hourly bars are filtered to the regular session: Alpaca stamps hourly bars with their
+start time, so we keep bars starting 09:00-15:00 America/New_York on weekdays (7 per day,
+matching the fixture). The 09:00 bar contains the 09:30 open plus 30 minutes of pre-market
+prints; exchange holidays simply have no bars.
 """
 
 from __future__ import annotations
@@ -22,7 +24,10 @@ from zoneinfo import ZoneInfo
 
 import httpx
 
+from quantswarm.config import load_env
 from quantswarm.ingestion.dataset import BarTable, write_snapshot
+
+load_env()
 
 ROOT = Path(__file__).resolve().parents[1]
 URL = "https://data.alpaca.markets/v2/stocks/bars"
@@ -40,9 +45,12 @@ def fetch(symbols: list[str], start: str, end: str, timeframe: str, feed: str) -
     with httpx.Client(timeout=60, headers=headers) as c:
         while True:
             r = c.get(URL, params=params)
-            if r.status_code == 429:
+            if r.status_code == 429:  # rate limited (200 req/min on Basic)
                 time.sleep(3)
                 continue
+            if r.status_code in (401, 403):
+                raise SystemExit(f"Alpaca rejected the credentials or feed entitlement ({r.status_code}): {r.text[:200]}"
+                                 "\nIf this mentions SIP, retry with --feed iex.")
             r.raise_for_status()
             j = r.json()
             for sym, bars in (j.get("bars") or {}).items():
@@ -53,10 +61,22 @@ def fetch(symbols: list[str], start: str, end: str, timeframe: str, feed: str) -
             params["page_token"] = tok
 
 
+def to_rows(raw: list[dict], timeframe: str) -> list[tuple]:
+    """Alpaca bar JSON -> normalized (symbol, ts, o, h, l, c, volume) rows in micro-dollars."""
+    rows = []
+    for b in raw:
+        ts = datetime.fromisoformat(b["t"].replace("Z", "+00:00"))
+        if timeframe.endswith("Hour") and not regular_hours(ts):
+            continue
+        px = [int(round(float(b[k]) * 1_000_000)) for k in ("o", "h", "l", "c")]
+        rows.append((b["S"], int(ts.timestamp()), *px, int(b["v"])))
+    return rows
+
+
 def regular_hours(ts: datetime) -> bool:
+    """True for hourly bars that overlap the 09:30-16:00 New York session (bar starts 09:00-15:00)."""
     local = ts.astimezone(NY)
-    minutes = local.hour * 60 + local.minute
-    return local.weekday() < 5 and 9 * 60 <= minutes < 16 * 60
+    return local.weekday() < 5 and 9 <= local.hour < 16
 
 
 def main() -> None:
@@ -69,14 +89,7 @@ def main() -> None:
     a = ap.parse_args()
     t0 = time.perf_counter()
     raw = fetch(a.symbols, a.start, a.end, a.timeframe, a.feed)
-    rows = []
-    for b in raw:
-        ts = datetime.fromisoformat(b["t"].replace("Z", "+00:00"))
-        if a.timeframe.endswith("Hour") and not regular_hours(ts):
-            continue
-        px = [int(round(float(b[k]) * 1_000_000)) for k in ("o", "h", "l", "c")]
-        rows.append((b["S"], int(ts.timestamp()), *px, int(b["v"])))
-    t = BarTable.from_rows(rows)
+    t = BarTable.from_rows(to_rows(raw, a.timeframe))
     interval = {"1Hour": 3600, "1Day": 86_400}.get(a.timeframe)
     ds = f"alpaca-{a.feed}-{a.timeframe.lower()}-{a.start}-{a.end}"
     m = write_snapshot(t, ROOT / "data/snapshots" / ds, {

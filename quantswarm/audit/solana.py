@@ -23,8 +23,10 @@ from pathlib import Path
 
 import httpx
 
+from quantswarm.config import load_env
 from quantswarm.ledger import canonical, sha256_hex
 
+load_env()
 ROOT = Path(__file__).resolve().parents[2]
 RPC = os.environ.get("SOLANA_RPC", "https://api.devnet.solana.com")
 MEMO_PROGRAM = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"

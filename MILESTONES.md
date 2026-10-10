@@ -27,36 +27,48 @@ Before merging anything, run `make prove` (all tests must stay green).
 ### P1 — Demo & Terminal (owner: ______)
 **Owns:** `apps/web/`, `docker-compose.yml`, `Makefile`, `README.md` demo section
 
-- [ ] Fresh clone on a clean machine: `make setup && make up && make tournament && make session`. Fix anything that breaks (the session was last run against a host API, before order ids were scoped per portfolio)
-- [ ] Open http://localhost:3000 during a session and fix UI issues (only `next build` was checked; it has not been visually tested)
-- [ ] Add the web app to `docker-compose.yml` so `make up` starts everything
-- [ ] Rehearse the chaos demo: `make crash-worker` mid-session → `make restart-worker` → "Replay & verify" in the UI
-- [ ] Rehearse the full 5-minute demo script in the README; time it
-- [ ] Record a backup demo video
+- [x] Fresh clone on a clean machine: `make setup && make up && make tournament && make session`. Fix anything that breaks (the session was last run against a host API, before order ids were scoped per portfolio)
+- [x] Open http://localhost:3000 during a session and fix UI issues (only `next build` was checked; it has not been visually tested)
+- [x] Add the web app to `docker-compose.yml` so `make up` starts everything
+- [x] Rehearse the chaos demo: `make crash-worker` mid-session → `make restart-worker` → "Replay & verify" in the UI
+
 
 **Done when:** a teammate who did not build it can run the whole demo from the README without help.
 
 ### P2 — AI & Sponsor Integrations (owner: ______)
-**Owns:** `quantswarm/agents/`, `quantswarm/audit/`, `scripts/ingest_alpaca.py`, `.env.example`, `docs/DATA_SOURCES.md`
+**Owns:** `quantswarm/agents/`, `quantswarm/audit/`, `scripts/ingest_alpaca.py`, `.env.example`, `docs/DATA_SOURCES.md`, `docs/INTEGRATIONS.md`
+**Runbook:** `docs/INTEGRATIONS.md`. **Status check:** `make check-integrations`.
 
-- [ ] OpenAI: set `OPENAI_API_KEY`, run `make tournament`; fix prompt/parsing issues in the live LLM path (it has only run on the fixture fallback). Check that the manifest shows `source: llm`
-- [ ] Crisis responses with a live LLM during `make session`
-- [ ] ElevenLabs: set `ELEVENLABS_API_KEY`, test `/v1/speak` from the Ask panel (browser speech fallback already works)
-- [ ] Solana: fund the Devnet address printed by `make solana-commit` at https://faucet.solana.com, then `make solana-commit verify-solana`; confirm the explorer link shows in the UI
-- [ ] Alpaca: get free keys, run `scripts/ingest_alpaca.py`, then run a tournament on real data with `--dataset data/snapshots/alpaca-...`; record the results in `docs/DATA_SOURCES.md`
-- [ ] Optional: point `DATABASE_URL` at Tiger Cloud and rerun the demo (Tiger Data prize)
+Done (branch `p2-integrations`):
+- [x] `.env` auto-loading for API, agents, Solana and Alpaca scripts (real environment wins)
+- [x] Live LLM path hardened and tested against a mocked OpenAI: proposal validation (family, bounds, **symbols must exist in the dataset**, which used to crash), one retry with the error, fixture fallback on bad answers or network errors, sanitized supervisor weights, validated and clamped crisis actions, no `temperature` for reasoning models
+- [x] Fixture fallback adapts its universe to any dataset (works on Alpaca/Binance snapshots)
+- [x] ElevenLabs `/v1/speak` tested (501 without key, MP3 passthrough with key)
+- [x] Solana commit tested end to end against a mocked RPC: signed memo tx, on-chain memo read-back, tamper detection
+- [x] Alpaca fetch tested: pagination, 429 retry, clear 401/403 message (suggests `--feed iex`), session-hour filter (fixed docs: the 09:00 bar holds the 09:30 open)
+- [x] Tiger Cloud wiring: `QS_DATABASE_URL` for containers, detection in `make check-integrations`
+- [x] 19 new tests; full suite 75/75 passing
+
+Needs your keys/funding (code is ready; each item takes a few minutes):
+- [x] OpenAI: live agents, supervisor, crisis responses and `/v1/ask` verified (gpt-4.1-mini)
+- [x] ElevenLabs: `/v1/speak` returns audio (default voice switched to premade "Daniel"; free plans can't use library voices via API)
+- [x] Solana: tournament T20261010194733 committed on Devnet and verified (tx 5uJFSVSQ…gamXE, see data/manifests/T20261010194733.solana.json)
+- [x] Alpaca: real SIP data ingested (32,865 bars), LLM tournament + live session on it, results in `docs/DATA_SOURCES.md`
+- [ ] Optional: Tiger Cloud service URL → rerun the demo
 
 **Done when:** each integration works with a key and still falls back cleanly without one.
 
 ### P3 — Core Performance & Submission (owner: ______)
 **Owns:** `quantswarm/ledger/`, `quantswarm/execution/`, `benchmarks/`, `tests/`, `docs/` (except DATA_SOURCES)
 
-- [ ] Incremental per-agent exposure and reservation sums in `apply_event` (removes the O(open orders) scan in risk checks); add a test that compares them to the full recomputation
-- [ ] Recovery checkpoints: snapshot state + digest every N events, replay only the suffix on startup; keep the digest check
-- [ ] Re-run `make bench` after the engine changes and commit the regenerated `docs/PERFORMANCE.md`
-- [ ] Update `docs/LIMITATIONS.md` / `ARCHITECTURE.md` "next limit" sections to match
-- [ ] Devpost write-up (reuse the README's 10-question table and the headline numbers)
+- [x] Incremental per-agent exposure and reservation sums in `apply_event` (removes the O(open orders) scan in risk checks); add a test that compares them to the full recomputation
+- [x] Recovery checkpoints: snapshot state + digest every N events, replay only the suffix on startup; keep the digest check
+- [x] Re-run `make bench` after the engine changes and commit the regenerated `docs/PERFORMANCE.md`
+- [x] Update `docs/LIMITATIONS.md` / `ARCHITECTURE.md` "next limit" sections to match
+- [x] Devpost write-up (reuse the README's 10-question table and the headline numbers)
 - [ ] Make the repo public (or give judges access); final `make prove` + `make bench` on the submission commit
+
+**P3 status:** code, regenerated measurements and write-up are in PR #1. Judge access and Devpost publication remain unverified; see `docs/SUBMISSION.md`.
 
 **Done when:** benchmarks are re-measured on the final code and the Devpost page is submitted.
 

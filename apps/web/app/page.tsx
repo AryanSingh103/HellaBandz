@@ -8,6 +8,8 @@ const px = (micros: number) => (micros / 1e6).toFixed(2);
 const pct = (x: number) => `${(x * 100).toFixed(2)}%`;
 const short = (h?: string | null, n = 12) => (h ? h.slice(0, n) : "—");
 
+const QUEUED = "queued: the worker is down, the command is stored and will run in order when it restarts";
+
 type Any = any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 async function get(path: string) {
@@ -27,6 +29,7 @@ async function post(path: string, body: unknown, headers: Record<string, string>
 function usePoll<T>(path: string | null, ms: number): T | null {
   const [v, setV] = useState<T | null>(null);
   useEffect(() => {
+    setV(null); // never show the previous path's data (e.g. another portfolio) while the first fetch is in flight
     if (!path) return;
     let alive = true;
     const tick = () => get(path).then((x) => alive && setV(x)).catch(() => alive && setV(null));
@@ -38,14 +41,19 @@ function usePoll<T>(path: string | null, ms: number): T | null {
 }
 
 function Line({ pts, height = 140 }: { pts: number[]; height?: number }) {
-  if (pts.length < 2) return <div className="note">waiting for data…</div>;
+  if (pts.length < 2) return <div className="note">waiting for bars…</div>;
   const w = 600, h = height, lo = Math.min(...pts), hi = Math.max(...pts), rng = hi - lo || 1;
   const d = pts.map((p, i) => `${i ? "L" : "M"}${(i / (pts.length - 1)) * w},${h - ((p - lo) / rng) * (h - 10) - 5}`).join(" ");
   const up = pts[pts.length - 1] >= pts[0];
+  const label = (x: number) => x.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h} preserveAspectRatio="none" role="img" aria-label="equity curve">
-      <path d={d} fill="none" stroke={up ? "var(--good)" : "var(--bad)"} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
-    </svg>
+    <div className="chart">
+      <span className="hi">{label(hi)}</span>
+      <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h} preserveAspectRatio="none" role="img" aria-label="equity curve">
+        <path d={d} fill="none" stroke={up ? "var(--good)" : "var(--bad)"} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+      </svg>
+      <span className="lo">{label(lo)}</span>
+    </div>
   );
 }
 
@@ -71,23 +79,34 @@ export default function Terminal() {
 
   // ---------------------------------------------------------------- event stream (WebSocket)
   const [events, setEvents] = useState<Any[]>([]);
-  const seqRef = useRef<number | null>(null);
+  const opened = port != null;
+  const seqRef = useRef(0);
+  seqRef.current = port?.seq ?? 0;
   useEffect(() => {
-    if (port && seqRef.current === null) seqRef.current = Math.max(0, port.seq - 40);
-  }, [port]);
-  useEffect(() => {
-    if (seqRef.current === null) return;
-    const ws = new WebSocket(API.replace(/^http/, "ws") + `/v1/stream?portfolio_id=${pid}&after_seq=${seqRef.current}`);
-    ws.onmessage = (e) => {
-      const msg = JSON.parse(e.data);
-      if (msg.type === "events") setEvents((prev) => [...msg.events.reverse(), ...prev].slice(0, 300));
+    setEvents([]);
+    if (!opened) return;
+    let alive = true;
+    let ws: WebSocket | null = null;
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    let last = Math.max(0, seqRef.current - 40);
+    const connect = () => {
+      ws = new WebSocket(API.replace(/^http/, "ws") + `/v1/stream?portfolio_id=${encodeURIComponent(pid)}&after_seq=${last}`);
+      ws.onmessage = (e) => {
+        const msg = JSON.parse(e.data);
+        if (msg.type !== "events" || !msg.events.length) return;
+        last = msg.events[msg.events.length - 1].seq;
+        setEvents((prev) => [...msg.events.reverse(), ...prev].slice(0, 300));
+      };
+      ws.onclose = () => { if (alive) retry = setTimeout(connect, 1000); }; // API restart: resume after the last seen seq
     };
-    return () => ws.close();
-  }, [pid, seqRef.current === null]); // eslint-disable-line react-hooks/exhaustive-deps
+    connect();
+    return () => { alive = false; clearTimeout(retry); ws?.close(); };
+  }, [pid, opened]);
 
   // ---------------------------------------------------------------- verification
   const [verify, setVerify] = useState<Any>(null);
-  const runVerify = useCallback(async () => setVerify(await get(`/v1/verify?portfolio_id=${pid}`)), [pid]);
+  const runVerify = useCallback(async () => setVerify(await get(`/v1/verify?portfolio_id=${pid}`).catch(() => null)), [pid]);
+  useEffect(() => setVerify(null), [pid]);
 
   // ---------------------------------------------------------------- adversarial actions
   const [adv, setAdv] = useState<string>("");
@@ -106,12 +125,18 @@ export default function Terminal() {
     setAdv("sending the same order 100× concurrently…");
     const rs = await Promise.all(Array.from({ length: 100 }, () => post(`/v1/orders?portfolio_id=${pid}`, order)));
     const fresh = rs.filter((r) => r.body.duplicate_request === false).length;
+    if (rs[0].body.outcome === undefined) {
+      setAdv(`100 concurrent requests for ${order.client_order_id}\n→ ${fresh} new command, ${100 - fresh} recognized as duplicates\n→ HTTP ${rs[0].status} ${QUEUED}`);
+      return;
+    }
     const qtys = new Set(rs.map((r) => r.body.approved_qty));
     setAdv(`100 concurrent requests for ${order.client_order_id}\n→ ${fresh} new command, ${100 - fresh} recognized as duplicates\n→ distinct decisions returned: ${JSON.stringify([...qtys])} (outcome ${rs[0].body.outcome})\nOne economic effect; check the event inspector: a single OrderAccepted.`);
   }
   async function single(label: string, o: Any) {
     const r = await post(`/v1/orders?portfolio_id=${pid}`, o);
-    setAdv(`${label}\n→ HTTP ${r.status} ${JSON.stringify(r.body, null, 1)}`);
+    const b = r.body;
+    const verdict = b.outcome ? `${b.outcome}${b.rules?.length ? ` (${b.rules.join(", ")})` : ""}: approved ${b.approved_qty} of ${o.qty}` : r.status === 202 ? QUEUED : "";
+    setAdv(`${label}\n→ HTTP ${r.status} ${verdict}\n${JSON.stringify(b)}`);
   }
   const oversized = () => ctx && single("Oversized buy (100,000 shares)", { client_order_id: `ui-big-${Date.now()}`, agent_id: ctx.agent, symbol: ctx.sym, side: "BUY", qty: 100000, signal_bar_ts: ctx.ts });
   const stale = () => ctx && single("Order based on day-old data", { client_order_id: `ui-stale-${Date.now()}`, agent_id: ctx.agent, symbol: ctx.sym, side: "BUY", qty: 1, signal_bar_ts: new Date(Date.parse(ctx.ts) - 86400000).toISOString() });
@@ -119,7 +144,7 @@ export default function Terminal() {
   const short_ = () => ctx && single("Short sale attempt (long-only book)", { client_order_id: `ui-short-${Date.now()}`, agent_id: ctx.agent, symbol: ctx.sym, side: "SELL", qty: 1000000, signal_bar_ts: ctx.ts });
   async function kill(on: boolean) {
     const r = await post(`/v1/admin/kill-switch?portfolio_id=${pid}`, { on, reason: "operator" });
-    setAdv(`kill switch ${on ? "ON" : "OFF"} → ${JSON.stringify(r.body)}`);
+    setAdv(`kill switch ${on ? "ON" : "OFF"}\n→ HTTP ${r.status} ${r.status === 202 ? QUEUED : r.body.status ?? ""}\n${JSON.stringify(r.body)}`);
   }
 
   // ---------------------------------------------------------------- ask / voice
@@ -168,7 +193,7 @@ export default function Terminal() {
         <h1>QUANTSWARM</h1>
         <span className="tag">autonomous strategy agents · deterministic execution · paper trading only</span>
         <span className="pill"><span className="dot" style={{ background: health ? "var(--good)" : "var(--bad)" }} />API</span>
-        <span className="pill"><span className="dot" style={{ background: workerOk ? "var(--good)" : "var(--bad)" }} />execution worker {workerOk ? "up" : "DOWN"}</span>
+        <span className={`pill ${health && !workerOk ? "bad" : ""}`}><span className="dot" style={{ background: workerOk ? "var(--good)" : "var(--bad)" }} />execution worker {workerOk ? "up" : "DOWN"}</span>
         <span className="pill">pending commands <b className="mono">{health?.pending_commands ?? "—"}</b></span>
         <span className="pill">portfolio <input value={pid} onChange={(e) => setPid(e.target.value)} style={{ width: 90, padding: "1px 6px" }} /></span>
         <span className="pill mono">seq {port?.seq ?? "—"} · digest {short(port?.digest)}</span>
@@ -186,6 +211,7 @@ export default function Terminal() {
             <div className="kpi"><div className="l">Realized P&L</div><div className={`v ${st?.realized_pnl >= 0 ? "good" : "bad"}`}>{st ? usd(st.realized_pnl) : "—"}</div></div>
             <div className="kpi"><div className="l">Fees + slippage</div><div className="v">{st ? usd(st.fees_paid + st.slippage_cost) : "—"}</div></div>
           </div>
+          {health && !port && <p className="note">Portfolio “{pid}” is not open yet. Run <code>make session</code>.</p>}
           <div style={{ marginTop: 10 }}><Line pts={eqPts} /></div>
         </section>
 
@@ -257,10 +283,12 @@ export default function Terminal() {
                 <td className="num">{usd(p.value)}</td><td className={`num ${p.upnl >= 0 ? "good" : "bad"}`}>{usd(p.upnl)}</td></tr>
             ))}</tbody>
           </table></div>
+          {!positions.length && <div className="note">No open positions.</div>}
           <h2 style={{ marginTop: 12 }}>Working orders</h2>
           <table><tbody>{st && Object.values(st.orders ?? {}).map((o: Any) => (
             <tr key={o.order_id}><td className="mono">{o.order_id.slice(-28)}</td><td>{o.side}</td><td className="num">{o.remaining}/{o.qty}</td><td className="num">{o.bars_seen} bars</td></tr>
           ))}</tbody></table>
+          {!Object.keys(st?.orders ?? {}).length && <div className="note">None. Approved orders fill on the next bar.</div>}
         </section>
 
         <section className="panel span-6">
@@ -289,7 +317,7 @@ export default function Terminal() {
             <button onClick={() => kill(false)}>Kill switch OFF</button>
           </div>
           {adv && <div className="result">{adv}</div>}
-          <p className="note" style={{ marginTop: 10 }}>Crash test: <code>docker compose kill worker</code>, keep submitting (commands queue), then <code>docker compose start worker</code> and press “Replay &amp; verify”.</p>
+          <p className="note" style={{ marginTop: 10 }}>Crash test: <code>make crash-worker</code>, keep submitting (commands queue, HTTP 202), then <code>make restart-worker</code> and press “Replay &amp; verify”.</p>
         </section>
 
         <section className="panel span-4">
@@ -353,6 +381,9 @@ function summarizeMsg(x: Any): string {
     case "allocation_advice": return `[${c.source}] ${c.rationale}`;
     case "crisis_response": return `[${c.decision?.source}] ${c.decision?.action} ${c.decision?.fraction ?? ""}: ${c.decision?.rationale}\n` + (c.orders ?? []).map((o: Any) => `  ${o.side} ${o.qty} ${o.symbol} → ${o.outcome} ${o.approved_qty ?? ""} ${o.rules?.join(",") ?? ""}`).join("\n");
     case "order_reject": case "order_reduce": return `${c.side} ${c.qty} ${c.symbol} → approved ${c.approved_qty} (${c.rules?.join(",")})`;
+    case "allocations": return Object.entries(c.allocations ?? {}).map(([k, v]: Any) => `${k.split(".").pop()} ${(v.weight * 100).toFixed(1)}% = ${usd(v.capital_micros)}`).join("\n");
+    case "held_out_test": return `held-out test, evaluated once: return ${pct(c.portfolio?.net_return ?? 0)}, Sharpe ${c.portfolio?.sharpe?.toFixed(2)}, max DD ${pct(c.portfolio?.max_drawdown ?? 0)}, ${c.portfolio?.n_fills} fills`;
+    case "session_start": return `replaying ${c.steps} hourly steps at ${c.speed_steps_per_s}/s` + (c.crash_start_step != null ? `; crash scheduled at step ${c.crash_start_step}` : "");
     case "market_crash": return `⚠ ${c.overlay} at ${c.ts}`;
     case "session_summary": return `steps ${c.steps}, orders ${c.orders} (appr ${c.approved}, red ${c.reduced}, rej ${c.rejected}, dup retries ${c.duplicates}), equity ${c.final_equity_usd?.toFixed?.(2)}, verify ${c.verify?.match}`;
     default: return JSON.stringify(c).slice(0, 300);

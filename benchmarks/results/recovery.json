@@ -1,113 +1,325 @@
 {
  "environment": {
-  "python": "3.12.13",
-  "platform": "macOS-27.0.1-arm64-arm-64bit",
-  "machine": "arm64",
-  "captured_at": "2026-10-10T18:43:59+00:00",
-  "host_cpu": "Apple M3",
-  "host_ncpu": 8,
-  "host_mem_gb": 16.0,
-  "docker_vm_ncpu": 4,
-  "docker_vm_mem_gb": 5.77,
-  "docker_server": "29.5.2"
+  "python": "3.12.15",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "machine": "AMD64",
+  "captured_at": "2026-10-10T19:48:04+00:00",
+  "git_revision": "d705c0bed9dc5f5434784a956c18323c02c16543",
+  "source_sha256": "e894874da35406dd98e744329903786620b8cfe0665d966d30aae058b2a8f4c4",
+  "host_ncpu": 20,
+  "host_cpu": "13th Gen Intel(R) Core(TM) i9-13900H",
+  "host_mem_gb": 15.628116607666016,
+  "docker_vm_ncpu": 20,
+  "docker_vm_mem_gb": 7.57,
+  "docker_server": "29.1.2"
  },
  "runs": [
   {
    "events": 1000,
+   "requested_events": 1000,
+   "mode": "full",
+   "checkpoint_seq": 0,
+   "replayed_events": 1000,
    "in_process": {
     "load_s": {
-     "median": 0.006291042023804039,
-     "min": 0.005815666983835399,
-     "max": 0.006490791973192245
+     "median": 0.03238710000005085,
+     "min": 0.029589200001282734,
+     "max": 0.06210040000041772
     },
     "replay_s": {
-     "median": 0.009677542024292052,
-     "min": 0.009674291999544948,
-     "max": 0.010896083025727421
+     "median": 0.04025290000026871,
+     "min": 0.03413910000017495,
+     "max": 0.04803209999954561
     },
     "total_s": {
-     "median": 0.015968667052220553,
-     "min": 0.015490124991629273,
-     "max": 0.017387083964422345
+     "median": 0.06984250000095926,
+     "min": 0.06652639999992971,
+     "max": 0.11013409999941359
     }
    },
    "container_restart": {
     "container_start_to_ready_s": {
-     "median": 1.2966282920097,
-     "min": 1.2881818339810707,
-     "max": 1.5403373329900205
+     "median": 4.237631500000134,
+     "min": 3.932942000001276,
+     "max": 4.393976499999553
     },
     "worker_reported_recovery_s": {
-     "median": 0.02035983599989777,
-     "min": 0.018467475999841554,
-     "max": 0.020817206999709015
+     "median": 0.06943706499987456,
+     "min": 0.06718340499992337,
+     "max": 0.09412010899995948
     }
-   }
+   },
+   "verify_match": true
+  },
+  {
+   "events": 1000,
+   "requested_events": 1000,
+   "mode": "checkpoint",
+   "checkpoint_seq": 0,
+   "replayed_events": 1000,
+   "in_process": {
+    "load_s": {
+     "median": 0.025949900000341586,
+     "min": 0.024735700000746874,
+     "max": 0.04572519999965152
+    },
+    "replay_s": {
+     "median": 0.03476310000041849,
+     "min": 0.032835999998496845,
+     "max": 0.03969590000087919
+    },
+    "total_s": {
+     "median": 0.05949920000057318,
+     "min": 0.05878630000006524,
+     "max": 0.08542160000069998
+    }
+   },
+   "container_restart": {
+    "container_start_to_ready_s": {
+     "median": 4.039528000001155,
+     "min": 3.9338423000008333,
+     "max": 4.538842199999635
+    },
+    "worker_reported_recovery_s": {
+     "median": 0.06941161600025225,
+     "min": 0.06702662799989412,
+     "max": 0.07006715699981214
+    }
+   },
+   "verify_match": true
   },
   {
    "events": 10000,
+   "requested_events": 10000,
+   "mode": "full",
+   "checkpoint_seq": 0,
+   "replayed_events": 10000,
    "in_process": {
     "load_s": {
-     "median": 0.05513916700147092,
-     "min": 0.052320500020869076,
-     "max": 0.0943373329937458
+     "median": 0.2807718999993085,
+     "min": 0.24334550000094168,
+     "max": 0.37840569999934814
     },
     "replay_s": {
-     "median": 0.09390841599088162,
-     "min": 0.09358245797920972,
-     "max": 0.09509716700995341
+     "median": 0.3654849999984435,
+     "min": 0.34962219999943045,
+     "max": 0.3966293000012229
     },
     "total_s": {
-     "median": 0.14872183400439098,
-     "min": 0.14622912503546104,
-     "max": 0.18943466700147837
+     "median": 0.6774014999991778,
+     "min": 0.6088311000003159,
+     "max": 0.7280283000000054
     }
    },
    "container_restart": {
     "container_start_to_ready_s": {
-     "median": 1.3841999170253985,
-     "min": 1.3819117080420256,
-     "max": 1.4203161249752156
+     "median": 4.640499400000408,
+     "min": 4.531238499999745,
+     "max": 4.666499400000248
     },
     "worker_reported_recovery_s": {
-     "median": 0.16081828999995196,
-     "min": 0.16024246100005257,
-     "max": 0.1722950729999866
+     "median": 0.8041760339997381,
+     "min": 0.7543881880001209,
+     "max": 0.8546676129999469
     }
-   }
+   },
+   "verify_match": true
+  },
+  {
+   "events": 10000,
+   "requested_events": 10000,
+   "mode": "checkpoint",
+   "checkpoint_seq": 10000,
+   "replayed_events": 0,
+   "in_process": {
+    "load_s": {
+     "median": 0.04763069999899017,
+     "min": 0.0468669999991107,
+     "max": 0.05368060000000696
+    },
+    "replay_s": {
+     "median": 0.0025865000006888295,
+     "min": 0.0024880000000848668,
+     "max": 0.0026502000000618864
+    },
+    "total_s": {
+     "median": 0.050217599999086815,
+     "min": 0.04935539999860339,
+     "max": 0.056331400000999565
+    }
+   },
+   "container_restart": {
+    "container_start_to_ready_s": {
+     "median": 3.8750017000002117,
+     "min": 3.859089199999289,
+     "max": 3.946935300000405
+    },
+    "worker_reported_recovery_s": {
+     "median": 0.04860756299967761,
+     "min": 0.04798204100006842,
+     "max": 0.06000946899985138
+    }
+   },
+   "verify_match": true
   },
   {
    "events": 100000,
+   "requested_events": 100000,
+   "mode": "full",
+   "checkpoint_seq": 0,
+   "replayed_events": 100000,
    "in_process": {
     "load_s": {
-     "median": 0.6698786249617115,
-     "min": 0.622849750041496,
-     "max": 0.7459684160421602
+     "median": 2.994756400001279,
+     "min": 2.7383675999990373,
+     "max": 3.382899800000814
     },
     "replay_s": {
-     "median": 1.0141329999896698,
-     "min": 0.8835458339890465,
-     "max": 1.0154490420245565
+     "median": 3.682295200000226,
+     "min": 3.5432368999991013,
+     "max": 3.763891299999159
     },
     "total_s": {
-     "median": 1.6369829160394147,
-     "min": 1.6295143750030547,
-     "max": 1.685327791958116
+     "median": 6.537993600000846,
+     "min": 6.420663299999433,
+     "max": 7.146791600000142
     }
    },
    "container_restart": {
     "container_start_to_ready_s": {
-     "median": 3.1731585829984397,
-     "min": 3.0032163750147447,
-     "max": 3.776446916977875
+     "median": 10.451435999999376,
+     "min": 10.255956300001344,
+     "max": 10.989888199999768
     },
     "worker_reported_recovery_s": {
-     "median": 1.7980041300002085,
-     "min": 1.742116865999833,
-     "max": 2.28173698899991
+     "median": 6.538006206999853,
+     "min": 6.465239458000269,
+     "max": 7.066475423000156
     }
-   }
+   },
+   "verify_match": true
+  },
+  {
+   "events": 100000,
+   "requested_events": 100000,
+   "mode": "checkpoint",
+   "checkpoint_seq": 100000,
+   "replayed_events": 0,
+   "in_process": {
+    "load_s": {
+     "median": 0.9746380000015051,
+     "min": 0.8155320999994728,
+     "max": 1.0430111999994551
+    },
+    "replay_s": {
+     "median": 0.0018829000000550877,
+     "min": 0.001844800000981195,
+     "max": 0.0024186999999074033
+    },
+    "total_s": {
+     "median": 0.9765213999999105,
+     "min": 0.8173773999988043,
+     "max": 1.0454305000002933
+    }
+   },
+   "container_restart": {
+    "container_start_to_ready_s": {
+     "median": 4.761876399999892,
+     "min": 4.750401699999202,
+     "max": 4.878903400000127
+    },
+    "worker_reported_recovery_s": {
+     "median": 0.9250077830001828,
+     "min": 0.8784421340001245,
+     "max": 1.0099663460000556
+    }
+   },
+   "verify_match": true
+  },
+  {
+   "events": 105000,
+   "requested_events": 105000,
+   "mode": "full",
+   "checkpoint_seq": 0,
+   "replayed_events": 105000,
+   "in_process": {
+    "load_s": {
+     "median": 2.8773261999995157,
+     "min": 2.817887299999711,
+     "max": 2.9114602000008745
+    },
+    "replay_s": {
+     "median": 3.6987534999989293,
+     "min": 3.5108027000005677,
+     "max": 4.040647800000443
+    },
+    "total_s": {
+     "median": 6.6102143000007345,
+     "min": 6.388129299999491,
+     "max": 6.858535600000323
+    }
+   },
+   "container_restart": {
+    "container_start_to_ready_s": {
+     "median": 12.516486700000314,
+     "min": 10.738590799999656,
+     "max": 13.135664400000678
+    },
+    "worker_reported_recovery_s": {
+     "median": 8.592251287999716,
+     "min": 6.892586010999821,
+     "max": 9.002958015999866
+    }
+   },
+   "verify_match": true
+  },
+  {
+   "events": 105000,
+   "requested_events": 105000,
+   "mode": "checkpoint",
+   "checkpoint_seq": 100000,
+   "replayed_events": 5000,
+   "in_process": {
+    "load_s": {
+     "median": 1.3167141000012634,
+     "min": 1.2574972000002163,
+     "max": 1.4363412000002427
+    },
+    "replay_s": {
+     "median": 0.22852459999921848,
+     "min": 0.16041719999884663,
+     "max": 0.28988659999959054
+    },
+    "total_s": {
+     "median": 1.547384299999976,
+     "min": 1.4771319999999832,
+     "max": 1.6648663999985729
+    }
+   },
+   "container_restart": {
+    "container_start_to_ready_s": {
+     "median": 5.3888240000014775,
+     "min": 5.210255399999369,
+     "max": 5.745415299999877
+    },
+    "worker_reported_recovery_s": {
+     "median": 1.35867414500035,
+     "min": 1.2625952789999246,
+     "max": 1.453485613000339
+    }
+   },
+   "verify_match": true
   }
  ],
- "source_events": 198234
+ "source_events": 198234,
+ "checkpoint_interval": 10000,
+ "reps": 3,
+ "requested_sizes": [
+  1000,
+  10000,
+  100000,
+  105000
+ ],
+ "unavailable_sizes": [],
+ "dataset": "binance_btcusdt_131k_bars"
 }

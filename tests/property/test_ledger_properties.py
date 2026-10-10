@@ -15,6 +15,7 @@ from hypothesis import strategies as st
 from quantswarm.contracts import CancelOrder, SetKillSwitch
 from quantswarm.ledger import PortfolioState, check_invariants, process, replay
 from tests.helpers import CFG, bar, fresh, order
+from tests.unit.test_incremental_exposure import assert_totals
 
 AGENTS = ["a", "b", "c"]
 SYMS = ["SPY", "NVDA"]
@@ -81,6 +82,7 @@ def test_no_sequence_breaks_the_ledger(prog):
         evs, resp = process(s, c, CFG)
         log.extend(evs)
         check_invariants(s)
+        assert_totals(s)
         if c.kind == "submit_order":
             coid = c.order.client_order_id
             if coid in seen_orders:
@@ -124,3 +126,20 @@ def test_processing_is_deterministic(prog):
         process(a, c, CFG)
         process(b, c, CFG)
     assert a.head_hash == b.head_hash and a.digest() == b.digest()
+
+
+@settings(max_examples=100, deadline=None)
+@given(program)
+def test_checkpoint_suffix_matches_full_replay(prog):
+    cmds = materialize(prog)
+    s = setup()
+    full = setup_events()
+    cut = len(cmds) // 2
+    for cmd in cmds[:cut]:
+        full.extend(process(s, cmd, CFG)[0])
+    saved = s.snapshot()
+    suffix = []
+    for cmd in cmds[cut:]:
+        suffix.extend(process(s, cmd, CFG)[0])
+    resumed = replay(suffix, initial_state=PortfolioState.from_snapshot(saved))
+    assert resumed.snapshot() == replay(full + suffix).snapshot() == s.snapshot()

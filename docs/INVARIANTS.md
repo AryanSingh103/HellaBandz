@@ -29,6 +29,14 @@ cost-basis removal); both were caught.
 
 ## Risk rules
 
+P3 adds `test_incremental_totals_match_full_recomputation_after_every_event`, random-command cache
+comparisons, and `test_risk_check_does_not_scan_open_orders` for I-02/I-04/I-07. Checkpoint roundtrip,
+suffix-only recovery, retry-decision preservation, corruption and rollback tests are in
+`tests/recovery/test_checkpoints.py` (I-01/I-06/I-08/I-10). The before/after-commit crash tests now also
+exercise atomic checkpoint writes; repeated forced termination exercises checkpoint recovery under load.
+Startup checks the saved snapshot, its ledger anchor and suffix, then the final projection digest.
+Full-history integrity, including the trusted checkpoint prefix, is checked independently by `/v1/verify`.
+
 | Code | Rule (defaults in `EngineConfig`) | Effect |
 |---|---|---|
 | R0 | Portfolio must be open | reject |

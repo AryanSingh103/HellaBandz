@@ -148,40 +148,47 @@ Respond with JSON: {"weights": {strategy_id: number}, "rationale": str}"""
 
 
 def research(agent_id: str, summary: dict, run_id: str) -> dict:
+    """Ask the LLM for a proposal (one retry with the validation error), else use the recorded fixture."""
     cfg = AGENTS[agent_id]
+    symbols = sorted(summary["symbols"])
     fam_desc = {f.value: FAMILIES[f][1] for f in cfg["families"]}
     record: dict[str, Any] = {"agent_id": agent_id}
-    raw = None
+    prop = None
     if llm.available():
         user = json.dumps(summary)
         sys_prompt = SYSTEM_RESEARCHER.format(agent=agent_id, brief=cfg["brief"], families=json.dumps(fam_desc))
         for attempt in range(2):
             try:
                 raw, meta = llm.chat_json(sys_prompt, user)
-                prop = _to_proposal(agent_id, raw, run_id, cfg["families"])
+                prop = _to_proposal(agent_id, raw, run_id, cfg["families"], symbols)
                 record.update(source="llm", llm=meta, attempts=attempt + 1)
                 break
-            except (ValidationError, ValueError, KeyError, TypeError) as e:
+            except (ValidationError, ValueError, KeyError, TypeError) as e:  # bad answer: retry once
                 user = json.dumps(summary) + f"\nYour previous answer was invalid: {str(e)[:400]}. Fix it."
                 record.setdefault("errors", []).append(str(e)[:400])
-            except Exception as e:  # network / auth: fall back to fixture
-                record.setdefault("errors", []).append(f"llm unavailable: {type(e).__name__}")
+            except Exception as e:  # network / auth / quota: no point retrying
+                record.setdefault("errors", []).append(f"llm unavailable: {type(e).__name__}: {str(e)[:200]}")
                 break
-        else:
-            raw = None
-        if "source" not in record:
-            raw = None
-    if raw is None or "source" not in record:
+    if prop is None:
         raw = json.loads((ROOT / f"data/fixtures/proposals/{agent_id}.json").read_text())
-        prop = _to_proposal(agent_id, raw, run_id, cfg["families"])
+        # recorded proposals name the default equity universe; keep what this dataset has
+        raw["universe"] = [u for u in raw["universe"] if u in symbols] or symbols[:3]
+        prop = _to_proposal(agent_id, raw, run_id, cfg["families"], symbols)
         record["source"] = "fixture"
     record["proposal"] = prop.model_dump(mode="json")
     return record
 
 
-def _to_proposal(agent_id: str, raw: dict, run_id: str, allowed: list[StrategyFamily]) -> StrategyProposal:
+def _to_proposal(agent_id: str, raw: dict, run_id: str, allowed: list[StrategyFamily],
+                 symbols: list[str]) -> StrategyProposal:
+    if not isinstance(raw, dict):
+        raise TypeError("expected a JSON object")
+    universe = sorted(set(raw["universe"]))
+    unknown = [u for u in universe if u not in symbols]
+    if unknown:
+        raise ValueError(f"unknown symbols {unknown}; choose from {symbols}")
     prop = StrategyProposal(proposal_id=f"{run_id}.{agent_id}", agent_id=agent_id, family=raw["family"],
-                            universe=raw["universe"], param_grid=raw["param_grid"],
+                            universe=universe, param_grid=raw["param_grid"],
                             rationale=str(raw.get("rationale", ""))[:2000],
                             evidence=[str(e)[:200] for e in raw.get("evidence", [])][:10])
     if prop.family not in allowed:
@@ -198,9 +205,7 @@ def supervise(results: list[dict]) -> dict:
             w = {k: float(v) for k, v in raw.get("weights", {}).items() if isinstance(v, (int, float))}
             return {"source": "llm", "llm": meta, "weights": w, "rationale": str(raw.get("rationale", ""))[:1500]}
         except Exception as e:
-            err = str(e)[:200]
-        else:
-            err = None
+            err: str | None = f"{type(e).__name__}: {str(e)[:200]}"
     else:
         err = None
     tot = sum(r["score"] for r in results)

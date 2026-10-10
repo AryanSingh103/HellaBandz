@@ -23,50 +23,67 @@ and `kill -9`.
 | **Evidence** | 60+ tests: unit, property-based (random command programs checked after every step), real-Postgres concurrency, SIGKILL fault injection, tamper detection. `make prove` prints the invariant table. |
 | **Interfaces** | HTTP API ⇄ Postgres command log ⇄ execution worker; agents and UI are API clients. [ARCHITECTURE](docs/ARCHITECTURE.md). |
 | **Measurement** | Risk-check latency, durable order throughput at 1/10/50 clients, replay speed on 131k real Binance bars, recovery time vs ledger size, all under fixed container limits: [PERFORMANCE](docs/PERFORMANCE.md). |
-| **Failure behavior** | Invalid ⇒ 422 or recorded rejection with rule code. Duplicate ⇒ original decision. Same id, new payload ⇒ 409. Stale or future signal ⇒ R7. Out-of-order bar ⇒ rejected, no effect. Worker down ⇒ commands queue (HTTP 202) and drain in order on restart. Corrupted log ⇒ worker refuses to start. |
+| **Failure behavior** | Invalid ⇒ 422 or recorded rejection with rule code. Duplicate ⇒ original decision. Same id, new payload ⇒ 409. Stale or future signal ⇒ R7. Out-of-order bar ⇒ rejected, no effect. Worker down ⇒ commands queue (HTTP 202) and drain in order on restart. Corrupted checkpoint, suffix or projection ⇒ worker refuses to start; full-history verification audits the saved prefix. |
 | **Reproduction** | Five commands below, no API keys needed (committed dataset + recorded agent proposals). |
-| **Next limit** | One writer per portfolio caps that portfolio's order rate. Next: shard portfolios, incremental exposure sums, recovery checkpoints. |
+| **Next limit** | Incremental agent exposure and recovery checkpoints are implemented. Next: shard portfolios, profile position/fill/projection scans, and archive growing event and retry histories. |
 
 ## Quickstart
 
-Requirements: Docker (or Colima), [uv](https://docs.astral.sh/uv/), Node 20+.
+Requirements: Docker (Desktop or Colima, running), [uv](https://docs.astral.sh/uv/), Node 20+, GNU make.
+On Windows install make with `scoop install make` or `choco install make`; the targets work from PowerShell or Git Bash.
 
 ```bash
-make setup        # uv sync + npm install
-make up           # TimescaleDB + execution worker + API, resource-limited containers
-make tournament   # agents → fit on train → rank on validation → allocate → held-out test (≈15 s)
-make session      # replay held-out period through API→worker with a market crash at 50%
-make web          # trading terminal: http://localhost:3000
+make setup        # uv sync + npm ci
+make up           # TimescaleDB + execution worker + API + terminal, resource-limited containers
+make tournament   # agents → fit on train → rank on validation → allocate → held-out test (15–80 s)
+make session      # replay held-out period through API→worker with a market crash at 50% (≈90 s)
+```
+
+The trading terminal is at http://localhost:3000 as soon as `make up` finishes (API on :8000). The first
+`make up` builds three images and takes a few minutes.
+
+A session can be replayed once per ledger, because bars are idempotent and ordered. To run it again:
+
+```bash
+make reset up tournament session   # wipes the database volume, then the full pipeline
 ```
 
 Then:
 
 ```bash
-make prove                       # all tests + invariant evidence table (needs `make up` for DB tests)
+make prove                       # all tests + invariant evidence table (needs `make up` for DB tests; ≈2.5 min)
+make prove-docker                # the same inside a Linux container; use this on Windows
 make crash-worker                # SIGKILL the worker mid-session; orders keep queueing
 make restart-worker              # it replays the hash chain, verifies the digest, resumes; prints /v1/verify
 make bench                       # benchmarks + regenerate docs/PERFORMANCE.md
 make solana-commit verify-solana # optional: manifest hash → Solana Devnet memo, then verify
 ```
 
-Optional keys in `.env` (see `.env.example`): `OPENAI_API_KEY` (live LLM agents instead of recorded
+Optional keys in `.env` (see `.env.example` and [INTEGRATIONS](docs/INTEGRATIONS.md); `make check-integrations` shows status): `OPENAI_API_KEY` (live LLM agents instead of recorded
 proposals), `ELEVENLABS_API_KEY` (spoken answers), `ALPACA_API_KEY_ID/SECRET` (real equity bars).
 
 ## Demo script (5 minutes)
 
-1. **Tournament.** `make tournament`: three agents propose strategies. Mean reversion has the best *training*
-   Sharpe but fails validation (score 0, no capital). Momentum and volatility pass and are capped at 40%
-   each, with 10% kept as cash. The held-out test runs once, after the freeze, and is reported even though it is negative.
-2. **Live session.** `make session` with the terminal open: bars flow through the API, agents trade, the
-   equity curve and event inspector update live.
-3. **Crisis.** At 50% a −16% crash hits. The momentum agent tries to triple its exposure ("buy the dip"); the risk
-   engine cuts or rejects it (R1/R2, visible with rule codes). The volatility agent de-risks and gets approved.
-4. **Adversarial console.** Same order sent 100× concurrently ⇒ one effect. Oversized, stale-data,
-   unallocated-agent and short-sale orders ⇒ rejected with reasons. Kill switch blocks buys.
-5. **Chaos.** `make crash-worker` during the session. The API returns `202 queued`. `make restart-worker` ⇒
-   replay + digest match ⇒ processing resumes with no duplicate fills. Press "Replay & verify" in the UI.
-6. **Evidence.** `make prove`, then `docs/PERFORMANCE.md`; optionally `make verify-solana` and an "Ask"
-   question by voice.
+**Before you present** (about 5 minutes, not part of the demo): `make reset up tournament`, open
+http://localhost:3000, and run `make prove` (or `make prove-docker`) in a second terminal so the invariant
+table is already on screen. Keep one terminal free for the commands below. The header should show two
+green dots and the Portfolio panel should say the portfolio is not open yet.
+
+| Time | Step | What to do and say |
+|---|---|---|
+| 0:00 | **Tournament** | Point at the Strategy tournament panel. Mean reversion has the best *training* Sharpe (1.84) but fails validation (score 0, no capital). Momentum gets the 40% cap, volatility 37.9%, the rest stays in cash. The held-out test ran once, after the freeze, and is reported even though it is negative (−8.1%). |
+| 0:45 | **Live session** | Run `make session` (takes ≈90 s). Bars flow through the API, agents trade, the equity curve, order decisions and event inspector update live. |
+| 1:30 | **Crisis** | About 45 s in, a −16% crash hits (Agent channel shows it). Momentum tries to triple its exposure ("buy the dip"); the risk engine reduces two orders and rejects one (R1/R2 rule codes in the channel and in Order decisions). Volatility de-risks and is approved. |
+| 2:15 | **Adversarial console** | The session prints `verify: True`. Click *Same order ×100*: 1 new command, 99 duplicates, one effect. *Oversized order* is cut to what the allocation allows (R2). *Stale-data*, *Unallocated agent* and *Short sale* are rejected with rule codes. *Kill switch ON*, then *Oversized order* again: rejected (R9). Turn the kill switch OFF. |
+| 3:15 | **Chaos** | `make crash-worker`. Within ≈6 s the header shows "execution worker DOWN". Click *Stale-data order*: after 5 s it returns HTTP 202 queued and "pending commands" goes up. `make restart-worker` prints the replay check (`"match": true`); the pill turns green and pending returns to 0. Press *Replay & verify*: digests match, chain intact. |
+| 4:15 | **Evidence** | Show the `make prove` table from the other terminal (56 tests, 11 invariants PROVEN), then `docs/PERFORMANCE.md`. If there is time: an "Ask" question (spoken if the browser allows it), or `make verify-solana`. |
+
+Rehearsed timings on a laptop: tournament 76 s, session 88 s (crash at 44 s), worker shown as down 6 s after
+the kill, restart and replay under 5 s. The crash can also be done *during* the session: the session slows
+down while commands queue, then finishes on the same final equity and ledger digest as an uninterrupted run.
+
+If something goes wrong on stage: `docker compose ps` should list `db`, `worker`, `api`, `web`;
+`docker compose logs worker` shows the replay line; `make reset up tournament` gives a clean start in about 2 minutes.
 
 ## Repository map
 
@@ -112,4 +129,4 @@ the synthetic dataset generator, the schema, the docs, and the recorded fixture 
 ## Docs
 
 [ARCHITECTURE](docs/ARCHITECTURE.md) · [INVARIANTS](docs/INVARIANTS.md) · [PERFORMANCE](docs/PERFORMANCE.md) ·
-[DATA_SOURCES](docs/DATA_SOURCES.md) · [LIMITATIONS](docs/LIMITATIONS.md) · [PLAN](PLAN.md)
+[DATA_SOURCES](docs/DATA_SOURCES.md) · [INTEGRATIONS](docs/INTEGRATIONS.md) · [LIMITATIONS](docs/LIMITATIONS.md) · [PLAN](PLAN.md)

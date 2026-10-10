@@ -21,11 +21,18 @@ What follows separates **demonstrated** behavior (tests and benchmarks in this r
 
 - **Single writer per portfolio.** All commands for one portfolio serialize through one worker. That is the
   correctness design, and it is also the throughput ceiling for one portfolio (see `PERFORMANCE.md`).
-- **O(open orders) risk checks.** Agent exposure and gross exposure are recomputed by scanning open orders and
-  positions. This is fine for hundreds of working orders and measurably slower for thousands. Next step:
-  maintain these sums incrementally in `apply_event`.
-- **Recovery replays the full event log.** It is linear in ledger size (≈ 100k events/s replay, plus the DB
-  read). Next step: periodic checkpoints (snapshot + digest at seq N), replaying only the suffix.
+- **Remaining state scans.** Per-agent exposure and buy reservations are incremental; risk checks no longer
+  scan working orders. Position marking remains O(positions), bar fills scan orders, and invariant checks,
+  projection serialization and economic hashing still scan state per batch. Next: profile these paths and
+  consider symbol indexes and incremental marks.
+- **Checkpoint recovery trusts the saved prefix.** Every 10,000 events (at a completed batch boundary), a
+  complete snapshot + digest + snapshot hash commits with the ledger. Startup verifies it and replays only
+  the suffix; legacy ledgers without a checkpoint still replay in full. `/v1/verify` remains a full-history
+  audit and detects altered prefix events that checkpoint startup does not inspect. SHA-256 is not an
+  authentication boundary against a writer able to alter the DB and recompute hashes.
+- **History and snapshot growth.** Events and commands are retained indefinitely; snapshots include every
+  order retry decision to preserve idempotency across restarts. Checkpoints bound replay work, not total
+  recovery memory or snapshot validation time. Next: archive/partition history and define retry retention.
 - **A poison command halts the portfolio.** If a command ever made the engine violate an invariant, the
   transaction rolls back and the worker retries forever instead of committing bad state. That is fail-safe,
   not self-healing; an operator must intervene.

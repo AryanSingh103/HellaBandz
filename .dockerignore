@@ -1,0 +1,13 @@
+.git
+.venv
+.env
+apps/web
+**/node_modules
+**/__pycache__
+.pytest_cache
+.hypothesis
+data/snapshots
+data/raw
+data/solana
+runs
+*.pdf

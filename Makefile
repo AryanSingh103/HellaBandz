@@ -1,15 +1,16 @@
 # QuantSwarm — common workflows. Everything runs offline (no API keys) using committed fixtures.
+# Recipes avoid Unix-only tools so they also work with GNU make on Windows (cmd.exe or Git Bash).
 API ?= http://localhost:8000
-RUN ?= $(shell ls -t data/manifests/T*.json 2>/dev/null | grep -v -e session -e solana | head -1)
+RUN ?= $(shell uv run python -c "import glob, os; f = [p for p in glob.glob('data/manifests/T*.json') if p.count('.') == 1]; print(max(f, key=os.path.getmtime).replace(os.sep, '/') if f else '')")
 
-.PHONY: setup up down reset fixture tournament session demo web test prove bench report crash-worker restart-worker solana-commit verify-solana
+.PHONY: check-integrations setup up down reset fixture tournament session demo web test prove prove-docker bench report crash-worker restart-worker solana-commit verify-solana
 
 setup:            ## install Python + web dependencies
 	uv sync
-	cd apps/web && npm install --no-audit --no-fund
+	cd apps/web && npm ci --no-audit --no-fund
 
-up:               ## start TimescaleDB, execution worker and API (resource-limited containers)
-	docker compose up -d --build db worker api
+up:               ## start TimescaleDB, execution worker, API and the terminal on http://localhost:3000
+	docker compose up -d --build db worker api web
 
 down:
 	docker compose down
@@ -28,14 +29,17 @@ session:          ## replay the held-out period through API -> worker, with a cr
 
 demo: up tournament session   ## full pipeline end to end
 
-web:              ## trading terminal on http://localhost:3000
-	cd apps/web && npm run dev
+web:              ## terminal in dev mode (hot reload) on http://localhost:3001; `make up` already serves :3000
+	cd apps/web && npm run dev -- -p 3001
 
 test:
 	uv run pytest -q
 
 prove:            ## run all tests and print the invariant evidence table
 	uv run python scripts/prove.py
+
+prove-docker:     ## same, in a Linux container (use this on Windows; needs `make up`)
+	docker compose run --rm --build prove
 
 bench:            ## engine + DB + recovery benchmarks, then regenerate docs/PERFORMANCE.md
 	uv run python benchmarks/run_benchmarks.py engine
@@ -51,10 +55,13 @@ crash-worker:     ## SIGKILL the execution worker (commands keep queueing in Pos
 
 restart-worker:   ## restart it: replays the hash-chained log, verifies the digest, resumes
 	docker compose start worker
-	@sleep 2; curl -s $(API)/v1/verify | python3 -m json.tool
+	@uv run python -c "import httpx, json, time; time.sleep(3); print(json.dumps({'health': httpx.get('$(API)/v1/health').json(), 'verify': httpx.get('$(API)/v1/verify').json()}, indent=1))"
 
 solana-commit:    ## publish sha256(manifest) to Solana Devnet as an SPL Memo
 	uv run python -m quantswarm.audit.solana commit $(RUN) --api $(API)
+
+check-integrations: ## which optional keys are configured + one live smoke call each
+	uv run python scripts/check_integrations.py
 
 verify-solana:    ## recompute manifest hash and compare with the on-chain memo
 	uv run python -m quantswarm.audit.solana verify $(RUN)

@@ -76,6 +76,23 @@ FALLBACK_CRISIS = {
 }
 
 
+def decide_crisis(agent: str, held: dict[str, int], alloc_usd: float, prices: dict[str, float]) -> dict:
+    """LLM crisis decision, validated; deterministic fallback on any failure."""
+    if llm.available():
+        try:
+            raw, meta = llm.chat_json(SYSTEM_CRISIS.format(agent=agent), json.dumps(
+                {"holdings": held, "allocation_usd": alloc_usd, "prices": prices}))
+            action = raw["action"]
+            if action not in ("buy_dip", "reduce", "hold"):
+                raise ValueError(f"unknown action {action!r}")
+            return {"action": action, "fraction": min(max(float(raw.get("fraction", 0)), 0.0), 1.0),
+                    "rationale": str(raw.get("rationale", ""))[:500], "source": "llm", "llm": meta}
+        except Exception as e:
+            return {**FALLBACK_CRISIS.get(agent, FALLBACK_CRISIS["mean_reversion"]),
+                    "source": f"fallback ({type(e).__name__})"}
+    return {**FALLBACK_CRISIS.get(agent, FALLBACK_CRISIS["mean_reversion"]), "source": "fallback"}
+
+
 class Session:
     def __init__(self, api: str, manifest: dict, dataset_dir: Path, portfolio: str = "main"):
         self.c = httpx.Client(base_url=api, timeout=60)
@@ -119,17 +136,8 @@ class Session:
         for agent in sorted(self.specs):
             spec = self.specs[agent]
             held = {s: state.position(agent, s).qty for s in spec.universe}
-            if llm.available():
-                try:
-                    raw, meta = llm.chat_json(SYSTEM_CRISIS.format(agent=agent), json.dumps(
-                        {"holdings": held, "allocation_usd": self.alloc[agent] / MICROS,
-                         "prices": {s: closes.get(s, 0) / MICROS for s in spec.universe}}))
-                    act = {"action": raw["action"], "fraction": float(raw.get("fraction", 0)),
-                           "rationale": str(raw.get("rationale", ""))[:500], "source": "llm", "llm": meta}
-                except Exception as e:
-                    act = {**FALLBACK_CRISIS[agent], "source": f"fallback ({type(e).__name__})"}
-            else:
-                act = {**FALLBACK_CRISIS[agent], "source": "fallback"}
+            act = decide_crisis(agent, held, self.alloc[agent] / MICROS,
+                                {s: closes.get(s, 0) / MICROS for s in spec.universe})
             frac = min(max(act["fraction"], 0.0), 1.0)
             results = []
             for sym in spec.universe:
@@ -160,6 +168,12 @@ class Session:
         if max_steps:
             groups = groups[:max_steps]
         crash_start = int(len(groups) * crash_at) if crash_at is not None else None
+        r = self.c.get(f"/v1/portfolio?portfolio_id={self.pid}")
+        seen = max((v[0] for v in r.json()["state"].get("last_bar", {}).values()), default=0) if r.status_code == 200 else 0
+        if groups and seen >= groups[0][0].ts.timestamp():
+            # bars are idempotent and ordered, so a second replay cannot move the ledger: every order would be stale (R7)
+            raise SystemExit(f"portfolio {self.pid!r} has already replayed this period; "
+                             "run `make reset up tournament` for a fresh ledger, then `make session`")
         self.say("system", "session_start", {"steps": len(groups), "crash_start_step": crash_start,
                                              "speed_steps_per_s": speed})
         base_hist = {sym: self.p.history(sym, te[0])[0] for sym in self.p.symbols()}
