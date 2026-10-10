@@ -51,10 +51,10 @@ Done (branch `p2-integrations`):
 - [x] 19 new tests; full suite 75/75 passing
 
 Needs your keys/funding (code is ready; each item takes a few minutes):
-- [ ] `OPENAI_API_KEY` in `.env` → `make check-integrations` → `make tournament` (src column should say `llm`) → `make session`
-- [ ] `ELEVENLABS_API_KEY` → check, then ask a question in the terminal's Ask panel
+- [x] OpenAI: live agents, supervisor, crisis responses and `/v1/ask` verified (gpt-4.1-mini)
+- [x] ElevenLabs: `/v1/speak` returns audio (default voice switched to premade "Daniel"; free plans can't use library voices via API)
 - [ ] Fund the Devnet address `5LvRiXCo8r2J6soVfRgziyE7CRDK3tGepKkpWsVCPCiw` at https://faucet.solana.com (RPC airdrop is rate-limited) → `make solana-commit verify-solana`. Note: the keypair is local to this machine (`data/solana/`, gitignored); another machine gets its own address
-- [ ] Alpaca keys → `scripts/ingest_alpaca.py` → tournament on real data → record content hash + results in `docs/DATA_SOURCES.md`
+- [x] Alpaca: real SIP data ingested (32,865 bars), LLM tournament + live session on it, results in `docs/DATA_SOURCES.md`
 - [ ] Optional: Tiger Cloud service URL → rerun the demo
 
 **Done when:** each integration works with a key and still falls back cleanly without one.

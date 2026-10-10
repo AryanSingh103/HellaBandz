@@ -36,7 +36,7 @@ def check_elevenlabs() -> tuple[str, str]:
     key = os.environ.get("ELEVENLABS_API_KEY")
     if not key:
         return "SKIP", "ELEVENLABS_API_KEY not set (browser speech fallback)"
-    voice = os.environ.get("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM")
+    voice = os.environ.get("ELEVENLABS_VOICE_ID", "onwK4e9ZLuTAKqWW03F9")
     r = httpx.post(f"https://api.elevenlabs.io/v1/text-to-speech/{voice}", timeout=30,
                    headers={"xi-api-key": key, "accept": "audio/mpeg"},
                    json={"text": "QuantSwarm online.", "model_id": os.environ.get("ELEVENLABS_MODEL", "eleven_flash_v2_5")})

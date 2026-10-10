@@ -423,7 +423,7 @@ async def speak(body: SpeakIn):
         raise HTTPException(501, "ELEVENLABS_API_KEY not configured")
     import httpx
 
-    voice = os.environ.get("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM")
+    voice = os.environ.get("ELEVENLABS_VOICE_ID", "onwK4e9ZLuTAKqWW03F9")
     async with httpx.AsyncClient(timeout=30) as c:
         r = await c.post(f"https://api.elevenlabs.io/v1/text-to-speech/{voice}",
                          headers={"xi-api-key": key, "accept": "audio/mpeg"},

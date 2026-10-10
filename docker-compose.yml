@@ -35,6 +35,8 @@ services:
       QS_API_POOL: ${QS_API_POOL:-20}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
+      ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID:-onwK4e9ZLuTAKqWW03F9}
+      QS_OPENAI_MODEL: ${QS_OPENAI_MODEL:-gpt-4.1-mini}
     ports: ["8000:8000"]
     depends_on: { db: { condition: service_healthy } }
     cpus: 1
