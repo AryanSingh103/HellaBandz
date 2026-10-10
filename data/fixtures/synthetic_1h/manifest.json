@@ -1,0 +1,37 @@
+{
+  "adjustment": "n/a (synthetic)",
+  "content_sha256": "40ea8d6c017964faaa2147d0bb39d908f912c3a1c54ef48b1f117d3a32d4e68c",
+  "created_at": "2026-10-10T17:47:43+00:00",
+  "dataset_id": "synthetic-1h-seed42",
+  "first_ts": 1672756200,
+  "interval_s": 3600,
+  "last_ts": 1790800200,
+  "row_count": 34195,
+  "schema_version": "bars-v1",
+  "seed": 42,
+  "source": "quantswarm.ingestion.synthetic (seed=42)",
+  "splits": {
+    "test": [
+      1767205800,
+      1790800201
+    ],
+    "train": [
+      1672756200,
+      1743607800
+    ],
+    "validation": [
+      1743607800,
+      1767205800
+    ]
+  },
+  "symbols": [
+    "AAPL",
+    "MSFT",
+    "NVDA",
+    "QQQ",
+    "SPY"
+  ],
+  "validation": {
+    "warnings": []
+  }
+}

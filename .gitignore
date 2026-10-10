@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.hypothesis/
+.env
+data/snapshots/
+data/raw/
+runs/
+node_modules/
+.next/
+apps/web/.next/
+benchmarks/results/tmp/
+graphify-out/
