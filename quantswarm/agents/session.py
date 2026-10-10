@@ -76,6 +76,23 @@ FALLBACK_CRISIS = {
 }
 
 
+def decide_crisis(agent: str, held: dict[str, int], alloc_usd: float, prices: dict[str, float]) -> dict:
+    """LLM crisis decision, validated; deterministic fallback on any failure."""
+    if llm.available():
+        try:
+            raw, meta = llm.chat_json(SYSTEM_CRISIS.format(agent=agent), json.dumps(
+                {"holdings": held, "allocation_usd": alloc_usd, "prices": prices}))
+            action = raw["action"]
+            if action not in ("buy_dip", "reduce", "hold"):
+                raise ValueError(f"unknown action {action!r}")
+            return {"action": action, "fraction": min(max(float(raw.get("fraction", 0)), 0.0), 1.0),
+                    "rationale": str(raw.get("rationale", ""))[:500], "source": "llm", "llm": meta}
+        except Exception as e:
+            return {**FALLBACK_CRISIS.get(agent, FALLBACK_CRISIS["mean_reversion"]),
+                    "source": f"fallback ({type(e).__name__})"}
+    return {**FALLBACK_CRISIS.get(agent, FALLBACK_CRISIS["mean_reversion"]), "source": "fallback"}
+
+
 class Session:
     def __init__(self, api: str, manifest: dict, dataset_dir: Path, portfolio: str = "main"):
         self.c = httpx.Client(base_url=api, timeout=60)
@@ -119,17 +136,8 @@ class Session:
         for agent in sorted(self.specs):
             spec = self.specs[agent]
             held = {s: state.position(agent, s).qty for s in spec.universe}
-            if llm.available():
-                try:
-                    raw, meta = llm.chat_json(SYSTEM_CRISIS.format(agent=agent), json.dumps(
-                        {"holdings": held, "allocation_usd": self.alloc[agent] / MICROS,
-                         "prices": {s: closes.get(s, 0) / MICROS for s in spec.universe}}))
-                    act = {"action": raw["action"], "fraction": float(raw.get("fraction", 0)),
-                           "rationale": str(raw.get("rationale", ""))[:500], "source": "llm", "llm": meta}
-                except Exception as e:
-                    act = {**FALLBACK_CRISIS[agent], "source": f"fallback ({type(e).__name__})"}
-            else:
-                act = {**FALLBACK_CRISIS[agent], "source": "fallback"}
+            act = decide_crisis(agent, held, self.alloc[agent] / MICROS,
+                                {s: closes.get(s, 0) / MICROS for s in spec.universe})
             frac = min(max(act["fraction"], 0.0), 1.0)
             results = []
             for sym in spec.universe:

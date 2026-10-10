@@ -49,7 +49,7 @@ make bench                       # benchmarks + regenerate docs/PERFORMANCE.md
 make solana-commit verify-solana # optional: manifest hash → Solana Devnet memo, then verify
 ```
 
-Optional keys in `.env` (see `.env.example`): `OPENAI_API_KEY` (live LLM agents instead of recorded
+Optional keys in `.env` (see `.env.example` and [INTEGRATIONS](docs/INTEGRATIONS.md); `make check-integrations` shows status): `OPENAI_API_KEY` (live LLM agents instead of recorded
 proposals), `ELEVENLABS_API_KEY` (spoken answers), `ALPACA_API_KEY_ID/SECRET` (real equity bars).
 
 ## Demo script (5 minutes)
@@ -112,4 +112,4 @@ the synthetic dataset generator, the schema, the docs, and the recorded fixture 
 ## Docs
 
 [ARCHITECTURE](docs/ARCHITECTURE.md) · [INVARIANTS](docs/INVARIANTS.md) · [PERFORMANCE](docs/PERFORMANCE.md) ·
-[DATA_SOURCES](docs/DATA_SOURCES.md) · [LIMITATIONS](docs/LIMITATIONS.md) · [PLAN](PLAN.md)
+[DATA_SOURCES](docs/DATA_SOURCES.md) · [INTEGRATIONS](docs/INTEGRATIONS.md) · [LIMITATIONS](docs/LIMITATIONS.md) · [PLAN](PLAN.md)

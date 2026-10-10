@@ -2,7 +2,7 @@
 API ?= http://localhost:8000
 RUN ?= $(shell ls -t data/manifests/T*.json 2>/dev/null | grep -v -e session -e solana | head -1)
 
-.PHONY: setup up down reset fixture tournament session demo web test prove bench report crash-worker restart-worker solana-commit verify-solana
+.PHONY: check-integrations setup up down reset fixture tournament session demo web test prove bench report crash-worker restart-worker solana-commit verify-solana
 
 setup:            ## install Python + web dependencies
 	uv sync
@@ -55,6 +55,9 @@ restart-worker:   ## restart it: replays the hash-chained log, verifies the dige
 
 solana-commit:    ## publish sha256(manifest) to Solana Devnet as an SPL Memo
 	uv run python -m quantswarm.audit.solana commit $(RUN) --api $(API)
+
+check-integrations: ## which optional keys are configured + one live smoke call each
+	uv run python scripts/check_integrations.py
 
 verify-solana:    ## recompute manifest hash and compare with the on-chain memo
 	uv run python -m quantswarm.audit.solana verify $(RUN)

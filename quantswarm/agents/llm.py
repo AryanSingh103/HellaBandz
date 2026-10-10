@@ -13,8 +13,13 @@ import os
 import time
 from typing import Any
 
+from quantswarm.config import load_env
+
+load_env()
 log = logging.getLogger("llm")
 MODEL = os.environ.get("QS_OPENAI_MODEL", "gpt-4.1-mini")
+# reasoning-model families reject a custom temperature
+_NO_TEMPERATURE = ("o1", "o3", "o4", "gpt-5")
 
 
 def available() -> bool:
@@ -27,11 +32,12 @@ def chat_json(system: str, user: str, temperature: float = 0.4, timeout: float =
 
     client = OpenAI(timeout=timeout)
     t0 = time.perf_counter()
+    kwargs: dict[str, Any] = {} if MODEL.startswith(_NO_TEMPERATURE) else {"temperature": temperature}
     r = client.chat.completions.create(
         model=MODEL,
-        temperature=temperature,
         response_format={"type": "json_object"},
         messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+        **kwargs,
     )
     text = r.choices[0].message.content or "{}"
     meta: dict[str, Any] = {"model": r.model, "latency_s": round(time.perf_counter() - t0, 3),

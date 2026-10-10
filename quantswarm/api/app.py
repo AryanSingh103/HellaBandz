@@ -42,6 +42,9 @@ from quantswarm.contracts import (
 from quantswarm.execution.db import apply_schema, database_url, encode_command
 from quantswarm.ledger import replay
 
+from quantswarm.config import load_env  # noqa: E402
+
+load_env()
 log = logging.getLogger("api")
 WAIT_TIMEOUT_S = float(os.environ.get("QS_API_WAIT_TIMEOUT", "5"))
 
