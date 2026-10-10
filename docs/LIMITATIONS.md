@@ -8,7 +8,8 @@ What follows separates **demonstrated** behavior (tests and benchmarks in this r
   book. Fills at the next open ± fixed slippage, capped at 1% of bar volume, are a documented model, not a
   replay of executions. Limit orders fill whenever the bar trades through the limit (optimistic: no queue).
 - **Synthetic default data.** The committed dataset is generated. Tournament results on it say nothing about
-  real-market edge. The Alpaca path exists for real equities; we have not published results from it.
+  real-market edge. Real-equity Alpaca results are recorded in `DATA_SOURCES.md`; one held-out period
+  and five symbols still do not establish a durable edge.
 - **Small, fixed universe** (5 symbols): survivorship bias and no cross-sectional breadth.
 - **No corporate actions in the engine.** It relies on split/dividend-adjusted input (`adjustment=all`).
 - **No holidays or DST** in the synthetic calendar; the Alpaca script keeps only regular-hours bars.

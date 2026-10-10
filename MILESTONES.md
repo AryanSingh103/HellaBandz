@@ -1,6 +1,7 @@
 # Milestones
 
-Status as of 2026-10-10 (end of first build session). See `PLAN.md` for the full plan.
+Status as of 2026-10-10: P1/P2/P3 code combined on `p1-demo`; 92 tests pass on Windows and Linux.
+See `docs/VERIFICATION.md` for combined evidence and `docs/SUBMISSION.md` for remaining submission gates.
 
 ## Done and verified
 
@@ -12,8 +13,8 @@ Status as of 2026-10-10 (end of first build session). See `PLAN.md` for the full
 - [x] Synthetic fixture dataset (committed, hashed); Binance ingestion (checksummed, 131k bars); Alpaca ingestion script
 - [x] LangGraph tournament (3 research agents → train grid search → validation ranking + stability + gates → supervisor → allocator → held-out test once → hashed manifest). Runs offline in ~15 s
 - [x] Live session runner (held-out replay via API, crash overlay, agent crisis responses, flaky-client retries)
-- [x] Tests: 56 passing (unit, property, real-Postgres concurrency, SIGKILL recovery, tamper detection); `make prove` → all 11 invariants PROVEN
-- [x] Benchmarks + generated `docs/PERFORMANCE.md` (risk check p50 2.9 µs; ~1,050 orders/s at 50 clients; 100k-event recovery 1.6 s)
+- [x] Tests: 92 passing on the combined branch (unit, property, real-Postgres concurrency, SIGKILL recovery, tamper detection); `make prove` and `make prove-docker` → all 11 invariants PROVEN
+- [x] Combined-source benchmarks and generated `docs/PERFORMANCE.md`; all 12 durable runs and eight recovery comparisons match replay
 - [x] Docs: README (Lucera 10 questions, quickstart, demo script, disclosure), ARCHITECTURE, INVARIANTS, DATA_SOURCES, LIMITATIONS
 - [x] Next.js terminal (`apps/web`): builds; panels for portfolio, tournament, agents, orders, adversarial console, ask/voice, event inspector
 - [x] Solana memo commit/verify code; offline tamper test passes
@@ -47,7 +48,7 @@ Done (branch `p2-integrations`):
 - [x] Solana commit tested end to end against a mocked RPC: signed memo tx, on-chain memo read-back, tamper detection
 - [x] Alpaca fetch tested: pagination, 429 retry, clear 401/403 message (suggests `--feed iex`), session-hour filter (fixed docs: the 09:00 bar holds the 09:30 open)
 - [x] Tiger Cloud wiring: `QS_DATABASE_URL` for containers, detection in `make check-integrations`
-- [x] 19 new tests; full suite 75/75 passing
+- [x] 19 integration tests added; combined P1/P2/P3 suite now 92/92 passing
 
 Needs your keys/funding (code is ready; each item takes a few minutes):
 - [x] OpenAI: live agents, supervisor, crisis responses and `/v1/ask` verified (gpt-4.1-mini)
@@ -68,7 +69,9 @@ Needs your keys/funding (code is ready; each item takes a few minutes):
 - [x] Devpost write-up (reuse the README's 10-question table and the headline numbers)
 - [ ] Make the repo public (or give judges access); final `make prove` + `make bench` on the submission commit
 
-**P3 status:** code, regenerated measurements and write-up are in PR #1. Judge access and Devpost publication remain unverified; see `docs/SUBMISSION.md`.
+**Combined status:** P1/P2/P3 code is merged on `p1-demo`. Combined tests and demo/integration checks pass;
+combined benchmarks are re-measured and passing. Judge access and Devpost publication remain unverified;
+see `docs/SUBMISSION.md`.
 
 **Done when:** benchmarks are re-measured on the final code and the Devpost page is submitted.
 
