@@ -9,6 +9,8 @@ single-writer execution worker decides what actually happens to money. It enforc
 fills, and keeps a hash-chained ledger that survives duplicate requests, concurrent clients, malformed input,
 and `kill -9`.
 
+> **New to trading or to this project?** Start with [QUANTSWARM_EXPLAINED.md](QUANTSWARM_EXPLAINED.md): concepts, pipeline, and the track scorecard.
+
 > Paper trading only. No real orders, no real funds, no brokerage connection. Market data is synthetic
 > (committed fixture) or historical (Alpaca / Binance scripts).
 
