@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS ledger_events (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (portfolio_id, seq)
 );
+-- supports the foreign key (and "which events did this command produce?")
+CREATE INDEX IF NOT EXISTS ledger_events_command ON ledger_events (command_seq);
 
 -- Projection of the ledger (rebuildable from ledger_events).
 CREATE TABLE IF NOT EXISTS portfolio_state (
