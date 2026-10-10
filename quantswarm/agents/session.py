@@ -227,8 +227,8 @@ class Session:
 
 
 def latest_manifest() -> dict:
-    files = sorted((ROOT / "data/manifests").glob("T*.json"), key=lambda p: p.stat().st_mtime)
-    files = [f for f in files if not f.name.endswith(".session.json")]
+    files = sorted((f for f in (ROOT / "data/manifests").glob("T*.json") if f.suffixes == [".json"]),
+                   key=lambda p: p.stat().st_mtime)
     if not files:
         raise SystemExit("no tournament manifest found; run `make tournament` first")
     return json.loads(files[-1].read_text())

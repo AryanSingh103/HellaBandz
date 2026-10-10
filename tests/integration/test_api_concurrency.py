@@ -44,7 +44,7 @@ def test_100_concurrent_retries_of_one_order_have_one_effect(stack):
     bodies = [r.json() for r in rs]
     assert {b["approved_qty"] for b in bodies} == {10}
     assert sum(not b["duplicate_request"] for b in bodies) == 1
-    assert stack.sql("SELECT count(*) FROM commands WHERE command_id = 'order:retry-me'")[0][0] == 1
+    assert stack.sql("SELECT count(*) FROM commands WHERE command_id = 'main:order:retry-me'")[0][0] == 1
     assert stack.sql("SELECT count(*) FROM ledger_events WHERE type = 'OrderAccepted'")[0][0] == 1
     c.post("/v1/bars", json={"bars": [_bar(T1, 100)]})
     assert stack.sql("SELECT sum(qty) FROM fills")[0][0] == 10

@@ -3,7 +3,7 @@
   "python": "3.12.13",
   "platform": "macOS-27.0.1-arm64-arm-64bit",
   "machine": "arm64",
-  "captured_at": "2026-10-10T18:29:33+00:00",
+  "captured_at": "2026-10-10T18:30:29+00:00",
   "host_cpu": "Apple M3",
   "host_ncpu": 8,
   "host_mem_gb": 16.0,
@@ -17,57 +17,607 @@
   "worker": "1 vCPU / 512 MiB",
   "load client": "1 vCPU / 512 MiB (in compose network)"
  },
- "workload": "2000 orders per run, 10% exact duplicate retries, 5% invalid, 5 agents, synchronous HTTP (response after the worker commits)",
+ "workload": "10000 orders per run, 10% exact duplicate retries, 5% invalid, 5 agents, synchronous HTTP (response after the worker commits)",
  "runs": [
   {
-   "seconds": 9.096128377999776,
-   "orders_per_s": 219.87376572622614,
+   "seconds": 44.59325354900011,
+   "orders_per_s": 224.24916784804154,
    "latency_ms": {
-    "n": 2000,
-    "p50": 4.284163499960414,
-    "p95": 6.951188099856154,
-    "p99": 8.349105170000257,
-    "p999": 15.544128370737,
-    "max": 19.855764999647363,
-    "mean": 4.2557154119976985
+    "n": 10000,
+    "p50": 4.133454500106382,
+    "p95": 6.545094700118167,
+    "p99": 9.545866740204483,
+    "p999": 21.226027528885066,
+    "max": 51.5851099999054,
+    "mean": 4.13465622690128
    },
    "statuses": {
-    "rejected": 217,
-    "accepted": 1783
+    "rejected": 658,
+    "accepted": 9342
    },
-   "bars_published": 9,
-   "portfolio": "b182933-bs64-c1-r0",
+   "bars_published": 49,
+   "portfolio": "b183029-bs64-c1-r0",
    "batch_size": 64,
    "concurrency": 1,
    "rep": 0,
    "warmup": true,
    "verify_match": true,
-   "ledger_events": 4761
+   "ledger_events": 25769
   },
   {
-   "seconds": 1.914546750000227,
-   "orders_per_s": 1044.633671128565,
+   "seconds": 40.195414569999684,
+   "orders_per_s": 248.7845966256961,
    "latency_ms": {
-    "n": 2000,
-    "p50": 28.319464999867705,
-    "p95": 54.006863399717986,
-    "p99": 75.18155374023081,
-    "p999": 83.80286259403171,
-    "max": 92.06623000000036,
-    "mean": 30.573906951000026
+    "n": 10000,
+    "p50": 3.72822700001052,
+    "p95": 5.387051149659783,
+    "p99": 7.12488341002427,
+    "p999": 27.357377912255476,
+    "max": 150.99617099986062,
+    "mean": 3.7111771517021226
    },
    "statuses": {
-    "rejected": 217,
-    "accepted": 1783
+    "rejected": 662,
+    "accepted": 9338
    },
-   "bars_published": 9,
-   "portfolio": "b182933-bs64-c50-r0",
+   "bars_published": 49,
+   "portfolio": "b183029-bs64-c1-r1",
+   "batch_size": 64,
+   "concurrency": 1,
+   "rep": 1,
+   "warmup": false,
+   "verify_match": true,
+   "ledger_events": 25705
+  },
+  {
+   "seconds": 40.564480831999845,
+   "orders_per_s": 246.5210892607151,
+   "latency_ms": {
+    "n": 10000,
+    "p50": 3.744059499922514,
+    "p95": 5.4653542497590015,
+    "p99": 7.606451160304462,
+    "p999": 32.72672978602767,
+    "max": 65.58161800012385,
+    "mean": 3.7521655341008677
+   },
+   "statuses": {
+    "rejected": 655,
+    "accepted": 9345
+   },
+   "bars_published": 49,
+   "portfolio": "b183029-bs64-c1-r2",
+   "batch_size": 64,
+   "concurrency": 1,
+   "rep": 2,
+   "warmup": false,
+   "verify_match": true,
+   "ledger_events": 25801
+  },
+  {
+   "seconds": 41.15923119900026,
+   "orders_per_s": 242.95886265832138,
+   "latency_ms": {
+    "n": 10000,
+    "p50": 3.784995999922103,
+    "p95": 5.481251500145844,
+    "p99": 7.4710496599709595,
+    "p999": 29.491224332959654,
+    "max": 117.17260500017801,
+    "mean": 3.7765811677019885
+   },
+   "statuses": {
+    "accepted": 9357,
+    "rejected": 643
+   },
+   "bars_published": 49,
+   "portfolio": "b183029-bs64-c1-r3",
+   "batch_size": 64,
+   "concurrency": 1,
+   "rep": 3,
+   "warmup": false,
+   "verify_match": true,
+   "ledger_events": 25819
+  },
+  {
+   "seconds": 11.579546189999746,
+   "orders_per_s": 863.591701774646,
+   "latency_ms": {
+    "n": 10000,
+    "p50": 7.88051000017731,
+    "p95": 13.161750900030706,
+    "p99": 23.833388990128704,
+    "p999": 47.01018916084911,
+    "max": 78.94701300028828,
+    "mean": 8.223510216201158
+   },
+   "statuses": {
+    "rejected": 658,
+    "accepted": 9342
+   },
+   "bars_published": 49,
+   "portfolio": "b183029-bs64-c10-r0",
+   "batch_size": 64,
+   "concurrency": 10,
+   "rep": 0,
+   "warmup": true,
+   "verify_match": true,
+   "ledger_events": 25769
+  },
+  {
+   "seconds": 11.098292596999727,
+   "orders_per_s": 901.0394988778152,
+   "latency_ms": {
+    "n": 10000,
+    "p50": 7.658447999801865,
+    "p95": 10.952330150098533,
+    "p99": 18.562605169809114,
+    "p999": 47.055013541054976,
+    "max": 76.37731699969663,
+    "mean": 7.754905744296502
+   },
+   "statuses": {
+    "accepted": 9338,
+    "rejected": 662
+   },
+   "bars_published": 49,
+   "portfolio": "b183029-bs64-c10-r1",
+   "batch_size": 64,
+   "concurrency": 10,
+   "rep": 1,
+   "warmup": false,
+   "verify_match": true,
+   "ledger_events": 25705
+  },
+  {
+   "seconds": 12.769210556999951,
+   "orders_per_s": 783.1337697316067,
+   "latency_ms": {
+    "n": 10000,
+    "p50": 8.421442499866316,
+    "p95": 14.691819850258979,
+    "p99": 33.5177896296501,
+    "p999": 64.0827674520194,
+    "max": 72.6306299998214,
+    "mean": 8.994311333603946
+   },
+   "statuses": {
+    "accepted": 9345,
+    "rejected": 655
+   },
+   "bars_published": 49,
+   "portfolio": "b183029-bs64-c10-r2",
+   "batch_size": 64,
+   "concurrency": 10,
+   "rep": 2,
+   "warmup": false,
+   "verify_match": true,
+   "ledger_events": 25801
+  },
+  {
+   "seconds": 11.755386964999616,
+   "orders_per_s": 850.673825521347,
+   "latency_ms": {
+    "n": 10000,
+    "p50": 8.06567300014649,
+    "p95": 12.901887750354033,
+    "p99": 19.01681392002502,
+    "p999": 64.55909167738402,
+    "max": 89.60896600001433,
+    "mean": 8.344710321502726
+   },
+   "statuses": {
+    "accepted": 9357,
+    "rejected": 643
+   },
+   "bars_published": 49,
+   "portfolio": "b183029-bs64-c10-r3",
+   "batch_size": 64,
+   "concurrency": 10,
+   "rep": 3,
+   "warmup": false,
+   "verify_match": true,
+   "ledger_events": 25819
+  },
+  {
+   "seconds": 9.61527874300009,
+   "orders_per_s": 1040.0114512831972,
+   "latency_ms": {
+    "n": 10000,
+    "p50": 26.160131499864292,
+    "p95": 46.38292240015289,
+    "p99": 72.233961979664,
+    "p999": 97.35799761821836,
+    "max": 98.96989700018821,
+    "mean": 28.750394402398985
+   },
+   "statuses": {
+    "rejected": 658,
+    "accepted": 9342
+   },
+   "bars_published": 49,
+   "portfolio": "b183029-bs64-c50-r0",
    "batch_size": 64,
    "concurrency": 50,
    "rep": 0,
    "warmup": true,
    "verify_match": true,
-   "ledger_events": 4761
+   "ledger_events": 25769
+  },
+  {
+   "seconds": 9.548330278999856,
+   "orders_per_s": 1047.3035292875786,
+   "latency_ms": {
+    "n": 10000,
+    "p50": 25.309698499768274,
+    "p95": 48.991974399837076,
+    "p99": 115.38091498986888,
+    "p999": 157.4130833761069,
+    "max": 162.18586699960724,
+    "mean": 29.20516544339744
+   },
+   "statuses": {
+    "accepted": 9338,
+    "rejected": 662
+   },
+   "bars_published": 49,
+   "portfolio": "b183029-bs64-c50-r1",
+   "batch_size": 64,
+   "concurrency": 50,
+   "rep": 1,
+   "warmup": false,
+   "verify_match": true,
+   "ledger_events": 25705
+  },
+  {
+   "seconds": 9.16919595599984,
+   "orders_per_s": 1090.6081676067274,
+   "latency_ms": {
+    "n": 10000,
+    "p50": 24.512766000043484,
+    "p95": 43.86142449986891,
+    "p99": 67.21066822001546,
+    "p999": 183.12659515915604,
+    "max": 188.88467299984768,
+    "mean": 27.51510113499835
+   },
+   "statuses": {
+    "accepted": 9345,
+    "rejected": 655
+   },
+   "bars_published": 49,
+   "portfolio": "b183029-bs64-c50-r2",
+   "batch_size": 64,
+   "concurrency": 50,
+   "rep": 2,
+   "warmup": false,
+   "verify_match": true,
+   "ledger_events": 25801
+  },
+  {
+   "seconds": 9.816690149999886,
+   "orders_per_s": 1018.6732847017807,
+   "latency_ms": {
+    "n": 10000,
+    "p50": 26.47291800030871,
+    "p95": 46.223216749899606,
+    "p99": 103.35778702012749,
+    "p999": 193.87194804215596,
+    "max": 200.05650799976138,
+    "mean": 29.6148063943966
+   },
+   "statuses": {
+    "accepted": 9357,
+    "rejected": 643
+   },
+   "bars_published": 49,
+   "portfolio": "b183029-bs64-c50-r3",
+   "batch_size": 64,
+   "concurrency": 50,
+   "rep": 3,
+   "warmup": false,
+   "verify_match": true,
+   "ledger_events": 25819
+  },
+  {
+   "seconds": 43.2413729470004,
+   "orders_per_s": 231.2600021339907,
+   "latency_ms": {
+    "n": 10000,
+    "p50": 3.943013499792869,
+    "p95": 6.142569149938026,
+    "p99": 8.852863569995861,
+    "p999": 21.378649163198734,
+    "max": 116.72137400000793,
+    "mean": 3.976158564195111
+   },
+   "statuses": {
+    "rejected": 658,
+    "accepted": 9342
+   },
+   "bars_published": 49,
+   "portfolio": "b183029-bs1-c1-r0",
+   "batch_size": 1,
+   "concurrency": 1,
+   "rep": 0,
+   "warmup": true,
+   "verify_match": true,
+   "ledger_events": 25769
+  },
+  {
+   "seconds": 42.618423919999714,
+   "orders_per_s": 234.6403053001512,
+   "latency_ms": {
+    "n": 10000,
+    "p50": 3.925617500044609,
+    "p95": 5.959141799712597,
+    "p99": 8.3774754897877,
+    "p999": 28.27183954025812,
+    "max": 82.68340399990848,
+    "mean": 3.9452432612015853
+   },
+   "statuses": {
+    "rejected": 662,
+    "accepted": 9338
+   },
+   "bars_published": 49,
+   "portfolio": "b183029-bs1-c1-r1",
+   "batch_size": 1,
+   "concurrency": 1,
+   "rep": 1,
+   "warmup": false,
+   "verify_match": true,
+   "ledger_events": 25705
+  },
+  {
+   "seconds": 47.16788733700014,
+   "orders_per_s": 212.00864750530496,
+   "latency_ms": {
+    "n": 10000,
+    "p50": 4.225218499868788,
+    "p95": 7.082118150242422,
+    "p99": 10.997593000147413,
+    "p999": 39.605248444748206,
+    "max": 185.19417500010604,
+    "mean": 4.370666812000628
+   },
+   "statuses": {
+    "rejected": 655,
+    "accepted": 9345
+   },
+   "bars_published": 49,
+   "portfolio": "b183029-bs1-c1-r2",
+   "batch_size": 1,
+   "concurrency": 1,
+   "rep": 2,
+   "warmup": false,
+   "verify_match": true,
+   "ledger_events": 25801
+  },
+  {
+   "seconds": 46.585894972999995,
+   "orders_per_s": 214.65724777415454,
+   "latency_ms": {
+    "n": 10000,
+    "p50": 4.242677000092954,
+    "p95": 6.918563199883464,
+    "p99": 10.044932759842599,
+    "p999": 26.81448674303212,
+    "max": 109.87346599995362,
+    "mean": 4.29692099339727
+   },
+   "statuses": {
+    "accepted": 9357,
+    "rejected": 643
+   },
+   "bars_published": 49,
+   "portfolio": "b183029-bs1-c1-r3",
+   "batch_size": 1,
+   "concurrency": 1,
+   "rep": 3,
+   "warmup": false,
+   "verify_match": true,
+   "ledger_events": 25819
+  },
+  {
+   "seconds": 31.264063257999624,
+   "orders_per_s": 319.85605701591817,
+   "latency_ms": {
+    "n": 10000,
+    "p50": 27.16293999969821,
+    "p95": 46.432394599992186,
+    "p99": 64.7374341701152,
+    "p999": 104.27898651175278,
+    "max": 169.54583400001866,
+    "mean": 26.889387438798753
+   },
+   "statuses": {
+    "rejected": 658,
+    "accepted": 9342
+   },
+   "bars_published": 49,
+   "portfolio": "b183029-bs1-c10-r0",
+   "batch_size": 1,
+   "concurrency": 10,
+   "rep": 0,
+   "warmup": true,
+   "verify_match": true,
+   "ledger_events": 25769
+  },
+  {
+   "seconds": 28.955754787999922,
+   "orders_per_s": 345.3544925081449,
+   "latency_ms": {
+    "n": 10000,
+    "p50": 26.246068999853378,
+    "p95": 40.21161529992696,
+    "p99": 42.718977419949624,
+    "p999": 57.60025816797763,
+    "max": 87.27145700004257,
+    "mean": 24.99079890219891
+   },
+   "statuses": {
+    "accepted": 9338,
+    "rejected": 662
+   },
+   "bars_published": 49,
+   "portfolio": "b183029-bs1-c10-r1",
+   "batch_size": 1,
+   "concurrency": 10,
+   "rep": 1,
+   "warmup": false,
+   "verify_match": true,
+   "ledger_events": 25705
+  },
+  {
+   "seconds": 30.14081020599997,
+   "orders_per_s": 331.7760847055582,
+   "latency_ms": {
+    "n": 10000,
+    "p50": 26.49633700002596,
+    "p95": 41.35813374991811,
+    "p99": 65.79887740014792,
+    "p999": 95.2889694003311,
+    "max": 107.00596400010909,
+    "mean": 25.932117513996673
+   },
+   "statuses": {
+    "accepted": 9345,
+    "rejected": 655
+   },
+   "bars_published": 49,
+   "portfolio": "b183029-bs1-c10-r2",
+   "batch_size": 1,
+   "concurrency": 10,
+   "rep": 2,
+   "warmup": false,
+   "verify_match": true,
+   "ledger_events": 25801
+  },
+  {
+   "seconds": 29.8374091820001,
+   "orders_per_s": 335.1497423587522,
+   "latency_ms": {
+    "n": 10000,
+    "p50": 26.79762549996667,
+    "p95": 40.836370149963834,
+    "p99": 49.0109864502075,
+    "p999": 101.04238187586452,
+    "max": 128.61250300011307,
+    "mean": 25.72062439470028
+   },
+   "statuses": {
+    "accepted": 9357,
+    "rejected": 643
+   },
+   "bars_published": 49,
+   "portfolio": "b183029-bs1-c10-r3",
+   "batch_size": 1,
+   "concurrency": 10,
+   "rep": 3,
+   "warmup": false,
+   "verify_match": true,
+   "ledger_events": 25819
+  },
+  {
+   "seconds": 29.701845826999943,
+   "orders_per_s": 336.67941239226536,
+   "latency_ms": {
+    "n": 10000,
+    "p50": 116.71617099977993,
+    "p95": 185.3932705500256,
+    "p99": 196.73735763032255,
+    "p999": 215.22604797589764,
+    "max": 295.59531999984756,
+    "mean": 108.1129755912005
+   },
+   "statuses": {
+    "rejected": 658,
+    "accepted": 9342
+   },
+   "bars_published": 49,
+   "portfolio": "b183029-bs1-c50-r0",
+   "batch_size": 1,
+   "concurrency": 50,
+   "rep": 0,
+   "warmup": true,
+   "verify_match": true,
+   "ledger_events": 25769
+  },
+  {
+   "seconds": 34.92992275400002,
+   "orders_per_s": 286.28749254404937,
+   "latency_ms": {
+    "n": 10000,
+    "p50": 125.1145794999502,
+    "p95": 212.73622560015608,
+    "p99": 370.63074257982885,
+    "p999": 1797.3642221657728,
+    "max": 1806.0642509999525,
+    "mean": 126.66894799930228
+   },
+   "statuses": {
+    "accepted": 9338,
+    "rejected": 662
+   },
+   "bars_published": 49,
+   "portfolio": "b183029-bs1-c50-r1",
+   "batch_size": 1,
+   "concurrency": 50,
+   "rep": 1,
+   "warmup": false,
+   "verify_match": true,
+   "ledger_events": 25705
+  },
+  {
+   "seconds": 30.9165121179999,
+   "orders_per_s": 323.4517516669644,
+   "latency_ms": {
+    "n": 10000,
+    "p50": 119.20065949993841,
+    "p95": 192.80292360006115,
+    "p99": 234.061411900143,
+    "p999": 612.7076569151642,
+    "max": 620.1967910001258,
+    "mean": 113.07392964879777
+   },
+   "statuses": {
+    "accepted": 9345,
+    "rejected": 655
+   },
+   "bars_published": 49,
+   "portfolio": "b183029-bs1-c50-r2",
+   "batch_size": 1,
+   "concurrency": 50,
+   "rep": 2,
+   "warmup": false,
+   "verify_match": true,
+   "ledger_events": 25801
+  },
+  {
+   "seconds": 32.117703097999765,
+   "orders_per_s": 311.35476810054894,
+   "latency_ms": {
+    "n": 10000,
+    "p50": 125.71856049999042,
+    "p95": 196.86877564968196,
+    "p99": 297.99781427005706,
+    "p999": 419.3536422352385,
+    "max": 439.33942500007106,
+    "mean": 117.5128668309042
+   },
+   "statuses": {
+    "rejected": 644,
+    "accepted": 9356
+   },
+   "bars_published": 49,
+   "portfolio": "b183029-bs1-c50-r3",
+   "batch_size": 1,
+   "concurrency": 50,
+   "rep": 3,
+   "warmup": false,
+   "verify_match": true,
+   "ledger_events": 25817
   }
  ]
 }

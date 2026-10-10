@@ -119,7 +119,7 @@ async def submit(cmd: Any, command_id: str, portfolio_id: str, wait: bool) -> JS
         if duplicate:
             ex = await (await conn.execute(
                 "SELECT seq, payload_hash, portfolio_id FROM commands WHERE command_id = %s", (command_id,))).fetchone()
-            if ex["payload_hash"] != h or ex["portfolio_id"] != portfolio_id:
+            if ex["payload_hash"] != h:
                 raise HTTPException(409, {"status": "conflict", "rules": ["R8_DUPLICATE_ID_DIFFERENT_PAYLOAD"],
                                           "command_id": command_id})
             seq = ex["seq"]
@@ -156,13 +156,13 @@ async def _response(seq: int) -> dict | None:
 @app.post("/v1/orders")
 async def post_order(order: OrderRequest, portfolio_id: str = "main", wait: bool = True):
     cmd = SubmitOrder(order=order)
-    return await submit(cmd, command_id_for(cmd), portfolio_id, wait)
+    return await submit(cmd, f"{portfolio_id}:{command_id_for(cmd)}", portfolio_id, wait)
 
 
 @app.post("/v1/orders/{client_order_id}/cancel")
 async def cancel_order(client_order_id: str, agent_id: str, portfolio_id: str = "main", wait: bool = True):
     cmd = CancelOrder(client_order_id=client_order_id, agent_id=agent_id)
-    return await submit(cmd, command_id_for(cmd), portfolio_id, wait)
+    return await submit(cmd, f"{portfolio_id}:{command_id_for(cmd)}", portfolio_id, wait)
 
 
 class BarsIn(BaseModel):

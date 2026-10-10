@@ -363,14 +363,14 @@ def bench_recovery(sizes: list[int], reps: int) -> dict:
     compose("stop", "worker", check=False)
     url = "postgresql://quantswarm:quantswarm@localhost:5432/quantswarm"
     db = psycopg.connect(url, autocommit=True)
-    syn, _ = load_snapshot(ROOT / "data/fixtures/synthetic_1h")
-    p = SnapshotProvider(syn)
+    bpath = ROOT / "data/snapshots/binance-btcusdt-1m-2024-01-2024-03"
+    src = load_snapshot(bpath)[0] if bpath.exists() else load_snapshot(ROOT / "data/fixtures/synthetic_1h")[0]
+    p = SnapshotProvider(src)
     spec = StrategySpec(strategy_id="rec", agent_id="rec", family="sma_crossover", params={"fast": 5, "slow": 20},
                         universe=p.symbols())
     all_events = _events_for(p, spec, int(p.t.ts[0]), int(p.t.ts[-1]) + 1)
-    while len(all_events) < max(sizes):
-        all_events += all_events  # placeholder growth guard (not expected for the fixture)
-    out: dict = {"environment": environment(), "runs": []}
+    sizes = [n for n in sizes if n <= len(all_events)]  # a prefix of a valid chain is a valid chain
+    out: dict = {"environment": environment(), "runs": [], "source_events": len(all_events)}
     stamp = datetime.now(timezone.utc).strftime("%H%M%S")
     for n in sizes:
         evs = all_events[:n]

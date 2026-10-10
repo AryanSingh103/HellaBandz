@@ -7,8 +7,8 @@ committed (provider terms); this script plus the manifest hash make the dataset 
 
 Notes: the Basic plan serves SIP historical data older than 15 minutes; `--feed iex`
 is available if SIP is not entitled. Bars are split/dividend adjusted (`adjustment=all`)
-and filtered to regular trading hours (13:30-20:00 UTC in summer / 14:30-21:00 in winter
-are approximated by the exchange_calendars-free check below: 09:30-16:00 America/New_York).
+and hourly bars are filtered to regular trading hours (09:30-16:00 America/New_York on
+weekdays; exchange holidays simply have no bars).
 """
 
 from __future__ import annotations
