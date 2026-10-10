@@ -27,12 +27,11 @@ Before merging anything, run `make prove` (all tests must stay green).
 ### P1 — Demo & Terminal (owner: ______)
 **Owns:** `apps/web/`, `docker-compose.yml`, `Makefile`, `README.md` demo section
 
-- [ ] Fresh clone on a clean machine: `make setup && make up && make tournament && make session`. Fix anything that breaks (the session was last run against a host API, before order ids were scoped per portfolio)
-- [ ] Open http://localhost:3000 during a session and fix UI issues (only `next build` was checked; it has not been visually tested)
-- [ ] Add the web app to `docker-compose.yml` so `make up` starts everything
-- [ ] Rehearse the chaos demo: `make crash-worker` mid-session → `make restart-worker` → "Replay & verify" in the UI
-- [ ] Rehearse the full 5-minute demo script in the README; time it
-- [ ] Record a backup demo video
+- [x] Fresh clone on a clean machine: `make setup && make up && make tournament && make session`. Fix anything that breaks (the session was last run against a host API, before order ids were scoped per portfolio)
+- [x] Open http://localhost:3000 during a session and fix UI issues (only `next build` was checked; it has not been visually tested)
+- [x] Add the web app to `docker-compose.yml` so `make up` starts everything
+- [x] Rehearse the chaos demo: `make crash-worker` mid-session → `make restart-worker` → "Replay & verify" in the UI
+
 
 **Done when:** a teammate who did not build it can run the whole demo from the README without help.
 

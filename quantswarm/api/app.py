@@ -321,8 +321,14 @@ async def bars(dataset_id: str = "live", symbol: str | None = None, limit: int =
 @app.get("/v1/verify")
 async def verify(portfolio_id: str = "main"):
     """Independently replay the hash-chained event log and compare to the stored projection (I-06/I-08)."""
-    rows = await q("SELECT event FROM ledger_events WHERE portfolio_id = %s ORDER BY seq", (portfolio_id,))
-    stored = await q("SELECT seq, head_hash, digest FROM portfolio_state WHERE portfolio_id = %s", (portfolio_id,))
+    # one snapshot for both reads: while the worker is committing batches, two separate
+    # statements could see the log and the projection at different seqs and report a false mismatch
+    async with pool.connection() as conn, conn.transaction():
+        await conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+        rows = await (await conn.execute(
+            "SELECT event FROM ledger_events WHERE portfolio_id = %s ORDER BY seq", (portfolio_id,))).fetchall()
+        stored = await (await conn.execute(
+            "SELECT seq, head_hash, digest FROM portfolio_state WHERE portfolio_id = %s", (portfolio_id,))).fetchall()
     try:
         s = replay([r["event"] for r in rows])
         chain_ok = True

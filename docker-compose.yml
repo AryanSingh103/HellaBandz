@@ -12,7 +12,8 @@ services:
     mem_limit: 2g
     command: ["postgres", "-c", "shared_buffers=256MB", "-c", "max_connections=200"]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U quantswarm"]
+      # over TCP: on a fresh volume the image runs a socket-only bootstrap server first, which must not count as healthy
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U quantswarm -d quantswarm"]
       interval: 2s
       retries: 30
     volumes: [pgdata:/var/lib/postgresql/data]
@@ -37,6 +38,21 @@ services:
       ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
     ports: ["8000:8000"]
     depends_on: { db: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/v1/health', timeout=2)"]
+      interval: 2s
+      retries: 30
+    cpus: 1
+    mem_limit: 512m
+
+  web:
+    # trading terminal; the browser calls the API directly, so NEXT_PUBLIC_API is a host URL baked in at build time
+    build:
+      context: apps/web
+      args:
+        NEXT_PUBLIC_API: ${NEXT_PUBLIC_API:-http://localhost:8000}
+    ports: ["3000:3000"]
+    depends_on: { api: { condition: service_healthy } }
     cpus: 1
     mem_limit: 512m
 
@@ -48,6 +64,19 @@ services:
       DATABASE_URL: postgresql://quantswarm:quantswarm@db:5432/quantswarm
     cpus: 1
     mem_limit: 512m
+
+  prove:
+    # `make prove-docker`: the test suite on Linux against this stack's Postgres (the process tests need POSIX signals)
+    build: .
+    profiles: ["prove"]
+    working_dir: /src
+    volumes: [".:/src"]
+    environment:
+      UV_PROJECT_ENVIRONMENT: /tmp/venv
+      UV_LINK_MODE: copy
+      QS_TEST_ADMIN_URL: postgresql://quantswarm:quantswarm@db:5432/postgres
+    command: ["sh", "-c", "uv sync --frozen -q && uv run python scripts/prove.py"]
+    depends_on: { db: { condition: service_healthy } }
 
 volumes:
   pgdata:

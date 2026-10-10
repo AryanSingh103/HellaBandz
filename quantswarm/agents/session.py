@@ -160,6 +160,12 @@ class Session:
         if max_steps:
             groups = groups[:max_steps]
         crash_start = int(len(groups) * crash_at) if crash_at is not None else None
+        r = self.c.get(f"/v1/portfolio?portfolio_id={self.pid}")
+        seen = max((v[0] for v in r.json()["state"].get("last_bar", {}).values()), default=0) if r.status_code == 200 else 0
+        if groups and seen >= groups[0][0].ts.timestamp():
+            # bars are idempotent and ordered, so a second replay cannot move the ledger: every order would be stale (R7)
+            raise SystemExit(f"portfolio {self.pid!r} has already replayed this period; "
+                             "run `make reset up tournament` for a fresh ledger, then `make session`")
         self.say("system", "session_start", {"steps": len(groups), "crash_start_step": crash_start,
                                              "speed_steps_per_s": speed})
         base_hist = {sym: self.p.history(sym, te[0])[0] for sym in self.p.symbols()}
