@@ -21,16 +21,17 @@ SYMS = ["SPY", "NVDA"]
 
 order_cmd = st.builds(
     lambda i, side, qty, agent, sym, lmt, lim_off: ("order", f"o{i}", side, qty, agent, sym, lmt, lim_off),
-    st.integers(0, 40), st.sampled_from(["BUY", "SELL"]), st.integers(-2, 400),
-    st.sampled_from(AGENTS + ["rogue"]), st.sampled_from(SYMS), st.booleans(), st.floats(-0.15, 0.15),
+    st.integers(0, 40), st.sampled_from(["BUY", "BUY", "SELL"]), st.integers(-2, 60),
+    st.sampled_from(AGENTS + ["rogue"]), st.sampled_from(SYMS), st.booleans(), st.floats(-0.12, 0.12),
 )
-bar_cmd = st.builds(lambda move, vol, stress: ("bar", move, vol, stress),
-                    st.floats(-0.35, 0.35), st.integers(0, 50_000), st.booleans())
+bar_cmd = st.builds(lambda gap, move, vol, stress: ("bar", gap, move, vol, stress),
+                    st.floats(-0.3, 0.3), st.floats(-0.35, 0.35), st.integers(0, 200_000), st.booleans())
 other_cmd = st.one_of(
     st.builds(lambda i, a: ("cancel", f"o{i}", a), st.integers(0, 40), st.sampled_from(AGENTS)),
-    st.builds(lambda on: ("kill", on), st.booleans()),
+    st.builds(lambda on: ("kill", on), st.sampled_from([False, False, False, True])),
 )
-program = st.lists(st.one_of(order_cmd, order_cmd, bar_cmd, other_cmd), min_size=1, max_size=120)
+program = st.lists(st.one_of(order_cmd, order_cmd, order_cmd, order_cmd, bar_cmd, bar_cmd, other_cmd),
+                   min_size=5, max_size=150)
 
 
 def materialize(prog):
@@ -40,10 +41,10 @@ def materialize(prog):
     cmds = []
     for step in prog:
         if step[0] == "bar":
-            _, move, vol, stress = step
+            _, gap, move, vol, stress = step
             t += 1
             for sym in SYMS:
-                o = price[sym]
+                o = max(0.5, round(price[sym] * (1 + gap), 2))
                 c = max(0.5, o * (1 + move))
                 price[sym] = c
                 cmds.append(bar(t, o, c, sym=sym, v=vol, stress=stress))
