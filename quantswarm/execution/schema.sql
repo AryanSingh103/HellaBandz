@@ -41,6 +41,19 @@ CREATE TABLE IF NOT EXISTS portfolio_state (
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Latest complete recovery checkpoint per portfolio. Replaced atomically with
+-- events + projection; decisions are included to preserve retry idempotency.
+CREATE TABLE IF NOT EXISTS ledger_checkpoints (
+    portfolio_id TEXT PRIMARY KEY,
+    version      INTEGER NOT NULL,
+    seq          BIGINT NOT NULL CHECK (seq > 0),
+    head_hash    TEXT NOT NULL,
+    digest       TEXT NOT NULL,
+    snapshot     JSONB NOT NULL,
+    snapshot_hash TEXT NOT NULL,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS orders (
     order_id       TEXT PRIMARY KEY,
     portfolio_id   TEXT NOT NULL,

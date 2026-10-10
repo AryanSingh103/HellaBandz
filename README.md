@@ -25,7 +25,7 @@ and `kill -9`.
 | **Measurement** | Risk-check latency, durable order throughput at 1/10/50 clients, replay speed on 131k real Binance bars, recovery time vs ledger size, all under fixed container limits: [PERFORMANCE](docs/PERFORMANCE.md). |
 | **Failure behavior** | Invalid ⇒ 422 or recorded rejection with rule code. Duplicate ⇒ original decision. Same id, new payload ⇒ 409. Stale or future signal ⇒ R7. Out-of-order bar ⇒ rejected, no effect. Worker down ⇒ commands queue (HTTP 202) and drain in order on restart. Corrupted log ⇒ worker refuses to start. |
 | **Reproduction** | Five commands below, no API keys needed (committed dataset + recorded agent proposals). |
-| **Next limit** | One writer per portfolio caps that portfolio's order rate. Next: shard portfolios, incremental exposure sums, recovery checkpoints. |
+| **Next limit** | Incremental agent exposure and recovery checkpoints are implemented. Next: shard portfolios, profile position/fill/projection scans, and archive growing event and retry histories. |
 
 ## Quickstart
 

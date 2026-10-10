@@ -44,15 +44,18 @@ def _assert_consistent(st):
 @pytest.mark.parametrize("crash_at", ["before_commit", "after_commit"])
 def test_crash_mid_stream_then_restart(stack, crash_at):
     total = _seed_commands(stack)
-    stack.start_worker(QS_CRASH_AT=crash_at, QS_CRASH_AFTER_BATCHES="1", QS_BATCH_SIZE="16")
+    stack.start_worker(QS_CRASH_AT=crash_at, QS_CRASH_AFTER_BATCHES="1", QS_BATCH_SIZE="16",
+                       QS_CHECKPOINT_INTERVAL="1")
     stack.worker.wait(timeout=30)
     assert stack.worker.returncode == 137
     done = stack.sql("SELECT count(*) FROM commands WHERE status = 'done'")[0][0]
     events = stack.sql("SELECT count(*) FROM ledger_events")[0][0]
     if crash_at == "before_commit":
         assert done == 0 and events == 0  # nothing half-written
+        assert stack.sql("SELECT count(*) FROM ledger_checkpoints")[0][0] == 0
     else:
         assert done == 16 and events > 0
+        assert stack.sql("SELECT seq FROM ledger_checkpoints")[0][0] == events
     stack.start_worker()
     stack.wait_worker_ready()
     wait_until(lambda: stack.sql("SELECT count(*) FROM commands WHERE status = 'done'")[0][0] == total)
@@ -65,7 +68,7 @@ def test_repeated_sigkill_under_load(stack):
     rng = random.Random(3)
     kills = 0
     while stack.sql("SELECT count(*) FROM commands WHERE status = 'pending'")[0][0] > 0 and kills < 15:
-        stack.start_worker(QS_BATCH_SIZE="4")
+        stack.start_worker(QS_BATCH_SIZE="4", QS_CHECKPOINT_INTERVAL="10")
         stack.wait_worker_ready()
         time.sleep(rng.uniform(0.01, 0.15))
         stack.kill_worker()

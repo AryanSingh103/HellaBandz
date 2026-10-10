@@ -70,6 +70,31 @@ boundary, not the model.
    1% of bar volume and by the order's reserved cash; leftovers expire after 5 bars and release their reservation.
 5. All events, the command response, projections and the new state digest commit in one transaction.
 
+## Risk totals and recovery checkpoints
+
+`apply_event` maintains per-agent position cost basis and reserved buy cash on acceptance, partial
+fills, sells and order closure. R2 uses two dictionary lookups; R3/R4 use the existing global cash
+reservation total. `check_invariants` independently recomputes the sums each batch and property tests
+compare them after random commands. Mark-to-market still scans positions, and bar processing scans orders.
+
+The worker saves the latest complete snapshot (including retry decisions), economic digest, sequence,
+chain head and SHA-256 snapshot hash in `ledger_checkpoints`. The checkpoint commits in the same
+transaction as events, command responses and projections. `QS_CHECKPOINT_INTERVAL` / `--checkpoint-interval`
+defaults to 10,000 events; the checkpoint is taken at the first completed batch at or beyond that
+interval, so a batch can overshoot it. Set 0 to disable new checkpoints. Only the latest snapshot is
+retained; the full event log remains available.
+
+Startup verifies snapshot version/hash, restored-state invariants/digest and the checkpoint's ledger
+anchor. It replays only events after the checkpoint, verifies their sequence/hash chain, then compares
+the final sequence, head and digest with `portfolio_state`. Without a checkpoint it replays from genesis;
+corruption fails closed. Cached totals are excluded from the economic digest for compatibility with
+existing ledgers, but included in the checkpoint hash and checked against positions/orders.
+
+A checkpoint is a trusted summary of its prefix. Startup does not re-read historical event payloads
+before it. `/v1/verify` deliberately ignores checkpoints and replays the whole log to audit that prefix.
+These hashes detect corruption; they do not authenticate data against someone who can rewrite the DB
+and recompute hashes. Checkpoint loading/validation still grows with live state and retained retry decisions.
+
 ## Determinism contract
 
 Deterministic: everything downstream of the frozen dataset + frozen proposals (grid search, validation,
@@ -93,9 +118,10 @@ Equal-timestamp ordering (I-11): bars sorted by `(ts, symbol)`; at each timestam
 
 ## Scaling path (and what breaks first)
 
-Measured in `PERFORMANCE.md`. The single writer per portfolio is the deliberate serialization point. Next steps,
-in order: (1) shard by portfolio, one worker each, already supported by `--portfolio`; (2) keep per-agent
-exposure and reservation sums incrementally instead of scanning open orders on each risk check; (3) checkpoint
-state every N events so recovery replays a suffix instead of the whole log; (4) if a single portfolio needs
-more than a few thousand orders/s, move the ledger to an in-memory single-writer engine with a write-ahead
-log and treat Postgres as the projection store.
+Measured in `PERFORMANCE.md`. Incremental agent exposure and checkpoint recovery are implemented.
+The next limits are: (1) the single writer and I/O per portfolio (shard independent portfolios with
+`--portfolio`); (2) position marking, order scans for fills, and full-state invariant checks/digest work
+per batch (profile, then add symbol indexes/incremental marks); (3) checkpoint size and unbounded command,
+event and retry histories (partition/archive with an explicit idempotency retention policy). If one
+portfolio needs substantially more throughput, evaluate an in-memory single writer with its own WAL
+and use Postgres for projections. Any such change must preserve the crash and full-replay proofs.

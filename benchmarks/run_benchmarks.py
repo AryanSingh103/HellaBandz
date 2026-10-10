@@ -12,7 +12,10 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from bisect import bisect_right
 import json
+import hashlib
+import os
 import platform
 import random
 import statistics
@@ -76,12 +79,27 @@ def summarize_reps(reps: list[dict]) -> dict:
 def environment() -> dict:
     env = {"python": platform.python_version(), "platform": platform.platform(), "machine": platform.machine(),
            "captured_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+    env["git_revision"] = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    sources = sorted([*ROOT.glob("quantswarm/**/*.py"), *ROOT.glob("quantswarm/**/*.sql"),
+                      *ROOT.glob("benchmarks/*.py"), ROOT / "Dockerfile", ROOT / "docker-compose.yml",
+                      ROOT / "pyproject.toml", ROOT / "uv.lock"])
+    h = hashlib.sha256()
+    for path in sources:
+        h.update(path.relative_to(ROOT).as_posix().encode() + b"\0" + path.read_bytes().replace(b"\r\n", b"\n"))
+    env["source_sha256"] = h.hexdigest()
     try:
         env["host_cpu"] = subprocess.check_output(["sysctl", "-n", "machdep.cpu.brand_string"], text=True).strip()
         env["host_ncpu"] = int(subprocess.check_output(["sysctl", "-n", "hw.ncpu"], text=True))
         env["host_mem_gb"] = int(subprocess.check_output(["sysctl", "-n", "hw.memsize"], text=True)) / 2**30
     except Exception:
-        pass
+        env["host_ncpu"] = os.cpu_count()
+        if platform.system() == "Windows":
+            host = json.loads(subprocess.check_output([
+                "powershell", "-NoProfile", "-Command",
+                "@{cpu=(Get-CimInstance Win32_Processor).Name; memory=(Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory} | ConvertTo-Json"
+            ], text=True))
+            env["host_cpu"] = host["cpu"]
+            env["host_mem_gb"] = host["memory"] / 2**30
     try:
         info = json.loads(subprocess.check_output(["docker", "info", "--format", "{{json .}}"], text=True))
         env["docker_vm_ncpu"] = info.get("NCPU")
@@ -159,6 +177,27 @@ def bench_engine() -> dict:
     res["risk_check_latency_us"] = {"workload": "10,000 seeded proposals (10% duplicates, 5% invalid), fixed state",
                                     "reps": reps, "summary": summarize_reps(reps)}
 
+    # Fixed positions; only the number of working buys grows. This isolates the
+    # removed order scan from position marking, which is still O(positions).
+    scaling = []
+    for count in (0, 100, 1_000, 10_000):
+        state, cfg = seeded_state(1_000_000_000, agents)
+        for i in range(count):
+            process(state, SubmitOrder(order=OrderRequest.model_validate({
+                "client_order_id": f"working-{i}", "agent_id": agents[i % len(agents)],
+                "symbol": "SPY", "side": "BUY", "qty": 1, "signal_bar_ts": T0.isoformat()})), cfg)
+        passes = []
+        for r in range(WARMUP + REPS):
+            lat = []
+            for q in reqs:
+                t = time.perf_counter_ns()
+                evaluate_order(state, q, cfg)
+                lat.append((time.perf_counter_ns() - t) / 1000)
+            if r >= WARMUP:
+                passes.append(pct(lat))
+        scaling.append({"open_orders": len(state.orders), "summary": summarize_reps(passes)})
+    res["risk_check_open_order_scaling"] = scaling
+
     # B. full command latency: risk + event append + hash chain, state evolving, duplicates included
     chunked = [OrderRequest.model_validate(o) for o in gen_orders(10_000, 1, agents, chunk=CHUNK)]
     reps = []
@@ -226,7 +265,8 @@ def bench_engine() -> dict:
     return res
 
 
-def _events_for(p: SnapshotProvider, spec: StrategySpec, start: int, end: int) -> list[dict]:
+def _events_for(p: SnapshotProvider, spec: StrategySpec, start: int, end: int,
+                boundaries: list[int] | None = None) -> list[dict]:
     """Produce a realistic event log by running the engine (captures events as the worker would store them)."""
     import quantswarm.backtester as bt
     captured: list[dict] = []
@@ -235,6 +275,8 @@ def _events_for(p: SnapshotProvider, spec: StrategySpec, start: int, end: int) -
     def spy(s, c, cfg):
         evs, resp = orig(s, c, cfg)
         captured.extend(evs)
+        if boundaries is not None and evs:
+            boundaries.append(len(captured))
         return evs, resp
     bt.process = spy
     try:
@@ -344,6 +386,8 @@ def bench_db(n_orders: int, levels: list[int], reps: int, batches: list[int]) ->
                 res.update({"portfolio": pid, "batch_size": batch, "concurrency": c, "rep": r, "warmup": r == 0,
                             "verify_match": v["match"], "ledger_events": v["events"]})
                 subprocess.run(["docker", "rm", "-f", name], capture_output=True)
+                if not v["match"] or set(res["statuses"]) - {"accepted", "rejected"}:
+                    raise RuntimeError(f"benchmark run failed verification/completion: {res}")
                 print(f"batch={batch:3} c={c:3} rep={r} {res['orders_per_s']:8.1f} orders/s  "
                       f"p50={res['latency_ms']['p50']:.1f}ms p99={res['latency_ms']['p99']:.1f}ms verify={v['match']}")
                 out["runs"].append(res)
@@ -368,13 +412,23 @@ def bench_recovery(sizes: list[int], reps: int) -> dict:
     p = SnapshotProvider(src)
     spec = StrategySpec(strategy_id="rec", agent_id="rec", family="sma_crossover", params={"fast": 5, "slow": 20},
                         universe=p.symbols())
-    all_events = _events_for(p, spec, int(p.t.ts[0]), int(p.t.ts[-1]) + 1)
-    sizes = [n for n in sizes if n <= len(all_events)]  # a prefix of a valid chain is a valid chain
-    out: dict = {"environment": environment(), "runs": [], "source_events": len(all_events)}
+    boundaries: list[int] = []
+    all_events = _events_for(p, spec, int(p.t.ts[0]), int(p.t.ts[-1]) + 1, boundaries)
+    out: dict = {"environment": environment(), "runs": [], "source_events": len(all_events),
+                 "checkpoint_interval": 10_000, "reps": reps, "requested_sizes": sizes,
+                 "unavailable_sizes": [n for n in sizes if n > len(all_events)],
+                 "dataset": "binance_btcusdt_131k_bars" if bpath.exists() else "synthetic_34k_bars"}
+    sizes = [n for n in sizes if n <= len(all_events)]
+    if not sizes:
+        raise RuntimeError("no requested recovery sizes fit the dataset")
+    if out["unavailable_sizes"]:
+        print(f"dataset too small for sizes {out['unavailable_sizes']}; download Binance data to measure them")
     stamp = datetime.now(timezone.utc).strftime("%H%M%S")
-    for n in sizes:
+    for requested in sizes:
+        # A fill/close pair can leave a transient zero-remaining order between
+        # events. Durable recovery workloads must end at complete commands.
+        n = boundaries[bisect_right(boundaries, requested) - 1]
         evs = all_events[:n]
-        # cut at a command boundary is unnecessary for replay: the chain is valid at any prefix
         state = replay(evs)
         pid = f"rec{stamp}-{n}"
         cseq = db.execute("INSERT INTO commands (command_id, portfolio_id, kind, payload, payload_hash, status) "
@@ -385,24 +439,35 @@ def bench_recovery(sizes: list[int], reps: int) -> dict:
         db.execute("INSERT INTO portfolio_state (portfolio_id, seq, head_hash, digest, state, equity) VALUES "
                    "(%s,%s,%s,%s,%s,%s)", (pid, state.seq, state.head_hash, state.digest(), Jsonb(public_state(state)),
                                            state.equity()))
-        inproc = []
-        for r in range(1 + reps):
-            w = Worker(db, pid)
-            info = w.recover()
-            if r:
-                inproc.append({"load_s": info["load_s"], "replay_s": info["replay_s"], "total_s": info["total_s"]})
-        cold = []
-        for r in range(reps):
-            after = datetime.now(timezone.utc)
-            t0 = time.perf_counter()
-            name = start_bench_worker(pid, 64)
-            rec_s = wait_recovered(db, pid, after, timeout=300)
-            cold.append({"container_start_to_ready_s": time.perf_counter() - t0, "worker_reported_recovery_s": rec_s})
-            subprocess.run(["docker", "rm", "-f", name], capture_output=True)
-        row = {"events": n, "in_process": summarize_reps(inproc), "container_restart": summarize_reps(cold)}
-        print(f"{n:7} events: replay {row['in_process']['total_s']['median']:.3f}s in-process, "
-              f"restart-to-ready {row['container_restart']['container_start_to_ready_s']['median']:.2f}s")
-        out["runs"].append(row)
+        for mode in ("full", "checkpoint"):
+            cp_seq = n // out["checkpoint_interval"] * out["checkpoint_interval"] if mode == "checkpoint" else 0
+            if cp_seq:
+                cp_seq = boundaries[bisect_right(boundaries, cp_seq) - 1]
+            if cp_seq:
+                writer = Worker(db, pid)
+                writer.state = replay(evs[:cp_seq])
+                writer.write_checkpoint()
+            inproc = []
+            for r in range(1 + reps):
+                w = Worker(db, pid)
+                info = w.recover()
+                if w.state.snapshot() != state.snapshot() or info["events"] != n - cp_seq:
+                    raise RuntimeError("recovery benchmark differs from independent full replay")
+                if r:
+                    inproc.append({"load_s": info["load_s"], "replay_s": info["replay_s"], "total_s": info["total_s"]})
+            cold = []
+            for r in range(reps):
+                after = datetime.now(timezone.utc)
+                t0 = time.perf_counter()
+                name = start_bench_worker(pid, 64)
+                rec_s = wait_recovered(db, pid, after, timeout=300)
+                cold.append({"container_start_to_ready_s": time.perf_counter() - t0, "worker_reported_recovery_s": rec_s})
+                subprocess.run(["docker", "rm", "-f", name], capture_output=True)
+            row = {"events": n, "requested_events": requested, "mode": mode, "checkpoint_seq": cp_seq, "replayed_events": n - cp_seq,
+                   "in_process": summarize_reps(inproc), "container_restart": summarize_reps(cold), "verify_match": True}
+            print(f"{n:7} events ({mode}, suffix={n-cp_seq}): recovery {row['in_process']['total_s']['median']:.3f}s, "
+                  f"restart-to-ready {row['container_restart']['container_start_to_ready_s']['median']:.2f}s")
+            out["runs"].append(row)
     save("recovery", out)
     return out
 
@@ -434,7 +499,7 @@ if __name__ == "__main__":
     ap.add_argument("--levels", type=int, nargs="+", default=[1, 10, 50])
     ap.add_argument("--reps", type=int, default=3)
     ap.add_argument("--batches", type=int, nargs="+", default=[64])
-    ap.add_argument("--sizes", type=int, nargs="+", default=[1_000, 10_000, 100_000])
+    ap.add_argument("--sizes", type=int, nargs="+", default=[1_000, 10_000, 100_000, 105_000])
     a = ap.parse_args()
     if a.which in ("engine", "all"):
         r = bench_engine()
