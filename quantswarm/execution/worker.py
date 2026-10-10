@@ -37,7 +37,7 @@ def _ts(epoch: int) -> datetime:
 
 
 def public_state(s: PortfolioState) -> dict:
-    snap = s.snapshot()
+    snap = s.snapshot(include_decisions=False)
     snap["decisions"] = len(s.decisions)
     snap["equity"] = s.equity()
     snap["market_value"] = s.market_value()

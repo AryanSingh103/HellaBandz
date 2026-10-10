@@ -47,11 +47,28 @@ WAIT_TIMEOUT_S = float(os.environ.get("QS_API_WAIT_TIMEOUT", "5"))
 
 
 class Hub:
-    """Routes worker NOTIFY messages to waiting requests."""
+    """Routes worker NOTIFY messages to waiting requests, and wakes the worker.
+
+    Wake-ups are coalesced through one task: Postgres serializes NOTIFY at commit
+    with a global lock, so notifying inside every command insert made concurrent
+    inserts (and the worker's commits) queue behind each other."""
 
     def __init__(self) -> None:
         self.waiters: dict[int, asyncio.Future] = {}
-        self.task: asyncio.Task | None = None
+        self.tasks: list[asyncio.Task] = []
+        self.wake = asyncio.Event()
+
+    async def waker(self) -> None:
+        while True:
+            try:
+                conn = await psycopg.AsyncConnection.connect(database_url(), autocommit=True)
+                while True:
+                    await self.wake.wait()
+                    self.wake.clear()
+                    await conn.execute("SELECT pg_notify('cmd_new', '')")
+            except Exception:
+                log.exception("waker dropped; reconnecting")
+                await asyncio.sleep(1)
 
     async def listen(self) -> None:
         while True:
@@ -80,9 +97,10 @@ async def lifespan(app: FastAPI):
     pool = AsyncConnectionPool(database_url(), min_size=2, max_size=int(os.environ.get("QS_API_POOL", "20")),
                                kwargs={"autocommit": True, "row_factory": dict_row}, open=False)
     await pool.open()
-    hub.task = asyncio.create_task(hub.listen())
+    hub.tasks = [asyncio.create_task(hub.listen()), asyncio.create_task(hub.waker())]
     yield
-    hub.task.cancel()
+    for t in hub.tasks:
+        t.cancel()
     await pool.close()
 
 
@@ -94,9 +112,8 @@ async def submit(cmd: Any, command_id: str, portfolio_id: str, wait: bool) -> JS
     kind, payload, h = encode_command(cmd)
     async with pool.connection() as conn:
         row = await (await conn.execute(
-            "WITH ins AS (INSERT INTO commands (command_id, portfolio_id, kind, payload, payload_hash) "
-            "VALUES (%s, %s, %s, %s, %s) ON CONFLICT (command_id) DO NOTHING RETURNING seq) "
-            "SELECT seq, pg_notify('cmd_new', '') FROM ins",
+            "INSERT INTO commands (command_id, portfolio_id, kind, payload, payload_hash) "
+            "VALUES (%s, %s, %s, %s, %s) ON CONFLICT (command_id) DO NOTHING RETURNING seq",
             (command_id, portfolio_id, kind, Jsonb(payload), h))).fetchone()
         duplicate = row is None
         if duplicate:
@@ -108,6 +125,7 @@ async def submit(cmd: Any, command_id: str, portfolio_id: str, wait: bool) -> JS
             seq = ex["seq"]
         else:
             seq = row["seq"]
+            hub.wake.set()
     body: dict[str, Any] = {"command_id": command_id, "command_seq": seq, "duplicate_request": duplicate}
     if not wait:
         return JSONResponse({**body, "status": "queued"}, status_code=202)
@@ -386,6 +404,30 @@ async def ask(body: AskIn):
         "tournament": (await q("SELECT manifest FROM tournaments ORDER BY created_at DESC LIMIT 1") or [None])[0],
     }
     return await asyncio.to_thread(answer, body.question, ctx)
+
+
+class SpeakIn(BaseModel):
+    text: str = Field(max_length=1200)
+
+
+@app.post("/v1/speak")
+async def speak(body: SpeakIn):
+    """ElevenLabs text-to-speech. Returns 501 without a key; the UI then falls back to browser speech."""
+    from fastapi.responses import Response
+
+    key = os.environ.get("ELEVENLABS_API_KEY")
+    if not key:
+        raise HTTPException(501, "ELEVENLABS_API_KEY not configured")
+    import httpx
+
+    voice = os.environ.get("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM")
+    async with httpx.AsyncClient(timeout=30) as c:
+        r = await c.post(f"https://api.elevenlabs.io/v1/text-to-speech/{voice}",
+                         headers={"xi-api-key": key, "accept": "audio/mpeg"},
+                         json={"text": body.text, "model_id": os.environ.get("ELEVENLABS_MODEL", "eleven_flash_v2_5")})
+    if r.status_code != 200:
+        raise HTTPException(502, f"elevenlabs error {r.status_code}")
+    return Response(content=r.content, media_type="audio/mpeg")
 
 
 # ----------------------------------------------------------------------------- streaming

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from typing import Any
 
 GENESIS_HASH = "0" * 64
@@ -91,15 +91,23 @@ class PortfolioState:
         exp += sum(o.reserved_cash for o in self.orders.values() if o.agent_id == agent_id)
         return exp
 
-    def snapshot(self) -> dict:
-        d = asdict(self)
-        d["positions"] = {k: v for k, v in sorted(d["positions"].items()) if any(v.values())}
+    def snapshot(self, include_decisions: bool = True) -> dict:
+        d = {f.name: getattr(self, f.name) for f in fields(self)
+             if f.name not in ("allocations", "positions", "orders", "last_bar", "decisions")}
+        d["allocations"] = dict(self.allocations)
+        d["last_bar"] = {k: list(v) for k, v in self.last_bar.items()}
+        d["positions"] = {k: asdict(v) for k, v in sorted(self.positions.items()) if v.qty or v.reserved or v.basis}
+        d["orders"] = {k: asdict(v) for k, v in sorted(self.orders.items())}
+        if include_decisions:
+            d["decisions"] = dict(self.decisions)
         return d
 
     def digest(self) -> str:
-        """Digest of economic state (excludes the event-chain head so it can be
-        compared across independent runs that produced the same economics)."""
-        snap = self.snapshot()
+        """Digest of economic state: cash, reservations, positions, working orders,
+        allocations, prices and risk flags. Excludes the idempotency table
+        (`decisions`, covered by the event hash chain) and the chain head itself,
+        so independent runs that produced the same economics compare equal."""
+        snap = self.snapshot(include_decisions=False)
         snap.pop("head_hash")
         snap.pop("seq")
         return sha256_hex(canonical(snap))

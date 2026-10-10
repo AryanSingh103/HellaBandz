@@ -12,3 +12,4 @@ node_modules/
 apps/web/.next/
 benchmarks/results/tmp/
 graphify-out/
+data/solana/

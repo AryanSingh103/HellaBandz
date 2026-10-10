@@ -6,6 +6,7 @@ COPY pyproject.toml uv.lock .python-version ./
 RUN uv sync --frozen --no-dev --no-install-project
 COPY quantswarm ./quantswarm
 COPY scripts ./scripts
+COPY benchmarks/*.py ./benchmarks/
 COPY data/fixtures ./data/fixtures
 RUN uv sync --frozen --no-dev
 ENV PATH="/app/.venv/bin:$PATH"

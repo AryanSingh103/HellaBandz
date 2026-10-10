@@ -93,7 +93,7 @@ def expand_grid(prop: StrategyProposal) -> list[dict[str, float]]:
 
 def train_objective(m: dict) -> float:
     if m["n_fills"] < MIN_FILLS:
-        return float("-inf")
+        return -1e9  # finite sentinel: manifests must be strict JSON (Postgres JSONB rejects Infinity)
     return m["sharpe"] * (1 - m["max_drawdown"])
 
 

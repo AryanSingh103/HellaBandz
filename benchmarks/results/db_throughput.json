@@ -1,0 +1,73 @@
+{
+ "environment": {
+  "python": "3.12.13",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "machine": "arm64",
+  "captured_at": "2026-10-10T18:29:33+00:00",
+  "host_cpu": "Apple M3",
+  "host_ncpu": 8,
+  "host_mem_gb": 16.0,
+  "docker_vm_ncpu": 4,
+  "docker_vm_mem_gb": 5.77,
+  "docker_server": "29.5.2"
+ },
+ "limits": {
+  "db": "2 vCPU / 2 GiB",
+  "api": "1 vCPU / 512 MiB",
+  "worker": "1 vCPU / 512 MiB",
+  "load client": "1 vCPU / 512 MiB (in compose network)"
+ },
+ "workload": "2000 orders per run, 10% exact duplicate retries, 5% invalid, 5 agents, synchronous HTTP (response after the worker commits)",
+ "runs": [
+  {
+   "seconds": 9.096128377999776,
+   "orders_per_s": 219.87376572622614,
+   "latency_ms": {
+    "n": 2000,
+    "p50": 4.284163499960414,
+    "p95": 6.951188099856154,
+    "p99": 8.349105170000257,
+    "p999": 15.544128370737,
+    "max": 19.855764999647363,
+    "mean": 4.2557154119976985
+   },
+   "statuses": {
+    "rejected": 217,
+    "accepted": 1783
+   },
+   "bars_published": 9,
+   "portfolio": "b182933-bs64-c1-r0",
+   "batch_size": 64,
+   "concurrency": 1,
+   "rep": 0,
+   "warmup": true,
+   "verify_match": true,
+   "ledger_events": 4761
+  },
+  {
+   "seconds": 1.914546750000227,
+   "orders_per_s": 1044.633671128565,
+   "latency_ms": {
+    "n": 2000,
+    "p50": 28.319464999867705,
+    "p95": 54.006863399717986,
+    "p99": 75.18155374023081,
+    "p999": 83.80286259403171,
+    "max": 92.06623000000036,
+    "mean": 30.573906951000026
+   },
+   "statuses": {
+    "rejected": 217,
+    "accepted": 1783
+   },
+   "bars_published": 9,
+   "portfolio": "b182933-bs64-c50-r0",
+   "batch_size": 64,
+   "concurrency": 50,
+   "rep": 0,
+   "warmup": true,
+   "verify_match": true,
+   "ledger_events": 4761
+  }
+ ]
+}
