@@ -1,6 +1,6 @@
 # Submission status
 
-P1, P2 and P3 implementation work is combined on `p1-demo`. The combined checkout
+P1, P2 and P3 implementation work is combined on `main` and `p1-demo`. The combined checkout
 `45e51e701ea64d7fc3bdf2898a179c34278bcf6e` was verified on October 10, 2026.
 This is not yet a claim that the HackRU submission is complete.
 
@@ -29,7 +29,8 @@ gitignored. Raw Alpaca/Binance snapshots are not redistributed.
 - **Judge access:** the repository is private. The authenticated collaborator has push access but no
   admin/maintain access. The owner must make it public or grant judges access.
 - **Devpost:** [DEVPOST.md](DEVPOST.md) contains prepared copy; publication/submission has not been verified.
-- **Default branch:** merge the reviewed combined work into `main` so the repository landing page contains it.
+- **Latest verification records:** implementation work is already merged into `main`; merge the latest
+  `p1-demo` verification records and regenerated performance report into the chosen submission branch.
 - **New Solana commitments:** the local Devnet wallet reports zero balance. The automatic airdrop failed;
   an existing on-chain commitment verifies, but the new tournament hashes have not been committed.
   A new commitment requires funded Devnet test SOL. It is outside the deterministic execution path.
