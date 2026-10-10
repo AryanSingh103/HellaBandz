@@ -477,7 +477,7 @@ Their 10-question outline is answered at the top of the README.
 | **Correctness & reliability** | 30% | **5 / 5** | Eleven explicit invariants, each with targeted tests; property tests check every invariant after every random command; a mutation check shows the tests have teeth; real-Postgres concurrency, repeated SIGKILL recovery and tamper detection; the docs separate demonstrated behavior from assumptions. This is the project's strongest area. |
 | **System design & simplicity** | 25% | **4 / 5** | The core is small and defensible: one pure engine shared by everything, one writer per portfolio, Postgres as both queue and ledger (no Kafka, no 2-phase commit), and each process boundary has a stated purpose. Points off because the surrounding scope (AI agents, Solana, voice, web UI) is broad, and a judge may ask why a trading-infra project needs it. Answer: it's all optional, outside the core path, and documented that way. |
 | **Performance & scalability evidence** | 20% | **4 / 5** | Four relevant metrics with percentiles, fixed container limits, warm-ups and repetitions, generated reports, bottleneck analysis, three documented measurement pitfalls, and a clear "what breaks next". Points off because two machines currently report noticeably different numbers, and absolute throughput is modest (fine for the claim, but say so). One consistent final run would make this a 5. |
-| **Completeness & demonstration** | 15% | **4 / 5** | The full workflow runs end to end on real data with live AI, crash recovery works, setup is five commands, and the system works offline. Points off because P1 hasn't started: the web terminal has never been checked in a browser and the demo hasn't been rehearsed, so demo-day risk is real. |
+| **Completeness & demonstration** | 15% | **4 / 5 → 5 once rehearsed** | The full workflow runs end to end on real data with live AI, crash recovery works, setup is five commands, and the system works offline. Points off because P1 hasn't started: the web terminal has never been checked in a browser and the demo hasn't been rehearsed, so demo-day risk is real. |
 | **Trading relevance & domain** | 10% | **4 / 5** | Real trading concerns (pre-trade risk, idempotent order entry, reservations, partial fills, slippage, kill switch, look-ahead and overfitting controls, train/validation/test discipline) handled with consistent terminology. Points off for the simplified bar-based fill model (no order book or queue position) and long-only cash only. Both are documented. |
 
 **Weighted total: 4.3 / 5 (≈ 86%).** Strong: "works well and shows sound judgment, with only minor gaps".
@@ -536,18 +536,18 @@ No. Paper trading only, plus Solana *Devnet* test tokens with no value.
 
 ## 16. Project status (P1 / P2 / P3)
 
-*As of 2026-10-10, checked against the GitHub repository.*
+*As of 2026-10-10. All three parts are merged into `main` (PRs #1, #2, #3).*
 
-| Part | Owner | Status | Details |
-|---|---|---|---|
-| **P1: Demo & Terminal** | unassigned | ❌ **Not started** | No branch or commits. Remaining: fresh-clone run against Docker, check the UI in a browser, add the web app to docker-compose, rehearse the chaos demo, record a backup video. |
-| **P2: AI & Sponsor Integrations** | you | ✅ **Done** (branch `p2-integrations`, not yet merged) | OpenAI, ElevenLabs, Alpaca and Solana all live and verified; 19 mocked-service tests; real-data tournament and session recorded; Solana commitment verified on-chain. Tiger Cloud optional, not done. |
-| **P3: Core & Submission** | dsun-1 | 🟡 **Mostly done** (draft PR #1, branch `p3-core`) | Incremental risk totals and recovery checkpoints implemented and tested; benchmarks re-run (Windows); Devpost write-up drafted. Remaining: make the repo public or give judges access, submit on Devpost, final `make prove` + `make bench` on the submission commit. |
+| Part | Owner | Status |
+|---|---|---|
+| **P1: Demo & Terminal** | Krish | ✅ Merged. One-command stack (`make up` starts DB, worker, API **and** the web terminal), terminal fixes, timed demo script, Windows-compatible Makefile |
+| **P2: AI & Sponsor Integrations** | Aryan | ✅ Merged. OpenAI, ElevenLabs, Alpaca and Solana live and verified; real-data tournament; on-chain commitment |
+| **P3: Core & Submission** | dsun-1 | ✅ Merged. Incremental risk totals, atomic recovery checkpoints, re-run benchmarks, Devpost draft |
 
-**Merge check:** P2 and P3 merge into `main` with **no conflicts**, and the combined code passes **all 92 tests**.
+**Verified on merged `main`:** 92/92 tests pass and all 11 invariants are PROVEN; `make up` brings up all four
+services healthy; the web terminal serves; the independent ledger replay matches.
 
-**Recommended next steps, in order:**
-1. Merge P3 (PR #1), then P2 (open a PR from `p2-integrations`).
-2. Do P1 on the merged `main`: open the UI, rehearse, record.
-3. Run `make bench` once on one machine for the final numbers.
-4. Make the repo public and submit on Devpost.
+**Remaining before judging:**
+1. Make the repository public (or give judges access). It is currently private.
+2. Run `make bench` once on the final `main`, on one machine, so `docs/PERFORMANCE.md` tells one consistent story.
+3. Submit on Devpost (copy in `docs/DEVPOST.md`) and record a backup demo video.
