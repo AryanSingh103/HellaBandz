@@ -1,0 +1,8 @@
+{
+ "run_id": "T20261010194733",
+ "manifest_sha256": "aa67942dc75e096c197aadf6a127b3a530738f8dcb06f40a9d04b43aa7f29be2",
+ "memo": "quantswarm:v1:T20261010194733:aa67942dc75e096c197aadf6a127b3a530738f8dcb06f40a9d04b43aa7f29be2",
+ "signature": "5uJFSVSQz24M7FoERrmQ3bGt8ryNqXdeGdiEdbxm7QWyvA1S2tAqRLx1SwnnUJQocLMAdDpUKKVU191x318gamXE",
+ "cluster": "devnet",
+ "explorer": "https://explorer.solana.com/tx/5uJFSVSQz24M7FoERrmQ3bGt8ryNqXdeGdiEdbxm7QWyvA1S2tAqRLx1SwnnUJQocLMAdDpUKKVU191x318gamXE?cluster=devnet"
+}

@@ -53,7 +53,7 @@ Done (branch `p2-integrations`):
 Needs your keys/funding (code is ready; each item takes a few minutes):
 - [x] OpenAI: live agents, supervisor, crisis responses and `/v1/ask` verified (gpt-4.1-mini)
 - [x] ElevenLabs: `/v1/speak` returns audio (default voice switched to premade "Daniel"; free plans can't use library voices via API)
-- [ ] Fund the Devnet address `5LvRiXCo8r2J6soVfRgziyE7CRDK3tGepKkpWsVCPCiw` at https://faucet.solana.com (RPC airdrop is rate-limited) → `make solana-commit verify-solana`. Note: the keypair is local to this machine (`data/solana/`, gitignored); another machine gets its own address
+- [x] Solana: tournament T20261010194733 committed on Devnet and verified (tx 5uJFSVSQ…gamXE, see data/manifests/T20261010194733.solana.json)
 - [x] Alpaca: real SIP data ingested (32,865 bars), LLM tournament + live session on it, results in `docs/DATA_SOURCES.md`
 - [ ] Optional: Tiger Cloud service URL → rerun the demo
 
