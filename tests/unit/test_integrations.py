@@ -168,14 +168,14 @@ def test_reasoning_models_get_no_temperature(monkeypatch):
 
 def test_load_env_parses_and_never_overrides(tmp_path, monkeypatch):
     p = tmp_path / ".env"
-    p.write_text('# c\nexport QS_T_A="quoted value"\nQS_T_B=plain # comment\nQS_T_C=\nQS_T_D=keep\n')
+    p.write_text('# c\nexport QS_T_A="quoted value"\nQS_T_B=plain # comment\nQS_T_C=\nQS_T_D=keep\nQS_T_E=     # only a comment\n')
     monkeypatch.setenv("QS_T_D", "from-env")
-    for k in ("QS_T_A", "QS_T_B", "QS_T_C"):
+    for k in ("QS_T_A", "QS_T_B", "QS_T_C", "QS_T_E"):
         monkeypatch.delenv(k, raising=False)
     loaded = load_env(p)
     import os
     assert os.environ["QS_T_A"] == "quoted value" and os.environ["QS_T_B"] == "plain"
-    assert "QS_T_C" not in os.environ and os.environ["QS_T_D"] == "from-env" and "QS_T_D" not in loaded
+    assert "QS_T_C" not in os.environ and "QS_T_E" not in os.environ and os.environ["QS_T_D"] == "from-env" and "QS_T_D" not in loaded
     for k in ("QS_T_A", "QS_T_B"):
         monkeypatch.delenv(k)
 

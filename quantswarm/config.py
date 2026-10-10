@@ -27,7 +27,9 @@ def load_env(path: Path | None = None) -> dict[str, str]:
             line = line[len("export "):]
         key, _, val = line.partition("=")
         key, val = key.strip(), val.strip()
-        if len(val) >= 2 and val[0] == val[-1] and val[0] in "'\"":
+        if val.startswith("#"):
+            val = ""  # `KEY=   # comment` means unset
+        elif len(val) >= 2 and val[0] == val[-1] and val[0] in "'\"":
             val = val[1:-1]
         elif " #" in val:
             val = val.split(" #", 1)[0].rstrip()
