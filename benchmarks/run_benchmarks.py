@@ -80,7 +80,7 @@ def summarize_reps(reps: list[dict]) -> dict:
 def environment() -> dict:
     env = {"python": platform.python_version(), "platform": platform.platform(), "machine": platform.machine(),
            "captured_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-           "operator_auth_required": os.getenv("QS_AUTH_REQUIRED", "1") != "0",
+           "operator_auth_required": os.getenv("QS_AUTH_REQUIRED", "0") == "1",
            "transactional_audit_journal": True}
     env["git_revision"] = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     sources = sorted([*ROOT.glob("hellabandz/**/*.py"), *ROOT.glob("hellabandz/**/*.sql"),

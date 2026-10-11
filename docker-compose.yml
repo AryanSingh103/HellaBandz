@@ -34,7 +34,7 @@ services:
     environment:
       DATABASE_URL: ${QS_DATABASE_URL:-postgresql://quantswarm:quantswarm@db:5432/quantswarm}
       QS_API_POOL: ${QS_API_POOL:-20}
-      QS_AUTH_REQUIRED: ${QS_AUTH_REQUIRED:-1}
+      QS_AUTH_REQUIRED: ${QS_AUTH_REQUIRED:-0}
       QS_API_TOKEN: ${QS_API_TOKEN:-}
       QS_ALLOWED_ORIGINS: ${QS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001}
       QS_AUDIT_SIGNER: ${QS_AUDIT_SIGNER:-}

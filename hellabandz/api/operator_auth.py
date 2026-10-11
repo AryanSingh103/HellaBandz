@@ -19,7 +19,7 @@ router = APIRouter(prefix="/v1/auth")
 
 
 def required() -> bool:
-    return os.getenv("QS_AUTH_REQUIRED", "1") != "0"
+    return os.getenv("QS_AUTH_REQUIRED", "0") == "1"
 
 
 def origins() -> list[str]:
