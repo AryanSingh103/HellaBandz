@@ -81,6 +81,10 @@ class AttributionBook:
     def qty(self, strategy: str, sym: str) -> int:
         return self.sleeves[strategy].qty(sym)
 
+    def basis(self, strategy: str, sym: str) -> int:
+        lot = self.sleeves[strategy].positions.get(sym)
+        return lot.basis if lot else 0
+
     def total_qty(self, sym: str) -> int:
         return sum(s.qty(sym) for s in self.sleeves.values())
 

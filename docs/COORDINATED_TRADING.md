@@ -152,26 +152,87 @@ Strategy results on this run, for the record: historical_sim made +5.96% and pap
 with turnover of about 26× capital. That is high, and it is the main thing to fix before trusting
 these strategies. Fixture results say nothing about real markets (`docs/LIMITATIONS.md`).
 
-## Implemented vs not yet
+## Research, promotion and evaluation
 
-**Implemented and tested:**
-- CLOB
-- market-data gateway
-- runtime strategies, with the incremental signal matching the vectorized research definition bar for bar
-- coordinator (netting, limits, lifecycle, validation)
-- attribution, with a property test that sums are exact and the ledger replays
-- venue orders and fills in the ledger
-- execution authority (historical, paper, shadow)
-- deterministic demo
-- 2-vCPU benchmark
+`hellabandz/trading/research.py`, `registry.py` and `evaluate.py`.
 
-**Not done yet:**
-- **Live path:** the coordinated runtime is not yet wired to the API/worker for live browser
-  sessions. It runs against the in-process ledger, the same `ledger.process` the worker uses.
-- **UI:** no coordinator panel yet. Decision records and explanations exist in the runtime result.
-- **Promotion:** no champion/challenger registry, promotion or rollback.
-- **Evaluation:** no ensemble-vs-individual-vs-baseline evaluation report, and no research critic agent.
-- **External adapter:** no generic adapter with a persisted submission journal for unknown outcomes.
-- **Restarts:** no restart test for the coordinated runtime's own state. Ledger restart and
-  recovery are covered by the existing worker tests.
-- **Turnover** is high and needs a cost-aware rebalance band.
+- **Roles:** trend (SMA crossover), mean reversion (z-score), and defensive (the regime-aware
+  basket overlay, or a volatility target), plus a passive core.
+- **Bounded grids:** each role searches at most 6 candidates, all inside the whitelisted bounds.
+- **Fit (train):** each candidate runs alone through the coordinated runtime on three training
+  blocks, next to the core. Walk-forward picks give out-of-sample evidence inside training.
+- **Validate:** the chosen challenger and the core run on the validation period through the paper CLOB.
+- **Funding:** a challenger is funded only if all three hold:
+  - Its total out-of-sample excess over the core, after costs, is positive.
+  - Both of its t-statistics (excess over the core, and alpha after regressing on the core) are
+    above 1. Weight scales from 0 at 1 to the 30% role cap at 2.
+  - Its turnover is below 60× capital a year.
+
+  The one-standard-error threshold was set from design seeds 1–5 only, where challengers funded on
+  weaker evidence lost to the core.
+- **Registry:** candidate, accepted, rejected, champion, retired. Writes are atomic. A rejected
+  candidate stays rejected. Rollback restores the previous champion. Every held-out evaluation is
+  counted, and reports say when a period is no longer untouched.
+- **Shadow:** unfunded challengers run in shadow during live sessions. Their intents are shown,
+  never executed.
+- **Critic** (`evaluate.critic`): reads results, names weaknesses, proposes experiments. Never trades.
+- **Search schedule:** at nice 10, with a time budget, and only when someone launches it. Never
+  in response to recent losses.
+
+### Results (reported as they came out)
+
+| Out-of-sample test | Coordinated portfolio vs passive baseline (both through the paper CLOB) |
+|---|---|
+| 10 fresh synthetic markets, seeds 101–110, run once after the design was frozen | mean excess **−0.75%** (standard error 0.83%). Ahead in 1, equal in 7 (nothing passed the funding test, so it held the baseline), behind in 2. |
+| Real Alpaca equities, held-out Jan–Sep 2026 | **+12.42% vs +12.42%**. No strategy passed the funding test; the portfolio was the baseline. |
+
+**Conclusion: the strategies do not make the paper CLOB beat buy-and-hold.** When the evidence is
+weak, the system falls back to the baseline instead of losing money on noise. In the 3 markets
+where it did fund strategies on strong evidence, it lost twice (−7.8% and −1.7%) and won once (+2.0%).
+
+One more number is shown but must not be acted on: on the Alpaca held-out period, the defensive
+overlay alone made +15.8% against +12.4%. Selection had rejected it on train and validation.
+Promoting it now would be choosing parameters with the test set.
+
+Files: `benchmarks/results/coordinated_eval_seeds_101_110.json`,
+`benchmarks/results/coordinated_eval_alpaca.json`, and `data/manifests/coordinated_evaluation.json`
+(shown on the Coordinator page).
+
+```bash
+uv run python -m hellabandz.trading.evaluate --seeds 101-110     # about 2 min per market
+uv run python -m hellabandz.trading.evaluate --dataset data/snapshots/alpaca-sip-1hour-2023-01-03-2026-09-30
+```
+
+## Live sessions, external venues, restart
+
+- **Live:** Run page → "Launch coordinated session" (job kind `coordinated`). The job researches
+  the dataset if its registry is empty, then runs the coordinated runtime against the real API,
+  worker and Postgres. `trading/live.py` `ApiLedger` mirrors the worker's hash-chained events and
+  verifies the chain. Venue orders and fills use `POST /v1/venue/orders` and `/v1/venue/fills`.
+  Decisions and periodic state are posted as agent messages. `GET /v1/coordinator` serves the
+  Coordinator page.
+  - Measured on a 120-cycle Alpaca session: ledger round trip (HTTP + worker + DB) p50 4.5 ms,
+    p95 7.2 ms, p99 14.2 ms. The ledger verified with an intact chain, and there were zero
+    reconciliation breaks.
+- **External venues:** `trading/external.py` provides:
+  - a write-ahead journal (fsync before send)
+  - unknown outcomes on timeout, which block the instrument and are never resent
+  - mandatory reconcile after restart
+  - a token-bucket rate limit
+  - production refused
+
+  It is not connected to a real exchange for equities. The Kalshi demo path stays separate and
+  receives no stock strategies.
+- **Restart:** `runtime.checkpoint()` / `runtime.restore()`. A run restored at a point with
+  working orders ends with the same ledger digest and CLOB hash as an uninterrupted run (tested).
+  A live coordinated job is not resumed after a manager restart; on start it cancels any paper
+  orders the ledger still holds, because the old process's book is gone.
+
+## Still not done
+
+- **Netting across portfolios:** each portfolio has its own coordinator, so nothing nets across portfolios.
+- **Durable live CLOB:** the paper CLOB is in-process for a live job. A crashed live job loses its
+  book (orders are released, not filled).
+- **Evaluation breadth:** 10 markets is a small sample. The standard error is about the same size
+  as the effect.
+- **Turnover:** turnover of active strategies remains high (8–35× capital a year on validation).

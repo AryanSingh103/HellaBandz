@@ -402,3 +402,12 @@ td .link { max-width:230px; font-size:12px; }
 @media(max-width:600px){.market-hero{display:block;padding-top:24px}.market-wallet{margin-top:22px;min-width:0}.market-toolbar{align-items:flex-start;flex-direction:column}.market-tabs{width:100%}.market-tabs button{flex:1;font-size:12px;padding:10px 8px}.market-nike{padding:18px}.market-nike-icon{display:none}.market-nike button{margin-left:0}.market-comparison{padding:16px}.market-grid{grid-template-columns:1fr}.review-result .section-title{flex-wrap:wrap}.market-controls>label{flex-wrap:wrap}}
 
 .market-compare input{min-height:14px;padding:0;flex-shrink:0}.market-stats .metric>strong{overflow-wrap:anywhere}
+
+/* coordinator page */
+.coord-strip { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 14px; }
+.coord-strip .badge { display:inline-flex; align-items:center; gap:5px; }
+.coord-sentence { font-size:16px; line-height:1.5; margin:4px 0 14px; color:var(--text); }
+.coord-decision .row { flex-wrap:wrap; gap:6px; }
+.coord-depth { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; }
+.coord-depth .card { padding:10px; font-size:12px; }
+.coord-depth td { padding:2px 6px; font-family:var(--mono); }

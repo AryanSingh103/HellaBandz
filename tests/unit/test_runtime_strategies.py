@@ -78,3 +78,32 @@ def test_versions_are_stable_and_bounded():
         make_version("x", "trend", {"fast": 1000, "slow": 100}, ["SPY"])
     d = a.describe()
     assert {"hypothesis", "entry", "exit", "parameter_bounds", "failure_conditions", "cost_assumptions"} <= set(d)
+
+
+def test_regime_basket_overlay_matches_research_function(data):
+    from hellabandz.strategies import universe_weights
+    p, m = data
+    start, end = m["splits"]["test"]
+    syms = ["AAPL", "MSFT", "NVDA", "QQQ", "SPY"]
+    params = {"regime_lookback": 120, "min_reversion": 0.02, "lookback": 60, "sell_z": 1.0, "rebuy_z": 0.0}
+    s = RuntimeStrategy(make_version("r", "regime", params, syms), venue="bar_sim")
+    hist = {sym: p.history(sym, start) for sym in syms}
+    s.warm_universe({sym: (ts, h.close, h.high, h.low) for sym, (h, ts) in hist.items()})
+    g = MarketDataGateway(DataClass.SYNTHETIC, history_capacity=64)
+    seq = {}
+    groups = {}
+    for b in p.bars(start, end):
+        groups.setdefault(int(b.ts.timestamp()), []).append(b)
+    got, want = [], []
+    for k, (t, bars) in enumerate(sorted(groups.items())[:300]):
+        for b in bars:
+            seq[b.symbol] = seq.get(b.symbol, 0) + 1
+            g.publish(MarketEvent(instrument=b.symbol, venue="hist", source="fixture", data_class=DataClass.SYNTHETIC,
+                                  event_type=EventType.BAR, seq=seq[b.symbol], exchange_ts=t, receive_ts=t, open=b.open,
+                                  high=b.high, low=b.low, close=b.close, volume=b.volume))
+        g.drain()
+        got.append(next(i for i in s.on_snapshot(g.snapshot()) if i.instrument == "SPY").target_weight_bps)
+        if k % 25 == 0:
+            full = {sym: p.history(sym, t + 1) for sym in syms}
+            want.append((k, int(universe_weights(s.v.family, params, full)["SPY"][-1])))
+    assert all(got[k] == w for k, w in want), [(k, got[k], w) for k, w in want if got[k] != w]

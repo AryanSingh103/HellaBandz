@@ -87,6 +87,9 @@ def run_job(job_id: str):
                 save_analytics(result["manifest"], path)
                 progress("benchmark", count + 1, count + 1)
                 result = {"run_id": result["run_id"], "manifest_hash": result["manifest_hash"]}
+            elif job["kind"] == "coordinated":
+                from hellabandz.trading.live import run_coordinated
+                result = run_coordinated(job, path, API, api_headers, progress, stop_requested)
             else:
                 import httpx
                 from hellabandz.agents.session import Session, SessionStopped

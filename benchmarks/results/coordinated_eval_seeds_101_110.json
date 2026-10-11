@@ -1,0 +1,3164 @@
+{
+ "summary": {
+  "markets": 10,
+  "mean_excess": -0.007456,
+  "standard_error": 0.008319,
+  "ahead_in": 1,
+  "equal_in": 7
+ },
+ "reports": [
+  {
+   "dataset_id": "synthetic-1h-seed101",
+   "dataset_sha256": "92510d7bff41a40a3c099a694ab40fc6496e227259e63a045cc6466e6847115b",
+   "holdout_views": 1,
+   "holdout_untouched": true,
+   "research": {
+    "dataset_id": "synthetic-1h-seed101",
+    "dataset_sha256": "92510d7bff41a40a3c099a694ab40fc6496e227259e63a045cc6466e6847115b",
+    "universe": [
+     "AAPL",
+     "MSFT",
+     "NVDA",
+     "QQQ",
+     "SPY"
+    ],
+    "roles": [
+     {
+      "role": "trend",
+      "version": "7cb83da42f529384",
+      "family": "sma_crossover",
+      "params": {
+       "fast": 50.0,
+       "slow": 300.0
+      },
+      "accepted": false,
+      "weight": 0.0,
+      "reasons": [
+       "NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE",
+       "EDGE_BELOW_ONE_STANDARD_ERROR"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        -0.00368,
+        0.115876,
+        -0.057958
+       ],
+       "walk_forward_excess": [
+        0.126817,
+        -0.125074
+       ],
+       "out_of_sample_excess": -0.026984,
+       "validation_excess": -0.028727,
+       "validation_return": 0.235326,
+       "core_validation_return": 0.264053,
+       "validation_turnover_per_year": 6.25,
+       "evidence": {
+        "excess_t": -0.058348,
+        "alpha_t": 0.003159,
+        "beta": 0.544491,
+        "weight": 0.0
+       },
+       "candidates_tested": 4,
+       "strength_t": -0.0583
+      }
+     },
+     {
+      "role": "mean_reversion",
+      "version": "c9575ba65018c914",
+      "family": "zscore_reversion",
+      "params": {
+       "entry_z": 2.0,
+       "exit_z": 0.0,
+       "lookback": 30.0
+      },
+      "accepted": false,
+      "weight": 0.0,
+      "reasons": [
+       "EDGE_BELOW_ONE_STANDARD_ERROR"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        0.132024,
+        0.139875,
+        0.108459
+       ],
+       "walk_forward_excess": [
+        0.139875,
+        0.108459
+       ],
+       "out_of_sample_excess": 0.014112,
+       "validation_excess": -0.234222,
+       "validation_return": 0.029831,
+       "core_validation_return": 0.264053,
+       "validation_turnover_per_year": 37.52,
+       "evidence": {
+        "excess_t": 0.156196,
+        "alpha_t": 0.535884,
+        "beta": 0.248777,
+        "weight": 0.156196
+       },
+       "candidates_tested": 4,
+       "strength_t": 0.1562
+      }
+     },
+     {
+      "role": "defensive",
+      "version": "650f759094852026",
+      "family": "regime_reversion",
+      "params": {
+       "lookback": 60.0,
+       "min_reversion": 0.025,
+       "rebuy_z": -0.5,
+       "regime_lookback": 300.0,
+       "sell_z": 1.5
+      },
+      "accepted": false,
+      "weight": 0.0,
+      "reasons": [
+       "EDGE_BELOW_ONE_STANDARD_ERROR"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        0.174428,
+        0.121635,
+        0.380977
+       ],
+       "walk_forward_excess": [
+        0.096023,
+        0.304519
+       ],
+       "out_of_sample_excess": 0.016694,
+       "validation_excess": -0.383848,
+       "validation_return": -0.119795,
+       "core_validation_return": 0.264053,
+       "validation_turnover_per_year": 3.87,
+       "evidence": {
+        "excess_t": -0.04691,
+        "alpha_t": 0.020838,
+        "beta": 0.418006,
+        "weight": 0.0
+       },
+       "candidates_tested": 5,
+       "strength_t": -0.0469
+      }
+     }
+    ],
+    "seconds": 39.8
+   },
+   "sleeves": [
+    [
+     "core",
+     "b2436aa1f6b36ad8",
+     9000.0
+    ]
+   ],
+   "rows": {
+    "cash": {
+     "label": "cash",
+     "net_return": 0.0,
+     "max_drawdown": 0.0,
+     "sharpe": 0.0,
+     "turnover_x_capital": 0.0
+    },
+    "baseline_passive_core": {
+     "label": "passive core (baseline)",
+     "net_return": 0.156807,
+     "max_drawdown": 0.088488,
+     "sharpe": 1.098,
+     "turnover_x_capital": 0.773,
+     "fees": 0.835,
+     "slippage": 6.06,
+     "mean_exposure_pct": 78.5,
+     "orders": 6,
+     "fills": 6,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 5472,
+      "reduced": 2,
+      "netted": 0,
+      "deferred": 1366,
+      "rejected": 0
+     },
+     "ledger_digest": "040140eb03de4720745fc5b1ae44bd45e80997a8b86015fe1312d30cd228f9ee"
+    },
+    "alone:trend": {
+     "label": "trend alone (sma_crossover)",
+     "net_return": 0.043068,
+     "max_drawdown": 0.089202,
+     "sharpe": 0.441,
+     "turnover_x_capital": 8.582,
+     "fees": 6.86,
+     "slippage": 54.92,
+     "mean_exposure_pct": 56.1,
+     "orders": 119,
+     "fills": 119,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6181,
+      "reduced": 17,
+      "netted": 0,
+      "deferred": 642,
+      "rejected": 0
+     },
+     "ledger_digest": "80343376909472596a919f1995b5e03e7e8100fd2c918489176986106b240785",
+     "funded": false,
+     "weight": 0.0
+    },
+    "alone:mean_reversion": {
+     "label": "mean_reversion alone (zscore_reversion)",
+     "net_return": 0.104912,
+     "max_drawdown": 0.048406,
+     "sharpe": 1.816,
+     "turnover_x_capital": 32.192,
+     "fees": 30.42,
+     "slippage": 212.56,
+     "mean_exposure_pct": 18.3,
+     "orders": 209,
+     "fills": 209,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6731,
+      "reduced": 10,
+      "netted": 0,
+      "deferred": 99,
+      "rejected": 0
+     },
+     "ledger_digest": "981d65f5a7f8304103352619ec2d98895241b9c2a6e03abffb8dc701d0835bb7",
+     "funded": false,
+     "weight": 0.0
+    },
+    "alone:defensive": {
+     "label": "defensive alone (regime_reversion)",
+     "net_return": 0.066027,
+     "max_drawdown": 0.06809,
+     "sharpe": 0.584,
+     "turnover_x_capital": 18.287,
+     "fees": 17.57,
+     "slippage": 122.56,
+     "mean_exposure_pct": 62.5,
+     "orders": 121,
+     "fills": 121,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 5703,
+      "reduced": 17,
+      "netted": 0,
+      "deferred": 1120,
+      "rejected": 0
+     },
+     "ledger_digest": "5ca1d5394415d1496f7a959dd4ac36e8e9f97a9fbfb8fb687a1eef3c73bccba4",
+     "funded": false,
+     "weight": 0.0
+    },
+    "coordinated_portfolio": {
+     "label": "coordinated portfolio",
+     "net_return": 0.156807,
+     "max_drawdown": 0.088488,
+     "sharpe": 1.098,
+     "turnover_x_capital": 0.773,
+     "fees": 0.835,
+     "slippage": 6.06,
+     "mean_exposure_pct": 78.5,
+     "orders": 6,
+     "fills": 6,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 5472,
+      "reduced": 2,
+      "netted": 0,
+      "deferred": 1366,
+      "rejected": 0
+     },
+     "ledger_digest": "040140eb03de4720745fc5b1ae44bd45e80997a8b86015fe1312d30cd228f9ee"
+    }
+   },
+   "excess_vs_baseline": 0.0,
+   "sharpe_diff": 0.0,
+   "periods": [
+    {
+     "from": 1767205800,
+     "to": 1775070600,
+     "regime": "up +2.3%, normal vol 23%",
+     "portfolio": 0.015637,
+     "baseline": 0.015637,
+     "excess": 0.0
+    },
+    {
+     "from": 1775070600,
+     "to": 1782935400,
+     "regime": "up +3.7%, normal vol 24%",
+     "portfolio": 0.033446,
+     "baseline": 0.033446,
+     "excess": 0.0
+    },
+    {
+     "from": 1782935400,
+     "to": 1790800201,
+     "regime": "up +11.2%, normal vol 24%",
+     "portfolio": 0.102134,
+     "baseline": 0.102134,
+     "excess": 0.0
+    }
+   ],
+   "example_decisions": [
+    "1 agent requested a change in AAPL (core +18 lots); it approved one aggregate BUY of 18 at a limit of 99.54 within the portfolio budget.",
+    "1 agent requested a change in MSFT (core +8 lots); it approved one aggregate BUY of 8 at a limit of 212.96 within the portfolio budget.",
+    "1 agent requested a change in NVDA (core +130 lots); it approved one aggregate BUY of 130 at a limit of 13.81 within the portfolio budget.",
+    "1 agent requested a change in QQQ (core +9 lots); it approved one aggregate BUY of 3 at a limit of 190.73, limited by GROUP_CAP:us_large_cap_tech.",
+    "1 agent requested a change in SPY (core +7 lots); it approved one aggregate BUY of 7 at a limit of 242.13 within the portfolio budget."
+   ],
+   "critic": [
+    "trend was not funded (NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE, EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "mean_reversion was not funded (EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "defensive was not funded (EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "Nothing was funded, so the portfolio held the passive core and matched the baseline exactly.",
+    "Ahead of the baseline in 0 of 3 sub-periods: up +2.3%, normal vol 23%: +0.00%; up +3.7%, normal vol 24%: +0.00%; up +11.2%, normal vol 24%: +0.00%"
+   ]
+  },
+  {
+   "dataset_id": "synthetic-1h-seed102",
+   "dataset_sha256": "f890999b5893613e2d09877a2bdc5879e2a55f417ec0cee1a8e41a735a9fcfba",
+   "holdout_views": 1,
+   "holdout_untouched": true,
+   "research": {
+    "dataset_id": "synthetic-1h-seed102",
+    "dataset_sha256": "f890999b5893613e2d09877a2bdc5879e2a55f417ec0cee1a8e41a735a9fcfba",
+    "universe": [
+     "AAPL",
+     "MSFT",
+     "NVDA",
+     "QQQ",
+     "SPY"
+    ],
+    "roles": [
+     {
+      "role": "trend",
+      "version": "e9101cb2ff364b5e",
+      "family": "sma_crossover",
+      "params": {
+       "fast": 35.0,
+       "slow": 200.0
+      },
+      "accepted": false,
+      "weight": 0.0,
+      "reasons": [
+       "EDGE_BELOW_ONE_STANDARD_ERROR"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        0.092251,
+        0.094253,
+        0.212902
+       ],
+       "walk_forward_excess": [
+        0.035451,
+        0.212902
+       ],
+       "out_of_sample_excess": 0.18065,
+       "validation_excess": -0.067704,
+       "validation_return": -0.112206,
+       "core_validation_return": -0.044503,
+       "validation_turnover_per_year": 13.91,
+       "evidence": {
+        "excess_t": 1.135901,
+        "alpha_t": -0.583584,
+        "beta": 0.453661,
+        "weight": 0.0
+       },
+       "candidates_tested": 4,
+       "strength_t": -0.5836
+      }
+     },
+     {
+      "role": "mean_reversion",
+      "version": "1268e1ca76e8ec4a",
+      "family": "zscore_reversion",
+      "params": {
+       "entry_z": 2.0,
+       "exit_z": 0.0,
+       "lookback": 60.0
+      },
+      "accepted": false,
+      "weight": 0.0,
+      "reasons": [
+       "EDGE_BELOW_ONE_STANDARD_ERROR"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        0.026904,
+        0.125206,
+        0.137285
+       ],
+       "walk_forward_excess": [
+        0.125206,
+        0.137285
+       ],
+       "out_of_sample_excess": 0.346192,
+       "validation_excess": 0.083701,
+       "validation_return": 0.039198,
+       "core_validation_return": -0.044503,
+       "validation_turnover_per_year": 27.25,
+       "evidence": {
+        "excess_t": 1.905082,
+        "alpha_t": 0.621989,
+        "beta": 0.378896,
+        "weight": 0.621989
+       },
+       "candidates_tested": 4,
+       "strength_t": 0.622
+      }
+     },
+     {
+      "role": "defensive",
+      "version": "9142a72fb95a8aa6",
+      "family": "vol_target",
+      "params": {
+       "target_vol": 0.15,
+       "trend_lookback": 400.0,
+       "vol_lookback": 100.0
+      },
+      "accepted": false,
+      "weight": 0.0,
+      "reasons": [
+       "EDGE_BELOW_ONE_STANDARD_ERROR"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        0.016769,
+        0.049111,
+        0.240592
+       ],
+       "walk_forward_excess": [
+        0.049111,
+        0.240592
+       ],
+       "out_of_sample_excess": 0.246434,
+       "validation_excess": -0.043269,
+       "validation_return": -0.087772,
+       "core_validation_return": -0.044503,
+       "validation_turnover_per_year": 28.68,
+       "evidence": {
+        "excess_t": 1.233546,
+        "alpha_t": -2.047438,
+        "beta": 0.212852,
+        "weight": 0.0
+       },
+       "candidates_tested": 5,
+       "strength_t": -2.0474
+      }
+     }
+    ],
+    "seconds": 38.2
+   },
+   "sleeves": [
+    [
+     "core",
+     "b2436aa1f6b36ad8",
+     9000.0
+    ]
+   ],
+   "rows": {
+    "cash": {
+     "label": "cash",
+     "net_return": 0.0,
+     "max_drawdown": 0.0,
+     "sharpe": 0.0,
+     "turnover_x_capital": 0.0
+    },
+    "baseline_passive_core": {
+     "label": "passive core (baseline)",
+     "net_return": 0.19562,
+     "max_drawdown": 0.079851,
+     "sharpe": 1.372,
+     "turnover_x_capital": 0.756,
+     "fees": 2.24,
+     "slippage": 11.44,
+     "mean_exposure_pct": 79.0,
+     "orders": 5,
+     "fills": 5,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 5472,
+      "reduced": 1,
+      "netted": 0,
+      "deferred": 1367,
+      "rejected": 0
+     },
+     "ledger_digest": "941c2ac0eda764e522f3c74c2a99717ec659adad3e53ef2c0503aad2bb40fc35"
+    },
+    "alone:trend": {
+     "label": "trend alone (sma_crossover)",
+     "net_return": 0.080081,
+     "max_drawdown": 0.085281,
+     "sharpe": 0.836,
+     "turnover_x_capital": 10.757,
+     "fees": 21.2,
+     "slippage": 107.09,
+     "mean_exposure_pct": 53.9,
+     "orders": 109,
+     "fills": 109,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6251,
+      "reduced": 20,
+      "netted": 0,
+      "deferred": 569,
+      "rejected": 0
+     },
+     "ledger_digest": "ad968e8087f59a3a2556bdffba048ad7eb7244ab660f9ea6b434fcb9d4cc75c3",
+     "funded": false,
+     "weight": 0.0
+    },
+    "alone:mean_reversion": {
+     "label": "mean_reversion alone (zscore_reversion)",
+     "net_return": 0.001049,
+     "max_drawdown": 0.044233,
+     "sharpe": 0.054,
+     "turnover_x_capital": 13.305,
+     "fees": 41.775,
+     "slippage": 169.65,
+     "mean_exposure_pct": 15.8,
+     "orders": 92,
+     "fills": 92,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6785,
+      "reduced": 7,
+      "netted": 0,
+      "deferred": 48,
+      "rejected": 0
+     },
+     "ledger_digest": "0c3daa0acce59094512b0b9ceb5ef6d613408a92d8b984258d56ee836e783599",
+     "funded": false,
+     "weight": 0.0
+    },
+    "alone:defensive": {
+     "label": "defensive alone (vol_target)",
+     "net_return": 0.061197,
+     "max_drawdown": 0.058781,
+     "sharpe": 0.911,
+     "turnover_x_capital": 21.602,
+     "fees": 49.31,
+     "slippage": 230.13,
+     "mean_exposure_pct": 40.0,
+     "orders": 290,
+     "fills": 290,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6795,
+      "reduced": 0,
+      "netted": 0,
+      "deferred": 45,
+      "rejected": 0
+     },
+     "ledger_digest": "c80aa7caad53f287e05773c2eb87a99f44bd29a806f9a1e63edae8a6b26ca0b4",
+     "funded": false,
+     "weight": 0.0
+    },
+    "coordinated_portfolio": {
+     "label": "coordinated portfolio",
+     "net_return": 0.19562,
+     "max_drawdown": 0.079851,
+     "sharpe": 1.372,
+     "turnover_x_capital": 0.756,
+     "fees": 2.24,
+     "slippage": 11.44,
+     "mean_exposure_pct": 79.0,
+     "orders": 5,
+     "fills": 5,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 5472,
+      "reduced": 1,
+      "netted": 0,
+      "deferred": 1367,
+      "rejected": 0
+     },
+     "ledger_digest": "941c2ac0eda764e522f3c74c2a99717ec659adad3e53ef2c0503aad2bb40fc35"
+    }
+   },
+   "excess_vs_baseline": 0.0,
+   "sharpe_diff": 0.0,
+   "periods": [
+    {
+     "from": 1767205800,
+     "to": 1775070600,
+     "regime": "up +17.2%, normal vol 22%",
+     "portfolio": 0.13206,
+     "baseline": 0.13206,
+     "excess": 0.0
+    },
+    {
+     "from": 1775070600,
+     "to": 1782935400,
+     "regime": "up +8.2%, normal vol 24%",
+     "portfolio": 0.051301,
+     "baseline": 0.051301,
+     "excess": 0.0
+    },
+    {
+     "from": 1782935400,
+     "to": 1790800201,
+     "regime": "up +0.3%, normal vol 21%",
+     "portfolio": 0.004608,
+     "baseline": 0.004608,
+     "excess": 0.0
+    }
+   ],
+   "example_decisions": [
+    "1 agent requested a change in AAPL (core +30 lots); it approved one aggregate BUY of 30 at a limit of 60.14 within the portfolio budget.",
+    "1 agent requested a change in MSFT (core +10 lots); it approved one aggregate BUY of 10 at a limit of 172.01 within the portfolio budget.",
+    "1 agent requested a change in NVDA (core +396 lots); it approved one aggregate BUY of 396 at a limit of 4.56 within the portfolio budget.",
+    "1 agent requested a change in QQQ (core +11 lots); it approved one aggregate BUY of 4 at a limit of 152.32, limited by GROUP_CAP:us_large_cap_tech.",
+    "1 agent requested a change in SPY (core +8 lots); it approved one aggregate BUY of 8 at a limit of 204.16 within the portfolio budget."
+   ],
+   "critic": [
+    "trend was not funded (EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "mean_reversion was not funded (EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "defensive was not funded (EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "Nothing was funded, so the portfolio held the passive core and matched the baseline exactly.",
+    "Ahead of the baseline in 0 of 3 sub-periods: up +17.2%, normal vol 22%: +0.00%; up +8.2%, normal vol 24%: +0.00%; up +0.3%, normal vol 21%: +0.00%"
+   ]
+  },
+  {
+   "dataset_id": "synthetic-1h-seed103",
+   "dataset_sha256": "5334bcd6fb86adb2aaf902012b3a896f24b415d7e904f00302b26d727d822f85",
+   "holdout_views": 1,
+   "holdout_untouched": true,
+   "research": {
+    "dataset_id": "synthetic-1h-seed103",
+    "dataset_sha256": "5334bcd6fb86adb2aaf902012b3a896f24b415d7e904f00302b26d727d822f85",
+    "universe": [
+     "AAPL",
+     "MSFT",
+     "NVDA",
+     "QQQ",
+     "SPY"
+    ],
+    "roles": [
+     {
+      "role": "trend",
+      "version": "2edf0a3c5b5e6bd5",
+      "family": "sma_crossover",
+      "params": {
+       "fast": 100.0,
+       "slow": 500.0
+      },
+      "accepted": false,
+      "weight": 0.0,
+      "reasons": [
+       "EDGE_BELOW_ONE_STANDARD_ERROR"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        -0.201532,
+        -0.033943,
+        -0.009414
+       ],
+       "walk_forward_excess": [
+        -0.057008,
+        -0.092047
+       ],
+       "out_of_sample_excess": 0.178397,
+       "validation_excess": 0.327452,
+       "validation_return": -0.057289,
+       "core_validation_return": -0.384741,
+       "validation_turnover_per_year": 3.35,
+       "evidence": {
+        "excess_t": 1.243957,
+        "alpha_t": -1.312065,
+        "beta": 0.3482,
+        "weight": 0.0
+       },
+       "candidates_tested": 4,
+       "strength_t": -1.3121
+      }
+     },
+     {
+      "role": "mean_reversion",
+      "version": "c9575ba65018c914",
+      "family": "zscore_reversion",
+      "params": {
+       "entry_z": 2.0,
+       "exit_z": 0.0,
+       "lookback": 30.0
+      },
+      "accepted": true,
+      "weight": 0.1918,
+      "reasons": [
+       "MEETS_ALL_CRITERIA"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        -0.118653,
+        0.191039,
+        0.039586
+       ],
+       "walk_forward_excess": [
+        0.191039,
+        0.039586
+       ],
+       "out_of_sample_excess": 0.482929,
+       "validation_excess": 0.252304,
+       "validation_return": -0.132437,
+       "core_validation_return": -0.384741,
+       "validation_turnover_per_year": 27.32,
+       "evidence": {
+        "excess_t": 2.700958,
+        "alpha_t": 1.639248,
+        "beta": 0.31225,
+        "weight": 1.0
+       },
+       "candidates_tested": 4,
+       "strength_t": 1.6392
+      }
+     },
+     {
+      "role": "defensive",
+      "version": "13e75e5d426ede07",
+      "family": "regime_reversion",
+      "params": {
+       "lookback": 100.0,
+       "min_reversion": 0.015,
+       "rebuy_z": -0.5,
+       "regime_lookback": 300.0,
+       "sell_z": 1.0
+      },
+      "accepted": true,
+      "weight": 0.3,
+      "reasons": [
+       "MEETS_ALL_CRITERIA"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        -0.008743,
+        0.15845,
+        0.13766
+       ],
+       "walk_forward_excess": [
+        0.094133,
+        0.13766
+       ],
+       "out_of_sample_excess": 0.436997,
+       "validation_excess": 0.205204,
+       "validation_return": -0.179537,
+       "core_validation_return": -0.384741,
+       "validation_turnover_per_year": 1.75,
+       "evidence": {
+        "excess_t": 3.208073,
+        "alpha_t": 2.361848,
+        "beta": 0.610352,
+        "weight": 1.0
+       },
+       "candidates_tested": 5,
+       "strength_t": 2.3618
+      }
+     }
+    ],
+    "seconds": 38.2
+   },
+   "sleeves": [
+    [
+     "defensive",
+     "13e75e5d426ede07",
+     2700.0
+    ],
+    [
+     "mean_reversion",
+     "c9575ba65018c914",
+     1726.2
+    ],
+    [
+     "core",
+     "b2436aa1f6b36ad8",
+     4573.8
+    ]
+   ],
+   "rows": {
+    "cash": {
+     "label": "cash",
+     "net_return": 0.0,
+     "max_drawdown": 0.0,
+     "sharpe": 0.0,
+     "turnover_x_capital": 0.0
+    },
+    "baseline_passive_core": {
+     "label": "passive core (baseline)",
+     "net_return": 0.059395,
+     "max_drawdown": 0.196626,
+     "sharpe": 0.504,
+     "turnover_x_capital": 0.792,
+     "fees": 1.83,
+     "slippage": 10.17,
+     "mean_exposure_pct": 77.1,
+     "orders": 7,
+     "fills": 7,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 5472,
+      "reduced": 3,
+      "netted": 0,
+      "deferred": 1365,
+      "rejected": 0
+     },
+     "ledger_digest": "53c9946e862b8dd058ce6199c66ac1b62899fc45d75cb58139db7e9d2896aa2b"
+    },
+    "alone:trend": {
+     "label": "trend alone (sma_crossover)",
+     "net_return": 0.160287,
+     "max_drawdown": 0.076269,
+     "sharpe": 1.611,
+     "turnover_x_capital": 2.401,
+     "fees": 4.625,
+     "slippage": 25.07,
+     "mean_exposure_pct": 36.9,
+     "orders": 42,
+     "fills": 42,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6484,
+      "reduced": 9,
+      "netted": 0,
+      "deferred": 347,
+      "rejected": 0
+     },
+     "ledger_digest": "f57cbcdff1623d40f74a928651df9ae41fec1ef0bae21c906f8acbb0d21c32af",
+     "funded": false,
+     "weight": 0.0
+    },
+    "alone:mean_reversion": {
+     "label": "mean_reversion alone (zscore_reversion)",
+     "net_return": -0.021147,
+     "max_drawdown": 0.102347,
+     "sharpe": -0.281,
+     "turnover_x_capital": 30.163,
+     "fees": 71.98,
+     "slippage": 327.23,
+     "mean_exposure_pct": 22.8,
+     "orders": 206,
+     "fills": 206,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6679,
+      "reduced": 18,
+      "netted": 0,
+      "deferred": 143,
+      "rejected": 0
+     },
+     "ledger_digest": "30b2043f505dbb0aabbbf505b1d73e74dc03422713fdc031dcf653b6c5a05fdf",
+     "funded": true,
+     "weight": 0.1918
+    },
+    "alone:defensive": {
+     "label": "defensive alone (regime_reversion)",
+     "net_return": -0.13025,
+     "max_drawdown": 0.173869,
+     "sharpe": -2.024,
+     "turnover_x_capital": 1.455,
+     "fees": 3.66,
+     "slippage": 16.35,
+     "mean_exposure_pct": 19.3,
+     "orders": 12,
+     "fills": 12,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 2643,
+      "reduced": 3,
+      "netted": 0,
+      "deferred": 4194,
+      "rejected": 0
+     },
+     "ledger_digest": "e7de1bd717059533da0c30d3f332ae3baa03f48100e07c6c0ed01dca13c73865",
+     "funded": true,
+     "weight": 0.3
+    },
+    "coordinated_portfolio": {
+     "label": "coordinated portfolio",
+     "net_return": -0.018551,
+     "max_drawdown": 0.160454,
+     "sharpe": -0.148,
+     "turnover_x_capital": 2.249,
+     "fees": 6.485,
+     "slippage": 28.1,
+     "mean_exposure_pct": 48.8,
+     "orders": 74,
+     "fills": 74,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 15391,
+      "reduced": 15,
+      "netted": 2,
+      "deferred": 5112,
+      "rejected": 0
+     },
+     "ledger_digest": "c54897375e8c7f6f870ff35d4d58b4d02ccbd08e09baa26738a1b5a570a79f80"
+    }
+   },
+   "excess_vs_baseline": -0.077946,
+   "sharpe_diff": -0.652,
+   "periods": [
+    {
+     "from": 1767205800,
+     "to": 1775070600,
+     "regime": "down -16.6%, normal vol 22%",
+     "portfolio": -0.123966,
+     "baseline": -0.137662,
+     "excess": 0.013695
+    },
+    {
+     "from": 1775070600,
+     "to": 1782935400,
+     "regime": "up +9.8%, normal vol 24%",
+     "portfolio": 0.036801,
+     "baseline": 0.070272,
+     "excess": -0.033471
+    },
+    {
+     "from": 1782935400,
+     "to": 1790800201,
+     "regime": "up +20.6%, normal vol 24%",
+     "portfolio": 0.080567,
+     "baseline": 0.147853,
+     "excess": -0.067286
+    }
+   ],
+   "example_decisions": [
+    "2 agents requested a change in AAPL (core +15, defensive +8 lots); it approved one aggregate BUY of 23 at a limit of 60.84 within the portfolio budget.",
+    "3 agents requested a change in MSFT (core +6, defensive +3, mean_reversion +2 lots); it approved one aggregate BUY of 11 at a limit of 139.39 within the portfolio budget.",
+    "3 agents requested a change in NVDA (core +159, defensive +93, mean_reversion +60 lots); it approved one aggregate BUY of 312 at a limit of 5.77 within the portfolio budget.",
+    "3 agents requested a change in QQQ (core +4, defensive +2, mean_reversion +1 lots); it approved one aggregate BUY of 6 at a limit of 208.63, limited by GROUP_CAP:us_large_cap_tech.",
+    "3 agents requested a change in SPY (core +3, defensive +2, mean_reversion +1 lots); it approved one aggregate BUY of 6 at a limit of 240.19 within the portfolio budget."
+   ],
+   "critic": [
+    "trend was not funded (EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "mean_reversion trades 27.32x capital a year; a wider rebalance band may keep the edge at lower cost.",
+    "The coordinated portfolio trailed the passive core by -7.79% on the held-out period.",
+    "Ahead of the baseline in 1 of 3 sub-periods: down -16.6%, normal vol 22%: +1.37%; up +9.8%, normal vol 24%: -3.35%; up +20.6%, normal vol 24%: -6.73%"
+   ]
+  },
+  {
+   "dataset_id": "synthetic-1h-seed104",
+   "dataset_sha256": "75eb43d2427486aa58d8a91c13362f77a939fce28357ab2f1949bb340dc4ea34",
+   "holdout_views": 1,
+   "holdout_untouched": true,
+   "research": {
+    "dataset_id": "synthetic-1h-seed104",
+    "dataset_sha256": "75eb43d2427486aa58d8a91c13362f77a939fce28357ab2f1949bb340dc4ea34",
+    "universe": [
+     "AAPL",
+     "MSFT",
+     "NVDA",
+     "QQQ",
+     "SPY"
+    ],
+    "roles": [
+     {
+      "role": "trend",
+      "version": "2edf0a3c5b5e6bd5",
+      "family": "sma_crossover",
+      "params": {
+       "fast": 100.0,
+       "slow": 500.0
+      },
+      "accepted": false,
+      "weight": 0.0,
+      "reasons": [
+       "EDGE_BELOW_ONE_STANDARD_ERROR"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        0.056937,
+        0.200409,
+        -0.094107
+       ],
+       "walk_forward_excess": [
+        0.200409,
+        -0.094107
+       ],
+       "out_of_sample_excess": 0.102266,
+       "validation_excess": -0.004036,
+       "validation_return": 0.157934,
+       "core_validation_return": 0.161971,
+       "validation_turnover_per_year": 3.92,
+       "evidence": {
+        "excess_t": 0.772251,
+        "alpha_t": 0.845246,
+        "beta": 0.550803,
+        "weight": 0.772251
+       },
+       "candidates_tested": 4,
+       "strength_t": 0.7723
+      }
+     },
+     {
+      "role": "mean_reversion",
+      "version": "c9575ba65018c914",
+      "family": "zscore_reversion",
+      "params": {
+       "entry_z": 2.0,
+       "exit_z": 0.0,
+       "lookback": 30.0
+      },
+      "accepted": false,
+      "weight": 0.0,
+      "reasons": [
+       "EDGE_BELOW_ONE_STANDARD_ERROR"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        0.056866,
+        0.236549,
+        -0.027055
+       ],
+       "walk_forward_excess": [
+        0.147221,
+        -0.027055
+       ],
+       "out_of_sample_excess": 0.054021,
+       "validation_excess": -0.066145,
+       "validation_return": 0.095826,
+       "core_validation_return": 0.161971,
+       "validation_turnover_per_year": 40.93,
+       "evidence": {
+        "excess_t": 0.324996,
+        "alpha_t": 0.142829,
+        "beta": 0.301299,
+        "weight": 0.142829
+       },
+       "candidates_tested": 4,
+       "strength_t": 0.1428
+      }
+     },
+     {
+      "role": "defensive",
+      "version": "f108f0624caba4d0",
+      "family": "regime_reversion",
+      "params": {
+       "lookback": 60.0,
+       "min_reversion": 0.015,
+       "rebuy_z": 0.0,
+       "regime_lookback": 200.0,
+       "sell_z": 1.0
+      },
+      "accepted": false,
+      "weight": 0.0,
+      "reasons": [
+       "EDGE_BELOW_ONE_STANDARD_ERROR"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        0.138108,
+        0.192315,
+        -0.118494
+       ],
+       "walk_forward_excess": [
+        0.192315,
+        -0.118494
+       ],
+       "out_of_sample_excess": 0.118789,
+       "validation_excess": 0.044968,
+       "validation_return": 0.206938,
+       "core_validation_return": 0.161971,
+       "validation_turnover_per_year": 48.92,
+       "evidence": {
+        "excess_t": 0.793168,
+        "alpha_t": 0.794568,
+        "beta": 0.590003,
+        "weight": 0.793168
+       },
+       "candidates_tested": 5,
+       "strength_t": 0.7932
+      }
+     }
+    ],
+    "seconds": 38.6
+   },
+   "sleeves": [
+    [
+     "core",
+     "b2436aa1f6b36ad8",
+     9000.0
+    ]
+   ],
+   "rows": {
+    "cash": {
+     "label": "cash",
+     "net_return": 0.0,
+     "max_drawdown": 0.0,
+     "sharpe": 0.0,
+     "turnover_x_capital": 0.0
+    },
+    "baseline_passive_core": {
+     "label": "passive core (baseline)",
+     "net_return": -0.168391,
+     "max_drawdown": 0.18301,
+     "sharpe": -1.283,
+     "turnover_x_capital": 0.802,
+     "fees": 0.84,
+     "slippage": 6.29,
+     "mean_exposure_pct": 77.5,
+     "orders": 7,
+     "fills": 7,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 5472,
+      "reduced": 3,
+      "netted": 0,
+      "deferred": 1365,
+      "rejected": 0
+     },
+     "ledger_digest": "bf168aca0fe56452fb0b1f181537e4ad08e55f7e402c22b63ce1e4f360cf40a4"
+    },
+    "alone:trend": {
+     "label": "trend alone (sma_crossover)",
+     "net_return": -0.152775,
+     "max_drawdown": 0.164693,
+     "sharpe": -2.179,
+     "turnover_x_capital": 4.651,
+     "fees": 6.33,
+     "slippage": 35.95,
+     "mean_exposure_pct": 32.2,
+     "orders": 41,
+     "fills": 41,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6638,
+      "reduced": 3,
+      "netted": 0,
+      "deferred": 199,
+      "rejected": 0
+     },
+     "ledger_digest": "fdbbbbdce0de40124995991305f7c29f4cbab460407ebfd1c4a82dbcdba0d28c",
+     "funded": false,
+     "weight": 0.0
+    },
+    "alone:mean_reversion": {
+     "label": "mean_reversion alone (zscore_reversion)",
+     "net_return": -0.109112,
+     "max_drawdown": 0.132813,
+     "sharpe": -1.53,
+     "turnover_x_capital": 32.26,
+     "fees": 34.755,
+     "slippage": 231.96,
+     "mean_exposure_pct": 26.7,
+     "orders": 212,
+     "fills": 212,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6660,
+      "reduced": 14,
+      "netted": 0,
+      "deferred": 166,
+      "rejected": 0
+     },
+     "ledger_digest": "5cda535114c523e2ba6902f1980d993c550476d3d83de7e904814a235ec95c2b",
+     "funded": false,
+     "weight": 0.0
+    },
+    "alone:defensive": {
+     "label": "defensive alone (regime_reversion)",
+     "net_return": -0.115679,
+     "max_drawdown": 0.166665,
+     "sharpe": -0.961,
+     "turnover_x_capital": 37.197,
+     "fees": 51.0,
+     "slippage": 288.34,
+     "mean_exposure_pct": 55.8,
+     "orders": 251,
+     "fills": 251,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 5770,
+      "reduced": 31,
+      "netted": 0,
+      "deferred": 1039,
+      "rejected": 0
+     },
+     "ledger_digest": "05282098fb853e3f765f6c99bdc8d031012453e25bb644d5dca5b65c305ff24c",
+     "funded": false,
+     "weight": 0.0
+    },
+    "coordinated_portfolio": {
+     "label": "coordinated portfolio",
+     "net_return": -0.168391,
+     "max_drawdown": 0.18301,
+     "sharpe": -1.283,
+     "turnover_x_capital": 0.802,
+     "fees": 0.84,
+     "slippage": 6.29,
+     "mean_exposure_pct": 77.5,
+     "orders": 7,
+     "fills": 7,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 5472,
+      "reduced": 3,
+      "netted": 0,
+      "deferred": 1365,
+      "rejected": 0
+     },
+     "ledger_digest": "bf168aca0fe56452fb0b1f181537e4ad08e55f7e402c22b63ce1e4f360cf40a4"
+    }
+   },
+   "excess_vs_baseline": 0.0,
+   "sharpe_diff": 0.0,
+   "periods": [
+    {
+     "from": 1767205800,
+     "to": 1775070600,
+     "regime": "down -9.2%, normal vol 24%",
+     "portfolio": -0.074118,
+     "baseline": -0.074118,
+     "excess": 0.0
+    },
+    {
+     "from": 1775070600,
+     "to": 1782935400,
+     "regime": "down -5.6%, normal vol 22%",
+     "portfolio": -0.031275,
+     "baseline": -0.031275,
+     "excess": 0.0
+    },
+    {
+     "from": 1782935400,
+     "to": 1790800201,
+     "regime": "down -8.1%, normal vol 23%",
+     "portfolio": -0.072822,
+     "baseline": -0.072822,
+     "excess": 0.0
+    }
+   ],
+   "example_decisions": [
+    "1 agent requested a change in AAPL (core +20 lots); it approved one aggregate BUY of 20 at a limit of 86.85 within the portfolio budget.",
+    "1 agent requested a change in MSFT (core +9 lots); it approved one aggregate BUY of 9 at a limit of 200.56 within the portfolio budget.",
+    "1 agent requested a change in NVDA (core +128 lots); it approved one aggregate BUY of 128 at a limit of 14.04 within the portfolio budget.",
+    "1 agent requested a change in QQQ (core +8 lots); it approved one aggregate BUY of 3 at a limit of 207.02, limited by GROUP_CAP:us_large_cap_tech.",
+    "1 agent requested a change in SPY (core +6 lots); it approved one aggregate BUY of 6 at a limit of 283.04 within the portfolio budget."
+   ],
+   "critic": [
+    "trend was not funded (EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "mean_reversion was not funded (EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "defensive was not funded (EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "Nothing was funded, so the portfolio held the passive core and matched the baseline exactly.",
+    "Ahead of the baseline in 0 of 3 sub-periods: down -9.2%, normal vol 24%: +0.00%; down -5.6%, normal vol 22%: +0.00%; down -8.1%, normal vol 23%: +0.00%"
+   ]
+  },
+  {
+   "dataset_id": "synthetic-1h-seed105",
+   "dataset_sha256": "d349bc22bb5a28e1da438e438853fd6a3ccf188358ea204e43d1c5b18c68e083",
+   "holdout_views": 1,
+   "holdout_untouched": true,
+   "research": {
+    "dataset_id": "synthetic-1h-seed105",
+    "dataset_sha256": "d349bc22bb5a28e1da438e438853fd6a3ccf188358ea204e43d1c5b18c68e083",
+    "universe": [
+     "AAPL",
+     "MSFT",
+     "NVDA",
+     "QQQ",
+     "SPY"
+    ],
+    "roles": [
+     {
+      "role": "trend",
+      "version": "2edf0a3c5b5e6bd5",
+      "family": "sma_crossover",
+      "params": {
+       "fast": 100.0,
+       "slow": 500.0
+      },
+      "accepted": false,
+      "weight": 0.0,
+      "reasons": [
+       "NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE",
+       "EDGE_BELOW_ONE_STANDARD_ERROR"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        -0.097442,
+        -0.080129,
+        -0.048104
+       ],
+       "walk_forward_excess": [
+        -0.080129,
+        -0.109528
+       ],
+       "out_of_sample_excess": -0.350924,
+       "validation_excess": -0.161267,
+       "validation_return": 0.066604,
+       "core_validation_return": 0.227871,
+       "validation_turnover_per_year": 8.73,
+       "evidence": {
+        "excess_t": -2.453227,
+        "alpha_t": -2.006321,
+        "beta": 0.635218,
+        "weight": 0.0
+       },
+       "candidates_tested": 4,
+       "strength_t": -2.4532
+      }
+     },
+     {
+      "role": "mean_reversion",
+      "version": "1268e1ca76e8ec4a",
+      "family": "zscore_reversion",
+      "params": {
+       "entry_z": 2.0,
+       "exit_z": 0.0,
+       "lookback": 60.0
+      },
+      "accepted": false,
+      "weight": 0.0,
+      "reasons": [
+       "NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE",
+       "EDGE_BELOW_ONE_STANDARD_ERROR"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        0.032134,
+        0.024996,
+        0.089316
+       ],
+       "walk_forward_excess": [
+        -0.030963,
+        0.089316
+       ],
+       "out_of_sample_excess": -0.078234,
+       "validation_excess": -0.136586,
+       "validation_return": 0.091284,
+       "core_validation_return": 0.227871,
+       "validation_turnover_per_year": 24.68,
+       "evidence": {
+        "excess_t": -0.432983,
+        "alpha_t": 2.685446,
+        "beta": 0.218887,
+        "weight": 0.0
+       },
+       "candidates_tested": 4,
+       "strength_t": -0.433
+      }
+     },
+     {
+      "role": "defensive",
+      "version": "13e75e5d426ede07",
+      "family": "regime_reversion",
+      "params": {
+       "lookback": 100.0,
+       "min_reversion": 0.015,
+       "rebuy_z": -0.5,
+       "regime_lookback": 300.0,
+       "sell_z": 1.0
+      },
+      "accepted": false,
+      "weight": 0.0,
+      "reasons": [
+       "EDGE_BELOW_ONE_STANDARD_ERROR"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        0.086015,
+        0.058861,
+        0.119916
+       ],
+       "walk_forward_excess": [
+        0.058861,
+        0.048223
+       ],
+       "out_of_sample_excess": 0.068639,
+       "validation_excess": -0.038446,
+       "validation_return": 0.189425,
+       "core_validation_return": 0.227871,
+       "validation_turnover_per_year": 32.91,
+       "evidence": {
+        "excess_t": 0.314726,
+        "alpha_t": 1.536282,
+        "beta": 0.65595,
+        "weight": 0.314726
+       },
+       "candidates_tested": 5,
+       "strength_t": 0.3147
+      }
+     }
+    ],
+    "seconds": 39.7
+   },
+   "sleeves": [
+    [
+     "core",
+     "b2436aa1f6b36ad8",
+     9000.0
+    ]
+   ],
+   "rows": {
+    "cash": {
+     "label": "cash",
+     "net_return": 0.0,
+     "max_drawdown": 0.0,
+     "sharpe": 0.0,
+     "turnover_x_capital": 0.0
+    },
+    "baseline_passive_core": {
+     "label": "passive core (baseline)",
+     "net_return": 0.096406,
+     "max_drawdown": 0.186691,
+     "sharpe": 0.723,
+     "turnover_x_capital": 0.77,
+     "fees": 0.29,
+     "slippage": 4.86,
+     "mean_exposure_pct": 78.7,
+     "orders": 6,
+     "fills": 6,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 5472,
+      "reduced": 1,
+      "netted": 0,
+      "deferred": 1367,
+      "rejected": 0
+     },
+     "ledger_digest": "54adffcae7811917d0cfaa8bb346c5a978d1ab0081a292891c8d05b44f3e84e0"
+    },
+    "alone:trend": {
+     "label": "trend alone (sma_crossover)",
+     "net_return": 0.113041,
+     "max_drawdown": 0.086997,
+     "sharpe": 1.017,
+     "turnover_x_capital": 4.049,
+     "fees": 1.04,
+     "slippage": 22.62,
+     "mean_exposure_pct": 57.8,
+     "orders": 64,
+     "fills": 64,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6236,
+      "reduced": 6,
+      "netted": 0,
+      "deferred": 598,
+      "rejected": 0
+     },
+     "ledger_digest": "3396015d338905f2c2b66219526454b9ced1f4e189617b259531825dc4d0709d",
+     "funded": false,
+     "weight": 0.0
+    },
+    "alone:mean_reversion": {
+     "label": "mean_reversion alone (zscore_reversion)",
+     "net_return": 0.053793,
+     "max_drawdown": 0.063181,
+     "sharpe": 0.898,
+     "turnover_x_capital": 16.358,
+     "fees": 6.32,
+     "slippage": 94.29,
+     "mean_exposure_pct": 17.9,
+     "orders": 118,
+     "fills": 118,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6698,
+      "reduced": 7,
+      "netted": 0,
+      "deferred": 135,
+      "rejected": 0
+     },
+     "ledger_digest": "c51ee23c819e765f678ea6aec99db9cf25fddf689b70329af28240182fdf7f25",
+     "funded": false,
+     "weight": 0.0
+    },
+    "alone:defensive": {
+     "label": "defensive alone (regime_reversion)",
+     "net_return": 0.084723,
+     "max_drawdown": 0.132956,
+     "sharpe": 0.746,
+     "turnover_x_capital": 17.555,
+     "fees": 5.705,
+     "slippage": 99.9,
+     "mean_exposure_pct": 60.3,
+     "orders": 116,
+     "fills": 116,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6095,
+      "reduced": 10,
+      "netted": 0,
+      "deferred": 735,
+      "rejected": 0
+     },
+     "ledger_digest": "11840753309384b2b8dcfcdaf75baccef6b7e213f770a9050dd4ffd3645d0432",
+     "funded": false,
+     "weight": 0.0
+    },
+    "coordinated_portfolio": {
+     "label": "coordinated portfolio",
+     "net_return": 0.096406,
+     "max_drawdown": 0.186691,
+     "sharpe": 0.723,
+     "turnover_x_capital": 0.77,
+     "fees": 0.29,
+     "slippage": 4.86,
+     "mean_exposure_pct": 78.7,
+     "orders": 6,
+     "fills": 6,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 5472,
+      "reduced": 1,
+      "netted": 0,
+      "deferred": 1367,
+      "rejected": 0
+     },
+     "ledger_digest": "54adffcae7811917d0cfaa8bb346c5a978d1ab0081a292891c8d05b44f3e84e0"
+    }
+   },
+   "excess_vs_baseline": 0.0,
+   "sharpe_diff": 0.0,
+   "periods": [
+    {
+     "from": 1767205800,
+     "to": 1775070600,
+     "regime": "up +8.4%, normal vol 22%",
+     "portfolio": 0.067544,
+     "baseline": 0.067544,
+     "excess": 0.0
+    },
+    {
+     "from": 1775070600,
+     "to": 1782935400,
+     "regime": "up +16.5%, normal vol 25%",
+     "portfolio": 0.142346,
+     "baseline": 0.142346,
+     "excess": 0.0
+    },
+    {
+     "from": 1782935400,
+     "to": 1790800201,
+     "regime": "down -10.1%, normal vol 23%",
+     "portfolio": -0.100942,
+     "baseline": -0.100942,
+     "excess": 0.0
+    }
+   ],
+   "example_decisions": [
+    "1 agent requested a change in AAPL (core +6 lots); it approved one aggregate BUY of 6 at a limit of 266.37 within the portfolio budget.",
+    "1 agent requested a change in MSFT (core +4 lots); it approved one aggregate BUY of 4 at a limit of 376.86 within the portfolio budget.",
+    "1 agent requested a change in NVDA (core +41 lots); it approved one aggregate BUY of 41 at a limit of 43.33 within the portfolio budget.",
+    "1 agent requested a change in QQQ (core +5 lots); it approved one aggregate BUY of 3 at a limit of 343.00, limited by GROUP_CAP:us_large_cap_tech.",
+    "1 agent requested a change in SPY (core +3 lots); it approved one aggregate BUY of 3 at a limit of 456.90 within the portfolio budget."
+   ],
+   "critic": [
+    "trend was not funded (NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE, EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "mean_reversion was not funded (NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE, EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "defensive was not funded (EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "Nothing was funded, so the portfolio held the passive core and matched the baseline exactly.",
+    "Ahead of the baseline in 0 of 3 sub-periods: up +8.4%, normal vol 22%: +0.00%; up +16.5%, normal vol 25%: +0.00%; down -10.1%, normal vol 23%: +0.00%"
+   ]
+  },
+  {
+   "dataset_id": "synthetic-1h-seed106",
+   "dataset_sha256": "e9fcd8c2454bfbee12dc21df1bc9e79810d75c137ad55a72bfe5be3a7c53edf9",
+   "holdout_views": 1,
+   "holdout_untouched": true,
+   "research": {
+    "dataset_id": "synthetic-1h-seed106",
+    "dataset_sha256": "e9fcd8c2454bfbee12dc21df1bc9e79810d75c137ad55a72bfe5be3a7c53edf9",
+    "universe": [
+     "AAPL",
+     "MSFT",
+     "NVDA",
+     "QQQ",
+     "SPY"
+    ],
+    "roles": [
+     {
+      "role": "trend",
+      "version": "2edf0a3c5b5e6bd5",
+      "family": "sma_crossover",
+      "params": {
+       "fast": 100.0,
+       "slow": 500.0
+      },
+      "accepted": false,
+      "weight": 0.0,
+      "reasons": [
+       "NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE",
+       "EDGE_BELOW_ONE_STANDARD_ERROR"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        -0.054059,
+        0.080388,
+        -0.029617
+       ],
+       "walk_forward_excess": [
+        0.025035,
+        -0.029617
+       ],
+       "out_of_sample_excess": -0.088274,
+       "validation_excess": -0.083692,
+       "validation_return": 0.144364,
+       "core_validation_return": 0.228056,
+       "validation_turnover_per_year": 5.95,
+       "evidence": {
+        "excess_t": -0.561,
+        "alpha_t": 0.375929,
+        "beta": 0.540473,
+        "weight": 0.0
+       },
+       "candidates_tested": 4,
+       "strength_t": -0.561
+      }
+     },
+     {
+      "role": "mean_reversion",
+      "version": "c9575ba65018c914",
+      "family": "zscore_reversion",
+      "params": {
+       "entry_z": 2.0,
+       "exit_z": 0.0,
+       "lookback": 30.0
+      },
+      "accepted": false,
+      "weight": 0.0,
+      "reasons": [
+       "EDGE_BELOW_ONE_STANDARD_ERROR"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        0.127887,
+        0.27106,
+        -0.127299
+       ],
+       "walk_forward_excess": [
+        0.27106,
+        -0.127299
+       ],
+       "out_of_sample_excess": 0.011125,
+       "validation_excess": -0.132635,
+       "validation_return": 0.095421,
+       "core_validation_return": 0.228056,
+       "validation_turnover_per_year": 37.26,
+       "evidence": {
+        "excess_t": 0.013018,
+        "alpha_t": 2.497548,
+        "beta": 0.232185,
+        "weight": 0.013018
+       },
+       "candidates_tested": 4,
+       "strength_t": 0.013
+      }
+     },
+     {
+      "role": "defensive",
+      "version": "13e75e5d426ede07",
+      "family": "regime_reversion",
+      "params": {
+       "lookback": 100.0,
+       "min_reversion": 0.015,
+       "rebuy_z": -0.5,
+       "regime_lookback": 300.0,
+       "sell_z": 1.0
+      },
+      "accepted": true,
+      "weight": 0.3,
+      "reasons": [
+       "MEETS_ALL_CRITERIA"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        0.139533,
+        0.258848,
+        0.141022
+       ],
+       "walk_forward_excess": [
+        0.242791,
+        0.141022
+       ],
+       "out_of_sample_excess": 0.402335,
+       "validation_excess": 0.018522,
+       "validation_return": 0.246579,
+       "core_validation_return": 0.228056,
+       "validation_turnover_per_year": 22.55,
+       "evidence": {
+        "excess_t": 2.827578,
+        "alpha_t": 3.966764,
+        "beta": 0.756676,
+        "weight": 1.0
+       },
+       "candidates_tested": 5,
+       "strength_t": 2.8276
+      }
+     }
+    ],
+    "seconds": 38.9
+   },
+   "sleeves": [
+    [
+     "defensive",
+     "13e75e5d426ede07",
+     2700.0
+    ],
+    [
+     "core",
+     "b2436aa1f6b36ad8",
+     6300.0
+    ]
+   ],
+   "rows": {
+    "cash": {
+     "label": "cash",
+     "net_return": 0.0,
+     "max_drawdown": 0.0,
+     "sharpe": 0.0,
+     "turnover_x_capital": 0.0
+    },
+    "baseline_passive_core": {
+     "label": "passive core (baseline)",
+     "net_return": 0.486417,
+     "max_drawdown": 0.120248,
+     "sharpe": 2.765,
+     "turnover_x_capital": 0.734,
+     "fees": 0.615,
+     "slippage": 5.14,
+     "mean_exposure_pct": 76.6,
+     "orders": 6,
+     "fills": 6,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 5472,
+      "reduced": 2,
+      "netted": 0,
+      "deferred": 1366,
+      "rejected": 0
+     },
+     "ledger_digest": "b75ff2206658c66fb27f90e111209d6c734aa2fbdaf042fb654e0184f1a31134"
+    },
+    "alone:trend": {
+     "label": "trend alone (sma_crossover)",
+     "net_return": 0.371278,
+     "max_drawdown": 0.060169,
+     "sharpe": 2.76,
+     "turnover_x_capital": 3.592,
+     "fees": 2.25,
+     "slippage": 23.16,
+     "mean_exposure_pct": 60.1,
+     "orders": 70,
+     "fills": 70,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6549,
+      "reduced": 3,
+      "netted": 0,
+      "deferred": 288,
+      "rejected": 0
+     },
+     "ledger_digest": "4a4c9c72d3dd1c75d7b55f1c31b48b958c3571f4b055a2dacd0ce1cdd9657a86",
+     "funded": false,
+     "weight": 0.0
+    },
+    "alone:mean_reversion": {
+     "label": "mean_reversion alone (zscore_reversion)",
+     "net_return": 0.126076,
+     "max_drawdown": 0.043899,
+     "sharpe": 2.263,
+     "turnover_x_capital": 27.72,
+     "fees": 20.015,
+     "slippage": 186.91,
+     "mean_exposure_pct": 15.4,
+     "orders": 186,
+     "fills": 186,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6750,
+      "reduced": 9,
+      "netted": 0,
+      "deferred": 81,
+      "rejected": 0
+     },
+     "ledger_digest": "204c4c6fa5f07ba8e342678e8649bebc8cc94b42bd59be26f841a68848653bea",
+     "funded": false,
+     "weight": 0.0
+    },
+    "alone:defensive": {
+     "label": "defensive alone (regime_reversion)",
+     "net_return": 0.41745,
+     "max_drawdown": 0.062114,
+     "sharpe": 2.991,
+     "turnover_x_capital": 22.94,
+     "fees": 15.085,
+     "slippage": 151.69,
+     "mean_exposure_pct": 57.5,
+     "orders": 147,
+     "fills": 147,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6402,
+      "reduced": 8,
+      "netted": 0,
+      "deferred": 430,
+      "rejected": 0
+     },
+     "ledger_digest": "6978ffac2e2cfb2501766c063b067a4164fe9933fa0fdec5dd99fcd09a3b54a5",
+     "funded": true,
+     "weight": 0.3
+    },
+    "coordinated_portfolio": {
+     "label": "coordinated portfolio",
+     "net_return": 0.469359,
+     "max_drawdown": 0.101773,
+     "sharpe": 2.931,
+     "turnover_x_capital": 3.599,
+     "fees": 2.625,
+     "slippage": 23.89,
+     "mean_exposure_pct": 71.8,
+     "orders": 93,
+     "fills": 93,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 11419,
+      "reduced": 25,
+      "netted": 0,
+      "deferred": 2236,
+      "rejected": 0
+     },
+     "ledger_digest": "2b51f43f744c24f954bf91452d1b0ca7ae97e0233c6e8fb686c1d0ee91313562"
+    }
+   },
+   "excess_vs_baseline": -0.017057,
+   "sharpe_diff": 0.166,
+   "periods": [
+    {
+     "from": 1767205800,
+     "to": 1775070600,
+     "regime": "up +14.8%, normal vol 24%",
+     "portfolio": 0.10681,
+     "baseline": 0.106594,
+     "excess": 0.000216
+    },
+    {
+     "from": 1775070600,
+     "to": 1782935400,
+     "regime": "up +2.3%, normal vol 23%",
+     "portfolio": 0.021906,
+     "baseline": 0.012723,
+     "excess": 0.009183
+    },
+    {
+     "from": 1782935400,
+     "to": 1790800201,
+     "regime": "up +42.3%, normal vol 24%",
+     "portfolio": 0.299105,
+     "baseline": 0.32636,
+     "excess": -0.027255
+    }
+   ],
+   "example_decisions": [
+    "2 agents requested a change in AAPL (core +5, defensive +2 lots); it approved one aggregate BUY of 7 at a limit of 250.93 within the portfolio budget.",
+    "2 agents requested a change in MSFT (core +5, defensive +2 lots); it approved one aggregate BUY of 7 at a limit of 229.60 within the portfolio budget.",
+    "2 agents requested a change in NVDA (core +73, defensive +31 lots); it approved one aggregate BUY of 104 at a limit of 17.23 within the portfolio budget.",
+    "2 agents requested a change in QQQ (core +3, defensive +1 lots); it approved one aggregate BUY of 2 at a limit of 318.74, limited by GROUP_CAP:us_large_cap_tech.",
+    "1 agent requested a change in SPY (core +2 lots); it approved one aggregate BUY of 2 at a limit of 631.41 within the portfolio budget."
+   ],
+   "critic": [
+    "trend was not funded (NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE, EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "mean_reversion was not funded (EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "defensive trades 22.55x capital a year; a wider rebalance band may keep the edge at lower cost.",
+    "The coordinated portfolio trailed the passive core by -1.71% on the held-out period.",
+    "Ahead of the baseline in 2 of 3 sub-periods: up +14.8%, normal vol 24%: +0.02%; up +2.3%, normal vol 23%: +0.92%; up +42.3%, normal vol 24%: -2.73%"
+   ]
+  },
+  {
+   "dataset_id": "synthetic-1h-seed107",
+   "dataset_sha256": "7ff23dc50ecc7ae636867459774b3f52abb51ec130a173d15c118905a00f38da",
+   "holdout_views": 1,
+   "holdout_untouched": true,
+   "research": {
+    "dataset_id": "synthetic-1h-seed107",
+    "dataset_sha256": "7ff23dc50ecc7ae636867459774b3f52abb51ec130a173d15c118905a00f38da",
+    "universe": [
+     "AAPL",
+     "MSFT",
+     "NVDA",
+     "QQQ",
+     "SPY"
+    ],
+    "roles": [
+     {
+      "role": "trend",
+      "version": "7cb83da42f529384",
+      "family": "sma_crossover",
+      "params": {
+       "fast": 50.0,
+       "slow": 300.0
+      },
+      "accepted": false,
+      "weight": 0.0,
+      "reasons": [
+       "NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE",
+       "EDGE_BELOW_ONE_STANDARD_ERROR"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        -0.017059,
+        -0.100425,
+        0.088116
+       ],
+       "walk_forward_excess": [
+        -0.109307,
+        0.088116
+       ],
+       "out_of_sample_excess": -0.178176,
+       "validation_excess": -0.156985,
+       "validation_return": 0.32968,
+       "core_validation_return": 0.486665,
+       "validation_turnover_per_year": 8.64,
+       "evidence": {
+        "excess_t": -0.737638,
+        "alpha_t": 2.429529,
+        "beta": 0.561117,
+        "weight": 0.0
+       },
+       "candidates_tested": 4,
+       "strength_t": -0.7376
+      }
+     },
+     {
+      "role": "mean_reversion",
+      "version": "c9575ba65018c914",
+      "family": "zscore_reversion",
+      "params": {
+       "entry_z": 2.0,
+       "exit_z": 0.0,
+       "lookback": 30.0
+      },
+      "accepted": false,
+      "weight": 0.0,
+      "reasons": [
+       "NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE",
+       "EDGE_BELOW_ONE_STANDARD_ERROR"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        0.02725,
+        -0.439382,
+        0.159897
+       ],
+       "walk_forward_excess": [
+        -0.439382,
+        0.159897
+       ],
+       "out_of_sample_excess": -0.599846,
+       "validation_excess": -0.320361,
+       "validation_return": 0.166304,
+       "core_validation_return": 0.486665,
+       "validation_turnover_per_year": 37.88,
+       "evidence": {
+        "excess_t": -1.923942,
+        "alpha_t": 1.741695,
+        "beta": 0.219673,
+        "weight": 0.0
+       },
+       "candidates_tested": 4,
+       "strength_t": -1.9239
+      }
+     },
+     {
+      "role": "defensive",
+      "version": "650f759094852026",
+      "family": "regime_reversion",
+      "params": {
+       "lookback": 60.0,
+       "min_reversion": 0.025,
+       "rebuy_z": -0.5,
+       "regime_lookback": 300.0,
+       "sell_z": 1.5
+      },
+      "accepted": false,
+      "weight": 0.0,
+      "reasons": [
+       "NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE",
+       "EDGE_BELOW_ONE_STANDARD_ERROR"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        0.007803,
+        0.093387,
+        0.012499
+       ],
+       "walk_forward_excess": [
+        -0.039801,
+        0.012499
+       ],
+       "out_of_sample_excess": -0.124745,
+       "validation_excess": -0.097444,
+       "validation_return": 0.389221,
+       "core_validation_return": 0.486665,
+       "validation_turnover_per_year": 18.68,
+       "evidence": {
+        "excess_t": -0.76602,
+        "alpha_t": 0.757822,
+        "beta": 0.781025,
+        "weight": 0.0
+       },
+       "candidates_tested": 5,
+       "strength_t": -0.766
+      }
+     }
+    ],
+    "seconds": 42.4
+   },
+   "sleeves": [
+    [
+     "core",
+     "b2436aa1f6b36ad8",
+     9000.0
+    ]
+   ],
+   "rows": {
+    "cash": {
+     "label": "cash",
+     "net_return": 0.0,
+     "max_drawdown": 0.0,
+     "sharpe": 0.0,
+     "turnover_x_capital": 0.0
+    },
+    "baseline_passive_core": {
+     "label": "passive core (baseline)",
+     "net_return": -0.052633,
+     "max_drawdown": 0.157973,
+     "sharpe": -0.329,
+     "turnover_x_capital": 0.739,
+     "fees": 0.34,
+     "slippage": 4.7,
+     "mean_exposure_pct": 73.0,
+     "orders": 5,
+     "fills": 5,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 5472,
+      "reduced": 1,
+      "netted": 0,
+      "deferred": 1367,
+      "rejected": 0
+     },
+     "ledger_digest": "3e6799a794809e3835cc1ff3459cf835d427e4123f651554606f5fef3fdc4c87"
+    },
+    "alone:trend": {
+     "label": "trend alone (sma_crossover)",
+     "net_return": -0.063594,
+     "max_drawdown": 0.135781,
+     "sharpe": -0.781,
+     "turnover_x_capital": 8.543,
+     "fees": 3.655,
+     "slippage": 51.27,
+     "mean_exposure_pct": 35.5,
+     "orders": 76,
+     "fills": 76,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6571,
+      "reduced": 3,
+      "netted": 0,
+      "deferred": 266,
+      "rejected": 0
+     },
+     "ledger_digest": "df7d7304eb97b6b61d2c460932f684acd0bb32beecf665382077d196c48ec859",
+     "funded": false,
+     "weight": 0.0
+    },
+    "alone:mean_reversion": {
+     "label": "mean_reversion alone (zscore_reversion)",
+     "net_return": 0.060892,
+     "max_drawdown": 0.028832,
+     "sharpe": 1.049,
+     "turnover_x_capital": 34.358,
+     "fees": 17.365,
+     "slippage": 210.97,
+     "mean_exposure_pct": 21.7,
+     "orders": 237,
+     "fills": 237,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6769,
+      "reduced": 9,
+      "netted": 0,
+      "deferred": 62,
+      "rejected": 0
+     },
+     "ledger_digest": "2bd20a75e3cd603531a0083ae352f825cff1a460a65100d401a2f3da39d08191",
+     "funded": false,
+     "weight": 0.0
+    },
+    "alone:defensive": {
+     "label": "defensive alone (regime_reversion)",
+     "net_return": 0.037754,
+     "max_drawdown": 0.136068,
+     "sharpe": 0.397,
+     "turnover_x_capital": 21.233,
+     "fees": 10.975,
+     "slippage": 130.63,
+     "mean_exposure_pct": 55.5,
+     "orders": 148,
+     "fills": 148,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 5922,
+      "reduced": 15,
+      "netted": 0,
+      "deferred": 903,
+      "rejected": 0
+     },
+     "ledger_digest": "9de4392e5d9250619dde72368176dd33a1b53a633ad6d3d9e3eb3f9813838f36",
+     "funded": false,
+     "weight": 0.0
+    },
+    "coordinated_portfolio": {
+     "label": "coordinated portfolio",
+     "net_return": -0.052633,
+     "max_drawdown": 0.157973,
+     "sharpe": -0.329,
+     "turnover_x_capital": 0.739,
+     "fees": 0.34,
+     "slippage": 4.7,
+     "mean_exposure_pct": 73.0,
+     "orders": 5,
+     "fills": 5,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 5472,
+      "reduced": 1,
+      "netted": 0,
+      "deferred": 1367,
+      "rejected": 0
+     },
+     "ledger_digest": "3e6799a794809e3835cc1ff3459cf835d427e4123f651554606f5fef3fdc4c87"
+    }
+   },
+   "excess_vs_baseline": 0.0,
+   "sharpe_diff": 0.0,
+   "periods": [
+    {
+     "from": 1767205800,
+     "to": 1775070600,
+     "regime": "down -4.4%, normal vol 22%",
+     "portfolio": -0.032291,
+     "baseline": -0.032291,
+     "excess": 0.0
+    },
+    {
+     "from": 1775070600,
+     "to": 1782935400,
+     "regime": "down -3.1%, normal vol 24%",
+     "portfolio": -0.01928,
+     "baseline": -0.01928,
+     "excess": 0.0
+    },
+    {
+     "from": 1782935400,
+     "to": 1790800201,
+     "regime": "up +0.9%, normal vol 22%",
+     "portfolio": -0.001775,
+     "baseline": -0.001775,
+     "excess": 0.0
+    }
+   ],
+   "example_decisions": [
+    "1 agent requested a change in AAPL (core +6 lots); it approved one aggregate BUY of 6 at a limit of 263.38 within the portfolio budget.",
+    "1 agent requested a change in MSFT (core +2 lots); it approved one aggregate BUY of 2 at a limit of 745.30 within the portfolio budget.",
+    "1 agent requested a change in NVDA (core +57 lots); it approved one aggregate BUY of 57 at a limit of 31.49 within the portfolio budget.",
+    "1 agent requested a change in QQQ (core +2 lots); it approved one aggregate BUY of 1 at a limit of 785.19, limited by GROUP_CAP:us_large_cap_tech.",
+    "1 agent requested a change in SPY (core +2 lots); it approved one aggregate BUY of 2 at a limit of 878.69 within the portfolio budget."
+   ],
+   "critic": [
+    "trend was not funded (NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE, EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "mean_reversion was not funded (NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE, EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "defensive was not funded (NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE, EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "Nothing was funded, so the portfolio held the passive core and matched the baseline exactly.",
+    "Ahead of the baseline in 0 of 3 sub-periods: down -4.4%, normal vol 22%: +0.00%; down -3.1%, normal vol 24%: +0.00%; up +0.9%, normal vol 22%: +0.00%"
+   ]
+  },
+  {
+   "dataset_id": "synthetic-1h-seed108",
+   "dataset_sha256": "2ab3a266c678d1fe6b84e30b4c387858e1af312fe271e926fa3bb251f0f4f037",
+   "holdout_views": 1,
+   "holdout_untouched": true,
+   "research": {
+    "dataset_id": "synthetic-1h-seed108",
+    "dataset_sha256": "2ab3a266c678d1fe6b84e30b4c387858e1af312fe271e926fa3bb251f0f4f037",
+    "universe": [
+     "AAPL",
+     "MSFT",
+     "NVDA",
+     "QQQ",
+     "SPY"
+    ],
+    "roles": [
+     {
+      "role": "trend",
+      "version": "2edf0a3c5b5e6bd5",
+      "family": "sma_crossover",
+      "params": {
+       "fast": 100.0,
+       "slow": 500.0
+      },
+      "accepted": false,
+      "weight": 0.0,
+      "reasons": [
+       "NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE",
+       "EDGE_BELOW_ONE_STANDARD_ERROR"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        -0.049184,
+        0.101326,
+        -0.170478
+       ],
+       "walk_forward_excess": [
+        0.101326,
+        -0.227706
+       ],
+       "out_of_sample_excess": -0.07873,
+       "validation_excess": 0.04765,
+       "validation_return": 0.011099,
+       "core_validation_return": -0.036551,
+       "validation_turnover_per_year": 6.16,
+       "evidence": {
+        "excess_t": -0.126168,
+        "alpha_t": 1.53667,
+        "beta": 0.490832,
+        "weight": 0.0
+       },
+       "candidates_tested": 4,
+       "strength_t": -0.1262
+      }
+     },
+     {
+      "role": "mean_reversion",
+      "version": "c9575ba65018c914",
+      "family": "zscore_reversion",
+      "params": {
+       "entry_z": 2.0,
+       "exit_z": 0.0,
+       "lookback": 30.0
+      },
+      "accepted": false,
+      "weight": 0.0,
+      "reasons": [
+       "NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE",
+       "EDGE_BELOW_ONE_STANDARD_ERROR"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        0.109926,
+        0.065186,
+        -0.487359
+       ],
+       "walk_forward_excess": [
+        0.065186,
+        -0.487359
+       ],
+       "out_of_sample_excess": -0.256641,
+       "validation_excess": 0.165532,
+       "validation_return": 0.12898,
+       "core_validation_return": -0.036551,
+       "validation_turnover_per_year": 47.72,
+       "evidence": {
+        "excess_t": -0.729327,
+        "alpha_t": 0.914218,
+        "beta": 0.249444,
+        "weight": 0.0
+       },
+       "candidates_tested": 4,
+       "strength_t": -0.7293
+      }
+     },
+     {
+      "role": "defensive",
+      "version": "f108f0624caba4d0",
+      "family": "regime_reversion",
+      "params": {
+       "lookback": 60.0,
+       "min_reversion": 0.015,
+       "rebuy_z": 0.0,
+       "regime_lookback": 200.0,
+       "sell_z": 1.0
+      },
+      "accepted": false,
+      "weight": 0.0,
+      "reasons": [
+       "EDGE_BELOW_ONE_STANDARD_ERROR"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        0.258116,
+        0.00011,
+        -0.111023
+       ],
+       "walk_forward_excess": [
+        0.00011,
+        -0.111023
+       ],
+       "out_of_sample_excess": 0.038209,
+       "validation_excess": 0.149122,
+       "validation_return": 0.11257,
+       "core_validation_return": -0.036551,
+       "validation_turnover_per_year": 51.92,
+       "evidence": {
+        "excess_t": 0.275829,
+        "alpha_t": 1.658698,
+        "beta": 0.51902,
+        "weight": 0.275829
+       },
+       "candidates_tested": 5,
+       "strength_t": 0.2758
+      }
+     }
+    ],
+    "seconds": 40.1
+   },
+   "sleeves": [
+    [
+     "core",
+     "b2436aa1f6b36ad8",
+     9000.0
+    ]
+   ],
+   "rows": {
+    "cash": {
+     "label": "cash",
+     "net_return": 0.0,
+     "max_drawdown": 0.0,
+     "sharpe": 0.0,
+     "turnover_x_capital": 0.0
+    },
+    "baseline_passive_core": {
+     "label": "passive core (baseline)",
+     "net_return": -0.166776,
+     "max_drawdown": 0.192842,
+     "sharpe": -1.262,
+     "turnover_x_capital": 0.747,
+     "fees": 0.5,
+     "slippage": 5.54,
+     "mean_exposure_pct": 73.5,
+     "orders": 5,
+     "fills": 5,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 5472,
+      "reduced": 1,
+      "netted": 0,
+      "deferred": 1367,
+      "rejected": 0
+     },
+     "ledger_digest": "e17ebad2b62df170ee87edcac44d930a4d03a0c8268ce019f33ab43fd6caffaf"
+    },
+    "alone:trend": {
+     "label": "trend alone (sma_crossover)",
+     "net_return": -0.109513,
+     "max_drawdown": 0.117027,
+     "sharpe": -2.139,
+     "turnover_x_capital": 3.968,
+     "fees": 1.45,
+     "slippage": 22.71,
+     "mean_exposure_pct": 17.2,
+     "orders": 30,
+     "fills": 30,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6763,
+      "reduced": 1,
+      "netted": 0,
+      "deferred": 76,
+      "rejected": 0
+     },
+     "ledger_digest": "91ab4272458abc952fcfb54d6ebf7ab677de454d573cfbf91646d2dccfe3415a",
+     "funded": false,
+     "weight": 0.0
+    },
+    "alone:mean_reversion": {
+     "label": "mean_reversion alone (zscore_reversion)",
+     "net_return": -0.04055,
+     "max_drawdown": 0.066997,
+     "sharpe": -0.516,
+     "turnover_x_capital": 33.229,
+     "fees": 19.985,
+     "slippage": 206.38,
+     "mean_exposure_pct": 27.2,
+     "orders": 230,
+     "fills": 230,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6674,
+      "reduced": 13,
+      "netted": 0,
+      "deferred": 153,
+      "rejected": 0
+     },
+     "ledger_digest": "6c72428616b837fc904a199a806b81fd0e0cc01d3e7bca173e005c12e8ec32fc",
+     "funded": false,
+     "weight": 0.0
+    },
+    "alone:defensive": {
+     "label": "defensive alone (regime_reversion)",
+     "net_return": -0.14661,
+     "max_drawdown": 0.179627,
+     "sharpe": -1.251,
+     "turnover_x_capital": 31.803,
+     "fees": 22.2,
+     "slippage": 205.32,
+     "mean_exposure_pct": 56.0,
+     "orders": 219,
+     "fills": 219,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 5808,
+      "reduced": 26,
+      "netted": 0,
+      "deferred": 1006,
+      "rejected": 0
+     },
+     "ledger_digest": "dc42415e4de5167e6f183c4cb258158d4833c1aeff18e954e6dca552629bcdb9",
+     "funded": false,
+     "weight": 0.0
+    },
+    "coordinated_portfolio": {
+     "label": "coordinated portfolio",
+     "net_return": -0.166776,
+     "max_drawdown": 0.192842,
+     "sharpe": -1.262,
+     "turnover_x_capital": 0.747,
+     "fees": 0.5,
+     "slippage": 5.54,
+     "mean_exposure_pct": 73.5,
+     "orders": 5,
+     "fills": 5,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 5472,
+      "reduced": 1,
+      "netted": 0,
+      "deferred": 1367,
+      "rejected": 0
+     },
+     "ledger_digest": "e17ebad2b62df170ee87edcac44d930a4d03a0c8268ce019f33ab43fd6caffaf"
+    }
+   },
+   "excess_vs_baseline": 0.0,
+   "sharpe_diff": 0.0,
+   "periods": [
+    {
+     "from": 1767205800,
+     "to": 1775070600,
+     "regime": "up +2.8%, normal vol 24%",
+     "portfolio": 0.022137,
+     "baseline": 0.022137,
+     "excess": 0.0
+    },
+    {
+     "from": 1775070600,
+     "to": 1782935400,
+     "regime": "down -8.7%, normal vol 22%",
+     "portfolio": -0.054625,
+     "baseline": -0.054625,
+     "excess": 0.0
+    },
+    {
+     "from": 1782935400,
+     "to": 1790800201,
+     "regime": "down -18.3%, normal vol 23%",
+     "portfolio": -0.13772,
+     "baseline": -0.13772,
+     "excess": 0.0
+    }
+   ],
+   "example_decisions": [
+    "1 agent requested a change in AAPL (core +8 lots); it approved one aggregate BUY of 8 at a limit of 212.16 within the portfolio budget.",
+    "1 agent requested a change in MSFT (core +4 lots); it approved one aggregate BUY of 4 at a limit of 380.91 within the portfolio budget.",
+    "1 agent requested a change in NVDA (core +83 lots); it approved one aggregate BUY of 83 at a limit of 21.51 within the portfolio budget.",
+    "1 agent requested a change in QQQ (core +3 lots); it approved one aggregate BUY of 2 at a limit of 460.20, limited by GROUP_CAP:us_large_cap_tech.",
+    "1 agent requested a change in SPY (core +3 lots); it approved one aggregate BUY of 3 at a limit of 518.79 within the portfolio budget."
+   ],
+   "critic": [
+    "trend was not funded (NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE, EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "mean_reversion was not funded (NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE, EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "defensive was not funded (EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "Nothing was funded, so the portfolio held the passive core and matched the baseline exactly.",
+    "Ahead of the baseline in 0 of 3 sub-periods: up +2.8%, normal vol 24%: +0.00%; down -8.7%, normal vol 22%: +0.00%; down -18.3%, normal vol 23%: +0.00%"
+   ]
+  },
+  {
+   "dataset_id": "synthetic-1h-seed109",
+   "dataset_sha256": "ae65b439fac06325456a921d178799b16cb2d46960397adcbb74218616cc6051",
+   "holdout_views": 1,
+   "holdout_untouched": true,
+   "research": {
+    "dataset_id": "synthetic-1h-seed109",
+    "dataset_sha256": "ae65b439fac06325456a921d178799b16cb2d46960397adcbb74218616cc6051",
+    "universe": [
+     "AAPL",
+     "MSFT",
+     "NVDA",
+     "QQQ",
+     "SPY"
+    ],
+    "roles": [
+     {
+      "role": "trend",
+      "version": "7cb83da42f529384",
+      "family": "sma_crossover",
+      "params": {
+       "fast": 50.0,
+       "slow": 300.0
+      },
+      "accepted": false,
+      "weight": 0.0,
+      "reasons": [
+       "NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE",
+       "EDGE_BELOW_ONE_STANDARD_ERROR"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        0.071891,
+        0.033129,
+        0.000487
+       ],
+       "walk_forward_excess": [
+        0.033129,
+        0.000487
+       ],
+       "out_of_sample_excess": -0.008766,
+       "validation_excess": -0.042382,
+       "validation_return": -0.005984,
+       "core_validation_return": 0.036398,
+       "validation_turnover_per_year": 10.99,
+       "evidence": {
+        "excess_t": -0.16502,
+        "alpha_t": -0.339225,
+        "beta": 0.485896,
+        "weight": 0.0
+       },
+       "candidates_tested": 4,
+       "strength_t": -0.3392
+      }
+     },
+     {
+      "role": "mean_reversion",
+      "version": "1268e1ca76e8ec4a",
+      "family": "zscore_reversion",
+      "params": {
+       "entry_z": 2.0,
+       "exit_z": 0.0,
+       "lookback": 60.0
+      },
+      "accepted": false,
+      "weight": 0.0,
+      "reasons": [
+       "EDGE_BELOW_ONE_STANDARD_ERROR"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        -0.16401,
+        0.141158,
+        0.090457
+       ],
+       "walk_forward_excess": [
+        0.073822,
+        0.090457
+       ],
+       "out_of_sample_excess": 0.114343,
+       "validation_excess": -0.049936,
+       "validation_return": -0.013538,
+       "core_validation_return": 0.036398,
+       "validation_turnover_per_year": 19.92,
+       "evidence": {
+        "excess_t": 0.403962,
+        "alpha_t": 0.831784,
+        "beta": 0.288419,
+        "weight": 0.403962
+       },
+       "candidates_tested": 4,
+       "strength_t": 0.404
+      }
+     },
+     {
+      "role": "defensive",
+      "version": "13e75e5d426ede07",
+      "family": "regime_reversion",
+      "params": {
+       "lookback": 100.0,
+       "min_reversion": 0.015,
+       "rebuy_z": -0.5,
+       "regime_lookback": 300.0,
+       "sell_z": 1.0
+      },
+      "accepted": false,
+      "weight": 0.0,
+      "reasons": [
+       "EDGE_BELOW_ONE_STANDARD_ERROR"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        0.048965,
+        -0.036049,
+        0.126702
+       ],
+       "walk_forward_excess": [
+        -0.036049,
+        0.126702
+       ],
+       "out_of_sample_excess": 0.11655,
+       "validation_excess": 0.025897,
+       "validation_return": 0.062295,
+       "core_validation_return": 0.036398,
+       "validation_turnover_per_year": 37.07,
+       "evidence": {
+        "excess_t": 0.614603,
+        "alpha_t": 0.712219,
+        "beta": 0.699871,
+        "weight": 0.614603
+       },
+       "candidates_tested": 5,
+       "strength_t": 0.6146
+      }
+     }
+    ],
+    "seconds": 39.3
+   },
+   "sleeves": [
+    [
+     "core",
+     "b2436aa1f6b36ad8",
+     9000.0
+    ]
+   ],
+   "rows": {
+    "cash": {
+     "label": "cash",
+     "net_return": 0.0,
+     "max_drawdown": 0.0,
+     "sharpe": 0.0,
+     "turnover_x_capital": 0.0
+    },
+    "baseline_passive_core": {
+     "label": "passive core (baseline)",
+     "net_return": 0.128696,
+     "max_drawdown": 0.097598,
+     "sharpe": 0.974,
+     "turnover_x_capital": 0.751,
+     "fees": 1.395,
+     "slippage": 8.37,
+     "mean_exposure_pct": 75.5,
+     "orders": 6,
+     "fills": 6,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 5472,
+      "reduced": 2,
+      "netted": 0,
+      "deferred": 1366,
+      "rejected": 0
+     },
+     "ledger_digest": "b7d8e6f286fde42863daef10de862fc34859f787df7ca66d2e0cf6b039203866"
+    },
+    "alone:trend": {
+     "label": "trend alone (sma_crossover)",
+     "net_return": -0.051158,
+     "max_drawdown": 0.122637,
+     "sharpe": -0.448,
+     "turnover_x_capital": 10.312,
+     "fees": 17.99,
+     "slippage": 93.97,
+     "mean_exposure_pct": 52.0,
+     "orders": 89,
+     "fills": 89,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6186,
+      "reduced": 9,
+      "netted": 0,
+      "deferred": 645,
+      "rejected": 0
+     },
+     "ledger_digest": "9f9edf1bc4714550e9d4599e8b010699d7380bad78225e69b34c2217d8b299cb",
+     "funded": false,
+     "weight": 0.0
+    },
+    "alone:mean_reversion": {
+     "label": "mean_reversion alone (zscore_reversion)",
+     "net_return": 0.135385,
+     "max_drawdown": 0.024771,
+     "sharpe": 2.616,
+     "turnover_x_capital": 19.658,
+     "fees": 29.5,
+     "slippage": 165.87,
+     "mean_exposure_pct": 15.4,
+     "orders": 139,
+     "fills": 139,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6810,
+      "reduced": 4,
+      "netted": 0,
+      "deferred": 26,
+      "rejected": 0
+     },
+     "ledger_digest": "2a2acf549229ae80b573e906ccaabc27a65c99565707f0bddf82aa9440b8c32a",
+     "funded": false,
+     "weight": 0.0
+    },
+    "alone:defensive": {
+     "label": "defensive alone (regime_reversion)",
+     "net_return": 0.275018,
+     "max_drawdown": 0.039221,
+     "sharpe": 2.787,
+     "turnover_x_capital": 29.024,
+     "fees": 49.81,
+     "slippage": 258.33,
+     "mean_exposure_pct": 35.6,
+     "orders": 181,
+     "fills": 181,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6457,
+      "reduced": 9,
+      "netted": 0,
+      "deferred": 374,
+      "rejected": 0
+     },
+     "ledger_digest": "3b890f0d1edfde2fb5c550db03ddfb85d70707e9f9fc83015368e398d216c9ff",
+     "funded": false,
+     "weight": 0.0
+    },
+    "coordinated_portfolio": {
+     "label": "coordinated portfolio",
+     "net_return": 0.128696,
+     "max_drawdown": 0.097598,
+     "sharpe": 0.974,
+     "turnover_x_capital": 0.751,
+     "fees": 1.395,
+     "slippage": 8.37,
+     "mean_exposure_pct": 75.5,
+     "orders": 6,
+     "fills": 6,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 5472,
+      "reduced": 2,
+      "netted": 0,
+      "deferred": 1366,
+      "rejected": 0
+     },
+     "ledger_digest": "b7d8e6f286fde42863daef10de862fc34859f787df7ca66d2e0cf6b039203866"
+    }
+   },
+   "excess_vs_baseline": 0.0,
+   "sharpe_diff": 0.0,
+   "periods": [
+    {
+     "from": 1767205800,
+     "to": 1775070600,
+     "regime": "up +0.3%, normal vol 23%",
+     "portfolio": 0.001095,
+     "baseline": 0.001095,
+     "excess": 0.0
+    },
+    {
+     "from": 1775070600,
+     "to": 1782935400,
+     "regime": "up +2.9%, normal vol 23%",
+     "portfolio": 0.019622,
+     "baseline": 0.019622,
+     "excess": 0.0
+    },
+    {
+     "from": 1782935400,
+     "to": 1790800201,
+     "regime": "up +13.6%, normal vol 22%",
+     "portfolio": 0.105764,
+     "baseline": 0.105764,
+     "excess": 0.0
+    }
+   ],
+   "example_decisions": [
+    "1 agent requested a change in AAPL (core +8 lots); it approved one aggregate BUY of 8 at a limit of 210.91 within the portfolio budget.",
+    "1 agent requested a change in MSFT (core +4 lots); it approved one aggregate BUY of 4 at a limit of 364.58 within the portfolio budget.",
+    "1 agent requested a change in NVDA (core +260 lots); it approved one aggregate BUY of 260 at a limit of 6.95 within the portfolio budget.",
+    "1 agent requested a change in QQQ (core +6 lots); it approved one aggregate BUY of 3 at a limit of 284.63, limited by GROUP_CAP:us_large_cap_tech.",
+    "1 agent requested a change in SPY (core +3 lots); it approved one aggregate BUY of 3 at a limit of 483.00 within the portfolio budget."
+   ],
+   "critic": [
+    "trend was not funded (NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE, EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "mean_reversion was not funded (EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "defensive was not funded (EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "Nothing was funded, so the portfolio held the passive core and matched the baseline exactly.",
+    "Ahead of the baseline in 0 of 3 sub-periods: up +0.3%, normal vol 23%: +0.00%; up +2.9%, normal vol 23%: +0.00%; up +13.6%, normal vol 22%: +0.00%"
+   ]
+  },
+  {
+   "dataset_id": "synthetic-1h-seed110",
+   "dataset_sha256": "4112438f37676ea1cfdaa9f180389f7d0bc6ee4cd6d8ed4a25b48857a2e0b24a",
+   "holdout_views": 1,
+   "holdout_untouched": true,
+   "research": {
+    "dataset_id": "synthetic-1h-seed110",
+    "dataset_sha256": "4112438f37676ea1cfdaa9f180389f7d0bc6ee4cd6d8ed4a25b48857a2e0b24a",
+    "universe": [
+     "AAPL",
+     "MSFT",
+     "NVDA",
+     "QQQ",
+     "SPY"
+    ],
+    "roles": [
+     {
+      "role": "trend",
+      "version": "7cb83da42f529384",
+      "family": "sma_crossover",
+      "params": {
+       "fast": 50.0,
+       "slow": 300.0
+      },
+      "accepted": false,
+      "weight": 0.0,
+      "reasons": [
+       "NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE",
+       "EDGE_BELOW_ONE_STANDARD_ERROR"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        0.07269,
+        -0.034184,
+        0.02945
+       ],
+       "walk_forward_excess": [
+        -0.034184,
+        0.02945
+       ],
+       "out_of_sample_excess": -0.103452,
+       "validation_excess": -0.098717,
+       "validation_return": -0.044157,
+       "core_validation_return": 0.05456,
+       "validation_turnover_per_year": 11.96,
+       "evidence": {
+        "excess_t": -0.788754,
+        "alpha_t": -1.602924,
+        "beta": 0.547563,
+        "weight": 0.0
+       },
+       "candidates_tested": 4,
+       "strength_t": -1.6029
+      }
+     },
+     {
+      "role": "mean_reversion",
+      "version": "1268e1ca76e8ec4a",
+      "family": "zscore_reversion",
+      "params": {
+       "entry_z": 2.0,
+       "exit_z": 0.0,
+       "lookback": 60.0
+      },
+      "accepted": true,
+      "weight": 0.1006,
+      "reasons": [
+       "MEETS_ALL_CRITERIA"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        0.043169,
+        0.101336,
+        0.156617
+       ],
+       "walk_forward_excess": [
+        0.118713,
+        0.119062
+       ],
+       "out_of_sample_excess": 0.32393,
+       "validation_excess": 0.086155,
+       "validation_return": 0.140715,
+       "core_validation_return": 0.05456,
+       "validation_turnover_per_year": 29.07,
+       "evidence": {
+        "excess_t": 1.335357,
+        "alpha_t": 2.624518,
+        "beta": 0.289962,
+        "weight": 1.0
+       },
+       "candidates_tested": 4,
+       "strength_t": 1.3354
+      }
+     },
+     {
+      "role": "defensive",
+      "version": "13e75e5d426ede07",
+      "family": "regime_reversion",
+      "params": {
+       "lookback": 100.0,
+       "min_reversion": 0.015,
+       "rebuy_z": -0.5,
+       "regime_lookback": 300.0,
+       "sell_z": 1.0
+      },
+      "accepted": true,
+      "weight": 0.3,
+      "reasons": [
+       "MEETS_ALL_CRITERIA"
+      ],
+      "metrics": {
+       "train_block_excess": [
+        -7.3e-05,
+        0.212385,
+        0.18967
+       ],
+       "walk_forward_excess": [
+        0.154835,
+        0.154158
+       ],
+       "out_of_sample_excess": 0.461951,
+       "validation_excess": 0.152958,
+       "validation_return": 0.207518,
+       "core_validation_return": 0.05456,
+       "validation_turnover_per_year": 39.52,
+       "evidence": {
+        "excess_t": 2.582509,
+        "alpha_t": 3.153667,
+        "beta": 0.621595,
+        "weight": 1.0
+       },
+       "candidates_tested": 5,
+       "strength_t": 2.5825
+      }
+     }
+    ],
+    "seconds": 38.9
+   },
+   "sleeves": [
+    [
+     "defensive",
+     "13e75e5d426ede07",
+     2700.0
+    ],
+    [
+     "mean_reversion",
+     "1268e1ca76e8ec4a",
+     905.4
+    ],
+    [
+     "core",
+     "b2436aa1f6b36ad8",
+     5394.6
+    ]
+   ],
+   "rows": {
+    "cash": {
+     "label": "cash",
+     "net_return": 0.0,
+     "max_drawdown": 0.0,
+     "sharpe": 0.0,
+     "turnover_x_capital": 0.0
+    },
+    "baseline_passive_core": {
+     "label": "passive core (baseline)",
+     "net_return": -0.120684,
+     "max_drawdown": 0.218497,
+     "sharpe": -0.813,
+     "turnover_x_capital": 0.785,
+     "fees": 1.795,
+     "slippage": 10.04,
+     "mean_exposure_pct": 76.0,
+     "orders": 7,
+     "fills": 7,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 4771,
+      "reduced": 2,
+      "netted": 0,
+      "deferred": 2067,
+      "rejected": 0
+     },
+     "ledger_digest": "d5e875758d5bdc4a8106beb3562e5fe8c24bb4194c4f1f03b63ab7701491eba1"
+    },
+    "alone:trend": {
+     "label": "trend alone (sma_crossover)",
+     "net_return": -0.056779,
+     "max_drawdown": 0.099041,
+     "sharpe": -0.65,
+     "turnover_x_capital": 7.495,
+     "fees": 16.43,
+     "slippage": 77.26,
+     "mean_exposure_pct": 31.2,
+     "orders": 87,
+     "fills": 87,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6737,
+      "reduced": 3,
+      "netted": 0,
+      "deferred": 100,
+      "rejected": 0
+     },
+     "ledger_digest": "2514f3e78e4e06ff3fd177cc059e016f36614250a86abcd92ae28e15e1e8133f",
+     "funded": false,
+     "weight": 0.0
+    },
+    "alone:mean_reversion": {
+     "label": "mean_reversion alone (zscore_reversion)",
+     "net_return": 0.003393,
+     "max_drawdown": 0.109808,
+     "sharpe": 0.093,
+     "turnover_x_capital": 21.42,
+     "fees": 42.16,
+     "slippage": 210.26,
+     "mean_exposure_pct": 27.9,
+     "orders": 160,
+     "fills": 160,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6674,
+      "reduced": 8,
+      "netted": 0,
+      "deferred": 158,
+      "rejected": 0
+     },
+     "ledger_digest": "6cad5f5b608ce10fd21b334c8469979ae14bc01e4f40acb6885e49c0ca8cf481",
+     "funded": true,
+     "weight": 0.1006
+    },
+    "alone:defensive": {
+     "label": "defensive alone (regime_reversion)",
+     "net_return": -0.068852,
+     "max_drawdown": 0.165001,
+     "sharpe": -0.661,
+     "turnover_x_capital": 10.93,
+     "fees": 24.91,
+     "slippage": 114.63,
+     "mean_exposure_pct": 40.1,
+     "orders": 72,
+     "fills": 72,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 4766,
+      "reduced": 8,
+      "netted": 0,
+      "deferred": 2066,
+      "rejected": 0
+     },
+     "ledger_digest": "ec9f60f899c7e9eee65acb99c7f806c5cb630a6dfc14b1a157049499ff71a730",
+     "funded": true,
+     "weight": 0.3
+    },
+    "coordinated_portfolio": {
+     "label": "coordinated portfolio",
+     "net_return": -0.100244,
+     "max_drawdown": 0.179597,
+     "sharpe": -0.872,
+     "turnover_x_capital": 3.822,
+     "fees": 10.27,
+     "slippage": 45.06,
+     "mean_exposure_pct": 58.9,
+     "orders": 94,
+     "fills": 94,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 18766,
+      "reduced": 0,
+      "netted": 0,
+      "deferred": 1754,
+      "rejected": 0
+     },
+     "ledger_digest": "d44f0db0afb3b384107e1f20e7bfcb830a82987fd9343afc3c01b3c2aa48735d"
+    }
+   },
+   "excess_vs_baseline": 0.02044,
+   "sharpe_diff": -0.059,
+   "periods": [
+    {
+     "from": 1767205800,
+     "to": 1775070600,
+     "regime": "down -3.1%, normal vol 24%",
+     "portfolio": 0.00219,
+     "baseline": -0.019933,
+     "excess": 0.022122
+    },
+    {
+     "from": 1775070600,
+     "to": 1782935400,
+     "regime": "down -14.7%, normal vol 22%",
+     "portfolio": -0.112241,
+     "baseline": -0.120824,
+     "excess": 0.008584
+    },
+    {
+     "from": 1782935400,
+     "to": 1790800201,
+     "regime": "up +2.9%, normal vol 24%",
+     "portfolio": 0.011299,
+     "baseline": 0.0205,
+     "excess": -0.009201
+    }
+   ],
+   "example_decisions": [
+    "3 agents requested a change in AAPL (core +9, defensive +4, mean_reversion +1 lots); it approved one aggregate BUY of 14 at a limit of 117.01 within the portfolio budget.",
+    "2 agents requested a change in MSFT (core +3, defensive +1 lots); it approved one aggregate BUY of 4 at a limit of 307.94 within the portfolio budget.",
+    "2 agents requested a change in NVDA (core +197, defensive +98 lots); it approved one aggregate BUY of 295 at a limit of 5.48 within the portfolio budget.",
+    "2 agents requested a change in QQQ (core +4, defensive +2 lots); it approved one aggregate BUY of 6 at a limit of 242.13 within the portfolio budget.",
+    "2 agents requested a change in SPY (core +3, defensive +1 lots); it approved one aggregate BUY of 4 at a limit of 302.53 within the portfolio budget."
+   ],
+   "critic": [
+    "trend was not funded (NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE, EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "mean_reversion trades 29.07x capital a year; a wider rebalance band may keep the edge at lower cost.",
+    "defensive trades 39.52x capital a year; a wider rebalance band may keep the edge at lower cost.",
+    "The portfolio beat the passive core by +2.04% on one held-out period. One period is weak evidence; check it across independent markets (--seeds) before believing it.",
+    "Ahead of the baseline in 2 of 3 sub-periods: down -3.1%, normal vol 24%: +2.21%; down -14.7%, normal vol 22%: +0.86%; up +2.9%, normal vol 24%: -0.92%"
+   ]
+  }
+ ]
+}

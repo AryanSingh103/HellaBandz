@@ -99,8 +99,8 @@ class CoordinatedRuntime:
         self.ledger = ledger or LocalLedger()
         self.gateway = MarketDataGateway(data_class)
         venue = LEDGER_VENUE[mode]
-        self.active = {s.v.strategy_id: ActiveStrategy(s.v.strategy_id, s.v.version, s.v.universe, capital[s.v.strategy_id])
-                       for s in self.strategies}
+        self.active = {s.v.strategy_id: ActiveStrategy(s.v.strategy_id, s.v.version, s.v.universe, capital[s.v.strategy_id],
+                                                       hold=s.hold) for s in self.strategies}
         self.book = AttributionBook(initial_cash, {k: a.capital for k, a in self.active.items()})
         self.coordinator = Coordinator(budget, instruments, venue, run_id)
         rules = [InstrumentRule(sym, tick=i.tick, lot=i.lot) for sym, i in sorted(instruments.items())]
@@ -124,13 +124,15 @@ class CoordinatedRuntime:
 
     def warm(self, provider, start_ts: int) -> None:
         """Strategies and gateway see history strictly before start_ts (nothing from the evaluated period)."""
+        hists = {}
         for sym in sorted({s for st in self.strategies for s in st.v.universe}):
             hist, ts = provider.history(sym, start_ts)
-            for st in self.strategies:
-                if sym in st.v.universe:
-                    st.warm(sym, ts, hist.close, hist.high, hist.low)
-            cap = self.gateway.history_capacity
-            self.gateway.warm(sym, ts[-cap:], hist.close[-cap:], hist.high[-cap:], hist.low[-cap:])
+            hists[sym] = (ts, hist.close, hist.high, hist.low)
+        for st in self.strategies:
+            st.warm_universe({s: hists[s] for s in st.v.universe})
+        cap = self.gateway.history_capacity
+        for sym, (ts, c, h, lo) in hists.items():
+            self.gateway.warm(sym, ts[-cap:], c[-cap:], h[-cap:], lo[-cap:])
 
     # ------------------------------------------------------------------ one cycle
 
@@ -219,6 +221,22 @@ class CoordinatedRuntime:
             turnover=notional / self.initial_cash, fees=s.fees_paid, slippage=s.slippage_cost, final_equity=s.equity(),
             initial_cash=self.initial_cash, cpu_s=round(cpu_s, 3), peak_rss_mb=round(rss_mb, 1),
             shadow_orders=self.authority.shadow_orders)
+
+
+def checkpoint(rt: "CoordinatedRuntime") -> bytes:
+    """Full in-process state: gateway, strategies, coordinator, attribution, CLOB and in-process ledger.
+    Local, trusted files only (pickle). The durable ledger in Postgres has its own recovery."""
+    import pickle
+    return pickle.dumps(rt, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+def restore(blob: bytes) -> "CoordinatedRuntime":
+    import pickle
+    rt = pickle.loads(blob)
+    breaks = rt.authority.reconcile()
+    if breaks:
+        raise RuntimeError(f"restored runtime does not reconcile with its ledger: {breaks}")
+    return rt
 
 
 def utc(ts: int) -> datetime:

@@ -26,7 +26,8 @@ import numpy as np
 
 from hellabandz.contracts import StrategyFamily
 from hellabandz.ledger.state import canonical, sha256_hex
-from hellabandz.strategies import BARS_PER_YEAR, FAMILIES, Series, signal, validate_params
+from hellabandz.strategies import (BARS_PER_YEAR, FAMILIES, HOLD_FAMILIES, Series, _rolling_mean, _rolling_std,
+                                   basket_index, reversion_speed, signal, validate_params)
 from hellabandz.trading.intents import Intent
 from hellabandz.trading.marketdata import InstrumentView, MarketSnapshot
 
@@ -79,6 +80,21 @@ CARDS: dict[str, StrategyCard] = {
         "price below its trend average, or volatility so high the size rounds to zero",
         "sharp rebounds after selloffs are missed; volatility estimates lag sudden regime changes",
         COST_NOTE, "target_vol / realized annualized volatility, capped at 1. Not comparable to other strategies.", 30),
+    "regime": StrategyCard(
+        "regime", StrategyFamily.REGIME_REVERSION,
+        "Hold the equal-weight basket by default. Only when the basket's trailing mean-reversion speed says the "
+        "market is range-bound, step aside once it is stretched above its rolling mean and buy back when it has "
+        "come back. In trending or random-walk markets it never sells, so it is buy-and-hold plus a bounded bet.",
+        "hourly closes of every symbol, combined into one equal-weight index",
+        "invested by default; re-enter after a stretched range-bound basket falls back below rebuy_z",
+        "basket z-score above sell_z while the reversion speed exceeds min_reversion",
+        "trending markets misread as range-bound; regime estimates lag; costs of stepping out and back in",
+        COST_NOTE, "basket z-score; the decision also needs the reversion speed. Not comparable to other strategies.", 30),
+    "core": StrategyCard(
+        "core", StrategyFamily.BUY_HOLD,
+        "The passive baseline: buy an equal-weight basket once and hold it. Capital no strategy has earned stays here.",
+        "none beyond the last close", "deploy once", "never, while running", "none: it is the benchmark",
+        COST_NOTE, "always 1 (fully invested). Not comparable to other strategies.", 30),
 }
 
 
@@ -207,8 +223,94 @@ class RuntimeStrategy:
 
     # ------------------------------------------------------------------ indicators
 
+    @property
+    def hold(self) -> bool:
+        return self.v.family in HOLD_FAMILIES
+
+    @property
+    def basket(self) -> bool:
+        return self.v.family == StrategyFamily.REGIME_REVERSION
+
+    def warm_universe(self, histories: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]) -> None:
+        """histories: sym -> (ts, close, high, low), strictly before the evaluated period."""
+        if not self.basket:
+            for sym, (ts, c, h, lo) in histories.items():
+                if sym in self.state:
+                    self.warm(sym, ts, c, h, lo)
+            return
+        p = self.p
+        members = {s: (Series(c, h, lo), ts) for s, (ts, c, h, lo) in histories.items() if s in self.state and len(ts)}
+        index, its = basket_index(members) if len(members) == len(self.state) else (Series(np.array([]), np.array([]), np.array([])), np.array([]))
+        if not len(its):
+            members = {}
+        self._base = {}
+        start_ts = int(its[0]) if len(its) else 0
+        for s, (series, ts) in members.items():
+            k = int(np.searchsorted(ts, start_ts, side="right")) - 1
+            self._base[s] = math.log(float(series.close[max(k, 0)]))
+        self._lvl = RollingMean(int(p["lookback"]))
+        self._lvl_sd = RollingStd(int(p["lookback"]))
+        self._loglvl: deque[float] = deque(maxlen=int(p["regime_lookback"]) + 1)
+        self._last = {s: float(members[s][0].close[-1]) for s in members}
+        self._feat = {"basket_z": 0.0, "reversion_speed": 0.0}
+        self._rich = False
+        if len(index.close):
+            lvl = index.close
+            n = int(p["lookback"])
+            m, sd = _rolling_mean(lvl, n), _rolling_std(lvl, n)
+            z = np.where(sd > 0, (lvl - m) / np.where(sd > 0, sd, 1.0), 0.0)
+            for zi in z:  # replay the path-dependent state exactly as the research function does
+                if not self._rich and zi > p["sell_z"]:
+                    self._rich = True
+                elif self._rich and zi < p["rebuy_z"]:
+                    self._rich = False
+            for x in lvl[-n:]:
+                self._lvl.push(float(x))
+                self._lvl_sd.push(float(x))
+            for x in np.log(lvl[-self._loglvl.maxlen:]):
+                self._loglvl.append(float(x))
+        w = int(signal(self.v.family, p, index)[-1]) if len(index.close) else 10_000
+        for s in self.v.universe:
+            st = self.state[s]
+            st.ind = {"basket": True}
+            st.weight_bps = w
+            if s in members:
+                st.last_ts = int(members[s][1][-1])
+                st.last_close = self._last[s]
+            st.reasons = ["HOLD" if w else "STEPPED_ASIDE"]
+
+    def _basket_update(self, closes: dict[str, float]) -> int:
+        p = self.p
+        self._last.update(closes)
+        for s in self.v.universe:  # no history before the run: rebase on the first bar seen
+            if s not in self._base and s in self._last:
+                self._base[s] = math.log(self._last[s])
+        if len(self._base) < len(self.v.universe):
+            return 10_000
+        level = math.exp(sum(math.log(self._last[s]) - self._base[s] for s in self._base) / len(self._base))
+        self._lvl.push(level)
+        self._lvl_sd.push(level)
+        self._loglvl.append(math.log(level))
+        sd = self._lvl_sd.value
+        z = (level - self._lvl.value) / sd if self._lvl.ready and sd > 0 else 0.0
+        speed = float("nan")
+        if len(self._loglvl) == self._loglvl.maxlen:
+            a = np.fromiter(self._loglvl, dtype=np.float64)
+            x = a[:-1] - a[:-1].mean()
+            den = float((x * x).sum())
+            speed = -float((x * np.diff(a)).sum()) / den if den > 0 else float("nan")
+        if not self._rich and z > p["sell_z"]:
+            self._rich = True
+        elif self._rich and z < p["rebuy_z"]:
+            self._rich = False
+        w = 0 if self._rich and speed > p["min_reversion"] else 10_000
+        self._feat = {"basket_z": z, "reversion_speed": speed if math.isfinite(speed) else 0.0}
+        return w
+
     def _indicators(self) -> dict[str, object]:
         f, p = self.v.family, self.p
+        if f == StrategyFamily.BUY_HOLD:
+            return {"hold": True}
         if f == StrategyFamily.SMA_CROSSOVER:
             return {"fast": RollingMean(int(p["fast"])), "slow": RollingMean(int(p["slow"]))}
         if f == StrategyFamily.ZSCORE_REVERSION:
@@ -222,7 +324,8 @@ class RuntimeStrategy:
         """Initialize from history with the vectorized family function (the research definition)."""
         st = self.state[sym]
         st.ind = self._indicators()
-        if len(close) == 0:
+        if len(close) == 0 or self.v.family == StrategyFamily.BUY_HOLD:
+            st.weight_bps = 10_000 if self.v.family == StrategyFamily.BUY_HOLD else 0
             return
         w = signal(self.v.family, self.p, Series(close, high, low))
         st.weight_bps = int(w[-1])
@@ -289,12 +392,37 @@ class RuntimeStrategy:
 
     # ------------------------------------------------------------------ decisions
 
+    def _basket_on_snapshot(self, snap: MarketSnapshot) -> None:
+        views = {s: snap.instruments.get(s) for s in self.v.universe}
+        if any(v is None for v in views.values()):
+            return
+        first = self.v.universe[0]
+        st0 = self.state[first]
+        ts = views[first]._ts
+        k = bisect.bisect_right(ts, st0.last_ts)
+        for i in range(k, len(ts)):
+            t = ts[i]
+            closes = {}
+            for s, v in views.items():
+                j = bisect.bisect_right(v._ts, t) - 1  # forward-fill: last bar at or before t
+                if j >= 0:
+                    closes[s] = float(v._close[j])
+            w = self._basket_update(closes)
+            for s in self.v.universe:
+                st = self.state[s]
+                st.weight_bps, st.last_ts = w, int(t)
+                st.score = self._feat["basket_z"]
+                st.features = dict(self._feat)
+                st.reasons = ["HOLD" if w else "STEPPED_ASIDE_RANGE_BOUND_AND_STRETCHED"]
+
     def holding_bars(self) -> int:
         p = self.p
         return int(p.get("slow") or p.get("lookback") or p.get("vol_lookback") or 1)
 
     def on_snapshot(self, snap: MarketSnapshot, interval_s: int = 3600) -> list[Intent]:
         out = []
+        if self.basket:
+            self._basket_on_snapshot(snap)
         for sym in self.v.universe:
             view: InstrumentView | None = snap.instruments.get(sym)
             st = self.state[sym]
@@ -302,11 +430,14 @@ class RuntimeStrategy:
                 continue
             if not st.ind:
                 st.ind = self._indicators()
-            ts = view._ts  # read-only tuple; values are copied below
-            k = bisect.bisect_right(ts, st.last_ts)
-            for i in range(k, len(ts)):
-                self._update(st, float(view._close[i]))
-                st.last_ts = int(ts[i])
+            if self.v.family == StrategyFamily.BUY_HOLD:
+                st.weight_bps, st.reasons, st.last_ts = 10_000, ["PASSIVE_CORE"], view.last_ts
+            elif not self.basket:
+                ts = view._ts  # read-only tuple; values are copied below
+                k = bisect.bisect_right(ts, st.last_ts)
+                for i in range(k, len(ts)):
+                    self._update(st, float(view._close[i]))
+                    st.last_ts = int(ts[i])
             out.append(Intent(
                 intent_id=f"{self.v.strategy_id}.{self.v.version}.{sym}.{snap.ts}",
                 strategy_id=self.v.strategy_id, strategy_version=self.v.version, instrument=sym, venue=self.venue,

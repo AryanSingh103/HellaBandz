@@ -16,7 +16,7 @@ import os
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal
 
 import psycopg
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, WebSocket, WebSocketDisconnect
@@ -32,6 +32,8 @@ from hellabandz.contracts import (
     MICROS,
     Ident,
     ApplyBar,
+    ApplyVenueFill,
+    SubmitVenueOrder,
     Bar,
     CancelOrder,
     OpenPortfolio,
@@ -191,6 +193,23 @@ async def post_order(order: OrderRequest, portfolio_id: Ident = "main", wait: bo
 async def cancel_order(client_order_id: Ident, agent_id: Ident, portfolio_id: Ident = "main", wait: bool = True):
     cmd = CancelOrder(client_order_id=client_order_id, agent_id=agent_id)
     return await submit(cmd, f"{portfolio_id}:{command_id_for(cmd)}", portfolio_id, wait)
+
+
+class VenueOrderIn(BaseModel):
+    venue: Literal["paper_clob"] = "paper_clob"
+    order: OrderRequest
+
+
+@app.post("/v1/venue/orders")
+async def post_venue_order(body: VenueOrderIn, portfolio_id: Ident = "main", wait: bool = True):
+    """Venue orders are reserved by the ledger and filled only by venue reports (paper CLOB)."""
+    cmd = SubmitVenueOrder(venue=body.venue, order=body.order)
+    return await submit(cmd, f"{portfolio_id}:{command_id_for(cmd)}", portfolio_id, wait)
+
+
+@app.post("/v1/venue/fills")
+async def post_venue_fill(fill: ApplyVenueFill, portfolio_id: Ident = "main", wait: bool = True):
+    return await submit(fill, f"{portfolio_id}:{command_id_for(fill)}", portfolio_id, wait)
 
 
 class BarsIn(BaseModel):

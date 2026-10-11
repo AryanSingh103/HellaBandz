@@ -120,6 +120,7 @@ class ActiveStrategy:
     version: str
     universe: tuple[str, ...]
     capital: int  # sleeve capital, micros
+    hold: bool = False  # deploy the budget once at cost; never trim while the target stays long
 
     def budget(self) -> int:
         return self.capital // len(self.universe)
@@ -261,8 +262,16 @@ class Coordinator:
         desired: dict[str, int] = {}
         for k, it in intents.items():
             budget = active[k].budget()
-            want = budget * it.target_weight_bps // BPS // price
             have = book.qty(k, sym)
+            if active[k].hold:
+                # same rule as the research backtester's hold slots: top up toward the cost budget, never trim
+                room = budget * it.target_weight_bps // BPS - book.basis(k, sym)
+                add = room // price if it.target_weight_bps and room * BPS >= budget * b.min_rebalance_bps else 0
+                desired[k] = have + max(0, add) if it.target_weight_bps else 0
+                if desired[k] == have and it.target_weight_bps:
+                    reasons[k].append("HOLDING")
+                continue
+            want = budget * it.target_weight_bps // BPS // price
             if want != 0 and abs(want - have) * price * BPS < budget * b.min_rebalance_bps:
                 reasons[k].append("WITHIN_REBALANCE_BAND")
                 want = have

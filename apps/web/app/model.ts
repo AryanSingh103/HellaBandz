@@ -1,7 +1,7 @@
 import { authFetch } from "./auth-client";
 export const API = process.env.NEXT_PUBLIC_API || "http://localhost:8000";
 export const validId = (s: string) => /^[A-Za-z0-9_.:\-]{1,96}$/.test(s);
-export type View = "browse" | "marketplace" | "portfolio" | "orders" | "research" | "audit" | "analytics" | "run";
+export type View = "browse" | "marketplace" | "portfolio" | "orders" | "research" | "audit" | "analytics" | "coordinator" | "run";
 export type Route = { p: string; view: View; run: string; category: string; q: string; sort: string; dataset: string; order: string };
 export const initialRoute: Route = { p: "main", view: "browse", run: "", category: "All strategies", q: "", sort: "score", dataset: "", order: "" };
 export function url(path: string, params: Record<string, string | number | boolean | undefined> = {}) {
