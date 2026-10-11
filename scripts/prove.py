@@ -41,9 +41,10 @@ INVARIANTS = {
                                        "test_signals_ignore_future_perturbation",
                                        "test_backtest_does_not_read_data_after_split_end", "test_r7_stale_and_future"],
     "I-10 Audit integrity": ["test_tampered_manifest_fails_verification", "test_tampered_snapshot_refused",
-                             "test_event_chain_detects_tampering", "test_manifest_hash_is_formatting_independent"],
+                             "test_event_chain_detects_tampering", "test_manifest_hash_is_formatting_independent", "test_trace_"],
     "I-11 Deterministic ordering": ["test_input_row_order_does_not_change_results",
                                     "test_out_of_order_and_duplicate_bars_rejected"],
+    "I-12 API access control": ["test_api_auth_", "test_api_browser_session_", "test_api_websocket_", "test_api_login_"],
 }
 
 

@@ -98,6 +98,8 @@ pool: AsyncConnectionPool
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global pool
+    from quantswarm.api.auth import validate_configuration
+    validate_configuration()
     with psycopg.connect(database_url(), autocommit=True) as c:
         apply_schema(c)
     pool = AsyncConnectionPool(database_url(), min_size=2, max_size=int(os.environ.get("QS_API_POOL", "20")),
@@ -113,7 +115,18 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="QuantSwarm API", version="0.1.0", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+from quantswarm.api.auth import AccessControl, origins, router as auth_router
+app.add_middleware(AccessControl)
+app.add_middleware(CORSMiddleware, allow_origins=origins(), allow_credentials=True,
+                   allow_methods=["GET", "POST", "DELETE", "OPTIONS"], allow_headers=["Content-Type", "Authorization", "Idempotency-Key"])
+app.include_router(auth_router)
+from quantswarm.api.audit import router as audit_router
+app.include_router(audit_router)
+
+
+@app.get("/healthz")
+def healthz():
+    return {"api": "ok"}
 
 
 @app.exception_handler(RequestValidationError)
@@ -581,6 +594,10 @@ async def stream(ws: WebSocket, portfolio_id: Ident = "main", after_seq: int = 0
     last = after_seq
     try:
         while True:
+            from quantswarm.api.auth import authenticated
+            if not authenticated(ws.headers, ws.cookies):
+                await ws.close(code=1008, reason="session expired")
+                return
             rows = await q("SELECT seq, type, event FROM ledger_events WHERE portfolio_id = %s AND seq > %s "
                            "ORDER BY seq LIMIT 500", (portfolio_id, last))
             if rows:

@@ -15,7 +15,7 @@ COMMAND_ADAPTER: TypeAdapter = TypeAdapter(Command)
 
 
 def database_url() -> str:
-    return os.environ.get("DATABASE_URL", "postgresql://quantswarm:quantswarm@localhost:5432/quantswarm")
+    return os.environ.get("DATABASE_URL", "postgresql://quantswarm:quantswarm@127.0.0.1:5432/quantswarm")
 
 
 def encode_command(cmd) -> tuple[str, dict, str]:

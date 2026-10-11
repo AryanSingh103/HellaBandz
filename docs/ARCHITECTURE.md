@@ -96,6 +96,15 @@ before it. `/v1/verify` deliberately ignores checkpoints and replays the whole l
 These hashes detect corruption; they do not authenticate data against someone who can rewrite the DB
 and recompute hashes. Checkpoint loading/validation still grows with live state and retained retry decisions.
 
+The separate [security and trace audit layer](SECURITY.md) requires operator authentication for HTTP
+and WebSocket access. An isolated periodic signer commits canonical roots for 16 durable record sets
+to Solana Devnet, including agent messages and marketplace receipts. Transactional before/after journals
+let verification reconstruct the sealed snapshot while legitimate trading continues. The verifier reads
+the latest finalized proof from the pinned public wallet, detects database rollback and immutable trace
+rewrites, and reports provisional changes separately. Only the auditor mounts the private signing key.
+Local hashes alone still do not authenticate a DB against its administrator; the external seal supplies
+that additional boundary for previously sealed facts. Devnet and the local signing host remain trusted.
+
 ## Determinism contract
 
 The [strategy marketplace](MARKETPLACE.md) is a separate local demo subsystem. API
@@ -135,3 +144,7 @@ per batch (profile, then add symbol indexes/incremental marks); (3) checkpoint s
 event and retry histories (partition/archive with an explicit idempotency retention policy). If one
 portfolio needs substantially more throughput, evaluate an in-memory single writer with its own WAL
 and use Postgres for projections. Any such change must preserve the crash and full-replay proofs.
+
+The audit journal adds storage and transaction overhead. Streaming seals avoid loading the full baseline
+into memory; reconstruction retains distinct keys changed since the prior seal. Next: archive and schema
+migration proofs, restricted DB roles, independent receipt monitoring and per-user authorization.

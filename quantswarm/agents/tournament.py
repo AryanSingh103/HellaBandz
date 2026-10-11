@@ -395,7 +395,8 @@ def run(dataset_dir: Path = DEFAULT_DATASET, run_id: str | None = None, api: str
         if api:
             import httpx
             try:
-                httpx.post(f"{api}/v1/agent-messages", json={"run_id": run_id, "agent_id": agent, "role": role,
+                from quantswarm.api.client import api_headers
+                httpx.post(f"{api}/v1/agent-messages", headers=api_headers(), json={"run_id": run_id, "agent_id": agent, "role": role,
                                                               "content": json.loads(json.dumps(content, default=str))},
                            timeout=10)
             except Exception:
@@ -411,7 +412,8 @@ def run(dataset_dir: Path = DEFAULT_DATASET, run_id: str | None = None, api: str
     (out_dir / f"{run_id}.json").write_text(json.dumps(m, indent=1, sort_keys=True))
     if api:
         import httpx
-        httpx.post(f"{api}/v1/tournaments", json={"run_id": run_id, "manifest": m, "manifest_hash": h}, timeout=30).raise_for_status()
+        from quantswarm.api.client import api_headers
+        httpx.post(f"{api}/v1/tournaments", headers=api_headers(), json={"run_id": run_id, "manifest": m, "manifest_hash": h}, timeout=30).raise_for_status()
     return {"run_id": run_id, "manifest_hash": h, "manifest": m}
 
 

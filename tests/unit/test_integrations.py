@@ -298,6 +298,8 @@ def test_solana_commit_builds_signed_memo_and_verify_reads_it(tmp_path, monkeypa
     sent = {}
 
     def rpc(method, params):
+        if method == "getGenesisHash":
+            return sol.DEVNET_GENESIS
         if method == "getBalance":
             return {"value": 10**9}
         if method == "getLatestBlockhash":

@@ -26,6 +26,9 @@ gitignored. Raw Alpaca/Binance snapshots are not redistributed.
 
 ## Remaining gates
 
+- **Current performance evidence:** the complete baseline predates authentication and the full-trace
+  journal. The security-build rerun was stopped to prioritize functional verification; run `make bench`
+  before submitting current throughput claims. Partial runs are not a completed report.
 - **Judge access:** the repository is private. The authenticated collaborator has push access but no
   admin/maintain access. The owner must make it public or grant judges access.
 - **Devpost:** [DEVPOST.md](DEVPOST.md) contains prepared copy; publication/submission has not been verified.
@@ -35,7 +38,8 @@ gitignored. Raw Alpaca/Binance snapshots are not redistributed.
 read back; API receipts and the browser verification button now work. See [VERIFICATION.md](VERIFICATION.md).
 This integration remains outside the deterministic execution path.
 
-Tiger Cloud, an Anchor registry, Kalshi and API authentication remain optional/stretch work.
+Tiger Cloud, an Anchor registry and live Kalshi execution remain optional/stretch work.
+Operator API authentication and periodic full-trace Devnet seals are implemented; see [SECURITY](SECURITY.md).
 Combined measurements are recorded in [PERFORMANCE.md](PERFORMANCE.md), with matching Devpost
 headlines. Run the required final `make prove` and `make bench` on the chosen submission commit. Runtime
 changes require fresh measurements. Do not mark the overall submission complete until judge access and Devpost status are verified.

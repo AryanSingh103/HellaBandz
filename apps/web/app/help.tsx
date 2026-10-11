@@ -122,7 +122,7 @@ function intros(manifest: Manifest | null): Record<View | "ask", Intro> {
       more: ["APPROVE: allowed as asked. REDUCE: allowed, but made smaller to fit a limit. REJECT: blocked.", "The grey line under each decision says which rule decided it.", "You can place your own test order with the ticket above; it goes through the same rules."] },
     research: { icon: <FlaskConical size={18} />, line: "How the strategies were made: what each agent proposed, how it was tuned on old data, and how it scored on data it never saw.",
       more: [dates, "Agents only saw statistics from the tuning period. They pick from 4 approved strategy types and can't write code.", "A strategy that looks great on tuning data but fails the judging period gets $0. That's how overfitting is caught."] },
-    audit: { icon: <ShieldCheck size={18} />, line: "Proof nothing was faked: every money movement is fingerprinted and chained, so the books can be rebuilt and checked.",
+    audit: { icon: <ShieldCheck size={18} />, line: "Check recorded money movements: every event is fingerprinted and chained, so the books can be rebuilt and checked.",
       more: ["\"Verify full ledger\" re-plays every recorded event from scratch and compares the result with the stored account.", "If anyone edited a single record, the fingerprints would stop matching."] },
     analytics: { icon: <BarChart3 size={18} />, line: "Performance over time: profit per agent, how much money is invested, and how it compares to just buying and holding.",
       more: ["Exposure is how much of the account is invested in stocks rather than sitting in cash.", "The benchmark shows what simply buying every stock equally and holding would have done."] },

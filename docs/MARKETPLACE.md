@@ -3,7 +3,7 @@
 Open **Marketplace** at http://localhost:3000/?view=marketplace. This is a local
 strategy-license exchange using virtual credits, separate from simulated trading cash.
 Switch between `demo-buyer` and `demo-seller` to demonstrate a trade between users.
-These identities are shared and unauthenticated, not real customer accounts.
+These identities are shared labels behind operator sign-in, not separately authorized customer accounts.
 
 ## Buy, compare and resell
 
@@ -26,8 +26,8 @@ conventions, not valuations or proof of ownership of third-party intellectual pr
    Canceling returns the unsold licenses. **Trade history** records both sides.
 
 The purchased object is access to a frozen specification inside this demo, not a
-share of a strategy's profits or a stock trade. Specifications are also publicly
-readable in this unauthenticated prototype. No payment gateway, enforceable IP
+share of a strategy's profits or a stock trade. Specifications are also
+readable to the signed-in operator. No payment gateway, enforceable IP
 license, live brokerage connection, exclusivity or production access control exists.
 
 ## Transaction contract

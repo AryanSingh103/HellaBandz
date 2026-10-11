@@ -241,7 +241,7 @@ changing one allocation weight by 1% makes it fail.
 - One engine per portfolio is deliberately the throughput ceiling for that portfolio; scaling means more
   portfolios and more engines, not more locks.
 - AI answers aren't repeatable, so reproducibility starts from the *recorded* AI proposals in the sealed manifest.
-- No user authentication: it's a local demo.
+- Operator authentication protects the workspace; marketplace identities remain shared demo labels.
 
 ### 12. The closing idea
 

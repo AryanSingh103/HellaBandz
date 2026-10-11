@@ -11,6 +11,7 @@ import { Ask } from "./voice";
 import { MarketplaceView } from "./marketplace";
 import { Hero, Pillars, Sidebar, StrategyCard, useLiveEquity } from "./browse";
 import { GuideToggle, HintsProvider, HowItWorks, PageIntro } from "./help";
+import { AccessGate, SignOut } from "./access";
 
 const views: View[] = ["browse", "marketplace", "portfolio", "orders", "research", "audit", "analytics", "run"];
 const categories = ["All strategies", "Momentum", "Reversion", "Volatility", "Equities", "Crypto"];
@@ -22,7 +23,8 @@ function readRoute(): Route {
   if (!views.includes(route.view)) route.view = "browse";
   return route;
 }
-export default function Page() {
+export default function Page(){return <AccessGate><Terminal/></AccessGate>;}
+function Terminal() {
   const [route, setRoute] = useState(initialRoute), [revision, refresh] = useState(0);
   const [strategy, setStrategy] = useState(""), [askOpen, setAskOpen] = useState(false);
   const [portfolioInput, setPortfolioInput] = useState("main"), [idError, setIdError] = useState("");
@@ -68,6 +70,7 @@ export default function Page() {
         <span className={`nav-live ${live ? "on" : ""}`}><i />Live</span></nav>
       <div className="header-search"><Search size={17} /><input aria-label="Search strategies" placeholder="Trade on any strategy" value={route.q} onChange={e => navigate({ q: e.target.value, view: "browse" })} /></div>
       <GuideToggle />
+      <SignOut />
       <button className="ghost-pill" onClick={() => setAskOpen(!askOpen)}><Activity size={15} />Ask</button>
       <button className="cta-pill" onClick={() => navigate({ view: "run" })}>Run research</button>
     </div><div className="category-inner"><nav aria-label="Strategy categories">{categories.map(c => <a key={c} href={`/?category=${encodeURIComponent(c)}`} className={route.category === c && route.view === "browse" ? "selected" : ""} onClick={e => { e.preventDefault(); navigate({ category: c, view: "browse" }); }}>{c === "All strategies" ? "Trending" : c}</a>)}</nav><span className="simulation"><span className={`status-dot ${connected ? "online" : ""}`} />Simulated · paper trading</span></div></header>

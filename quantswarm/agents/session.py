@@ -104,7 +104,8 @@ class Session:
     def __init__(self, api: str, manifest: dict, dataset_dir: Path, portfolio: str = "main",
                  stop_requested=lambda: False, progress=lambda *args: None):
         TypeAdapter(Ident).validate_python(portfolio)
-        self.c = httpx.Client(base_url=api, timeout=60, params={"portfolio_id": portfolio},
+        from quantswarm.api.client import api_headers
+        self.c = httpx.Client(base_url=api, timeout=60, params={"portfolio_id": portfolio}, headers=api_headers(),
                              event_hooks={"response": [lambda r: r.raise_for_status()]})
         self.m = manifest
         self.run_id = manifest["run_id"]

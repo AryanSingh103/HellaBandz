@@ -5,6 +5,10 @@ a deterministic supervisor and crisis policy, browser speech, the synthetic data
 manifest verification. Every live path is unit-tested against mocked services
 (`tests/unit/test_integrations.py`), so adding a key should work on first use.
 
+Operator access is required by default even offline. `make auth-init` generates the local key;
+sign in with `QS_API_TOKEN` from ignored `.env`. Use the same hostname for the terminal and API
+because browser sessions are SameSite cookies. See [SECURITY](SECURITY.md).
+
 **Start here:** `cp .env.example .env`, fill in what you have, then run `make check-integrations`.
 Host scripts read `.env` automatically. Docker Compose also reads it for `${...}` substitution;
 restart the API after editing it: `docker compose up -d api`.
@@ -49,6 +53,12 @@ instead of silently ignored. The API validates the confirmed memo before storing
 signature-free research retries retain the saved proof. Research shows an Explorer link and a
 **Verify on-chain fingerprint** button, backed by `GET /v1/tournaments/<run>/solana`.
 An unsigned run is shown as uncommitted, and a mismatching or failed transaction never verifies.
+
+Full workspace trace sealing is separate from individual tournament fingerprints. Run
+`make audit-init`, fund that pinned Devnet wallet with free test SOL, then `make backend audit-up`.
+The isolated signer batches commitments over 16 durable record sets. `make audit-verify` or
+Audit's **Verify blockchain & records** checks the latest finalized proof and reports later
+provisional changes. `make audit-seal` creates an immediate seal. Only the auditor mounts the key.
 
 ## Real-data tournament (Alpaca)
 

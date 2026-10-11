@@ -87,7 +87,8 @@ def run_job(job_id: str):
                 deadline = time.monotonic() + 60
                 progress("waiting_for_worker")
                 while True:
-                    r = httpx.get(API + "/v1/runtime", params={"portfolio_id": job["portfolio_id"]}, timeout=5)
+                    from quantswarm.api.client import api_headers
+                    r = httpx.get(API + "/v1/runtime", params={"portfolio_id": job["portfolio_id"]}, timeout=5, headers=api_headers())
                     r.raise_for_status()
                     if r.json()["ready"]:
                         break

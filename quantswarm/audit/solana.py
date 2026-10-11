@@ -31,6 +31,12 @@ ROOT = Path(__file__).resolve().parents[2]
 RPC = os.environ.get("SOLANA_RPC", "https://api.devnet.solana.com")
 MEMO_PROGRAM = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
 KEYPAIR = ROOT / "data/solana/devnet-keypair.json"
+DEVNET_GENESIS = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG"
+
+
+def require_devnet():
+    if rpc("getGenesisHash", []) != DEVNET_GENESIS:
+        raise RuntimeError("Refusing non-Devnet RPC: test SOL only")
 
 
 def manifest_hash_file(path: Path) -> tuple[str, dict]:
@@ -74,7 +80,7 @@ def ensure_funded(kp, min_lamports: int = 1_000_000) -> int:
                 break
             time.sleep(1)
     except Exception as e:
-        raise SystemExit(f"Devnet airdrop failed ({e}). Fund {kp.pubkey()} with test SOL at https://faucet.solana.com "
+        raise RuntimeError(f"Devnet airdrop failed ({e}). Fund {kp.pubkey()} with test SOL at https://faucet.solana.com "
                          "and re-run.")
     return rpc("getBalance", [str(kp.pubkey())])["value"]
 
@@ -86,6 +92,7 @@ def send_memo(memo: str) -> str:
     from solders.pubkey import Pubkey
     from solders.transaction import Transaction
 
+    require_devnet()
     kp = load_keypair()
     ensure_funded(kp)
     bh = rpc("getLatestBlockhash", [{"commitment": "confirmed"}])["value"]["blockhash"]
@@ -137,8 +144,9 @@ def commit(path: Path, api: str | None = None) -> dict:
            "explorer": explorer(sig)}
     record_path.write_text(json.dumps(rec, indent=1))
     if api:
+        from quantswarm.api.client import api_headers
         response = httpx.post(f"{api}/v1/tournaments", json={"run_id": m["run_id"], "manifest": m, "manifest_hash": h,
-                                                           "solana_sig": sig}, timeout=90)
+                                                           "solana_sig": sig}, timeout=90, headers=api_headers())
         response.raise_for_status()
     return rec
 

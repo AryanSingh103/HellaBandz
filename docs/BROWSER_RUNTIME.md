@@ -3,7 +3,7 @@
 `make up` starts TimescaleDB, the external `main` worker, API, dedicated local manager and web app.
 `make backend` rebuilds only db/worker/api/manager. Both preserve the existing `pgdata` volume. Never
 use `make reset` or `docker compose down -v` when retaining history. URLs: http://localhost:3000 and
-http://localhost:8000/docs. The local API is unauthenticated and is intended for this local demonstration.
+http://localhost:8000/docs. Sign in through the terminal with QS_API_TOKEN from ignored .env. API routes and streams require operator access; see [SECURITY](SECURITY.md).
 
 The API and manager share `data/snapshots` read-only and `data/manifests` read-write. The committed
 synthetic fixture is included in the root Docker image. `/v1/datasets` returns registered IDs, source,

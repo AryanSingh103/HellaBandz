@@ -4,6 +4,10 @@
 
 ## Measured results
 
+These are the completed baseline measurements before operator authentication and the full-trace
+audit journal. The current security build needs a fresh complete benchmark before these can be
+used as its performance claims.
+
 - **Pre-trade risk check:** p50 1.8 µs, p99 3.1 µs (in-process).
 - **Durable order path** (HTTP → Postgres command log → worker → atomic ledger commit → response), 1 vCPU worker + 1 vCPU API + 2 vCPU DB: **482 orders/s** at 50 concurrent clients (p99 168 ms); 9.0 ms p50 for a single client.
 - **Crash recovery:** 105,000-event ledger restored from checkpoint + 5,000-event verified suffix in 0.44 s; container restart to ready 2.0 s.
@@ -25,6 +29,11 @@ The paper session replays that held-out period through an HTTP API and an isolat
 A scripted market crash provokes oversized orders, risk reductions, rejections and de-risking.
 The terminal exposes decisions, fills, portfolio state and replay verification.
 
+The current judge demo also includes operator access control and a working full-trace
+Solana Devnet seal: 9,603 records across 16 record sets, including 106 agent messages
+and two virtual-license sales. The Audit screen verifies the finalized transaction
+against the retained records. This proves sealed record integrity, not trading profitability.
+
 The no-key path uses a synthetic dataset and recorded agent proposals. Historical Binance bars support
 the replay benchmark. Combined verification also exercised live OpenAI research/supervisor/crisis/Q&A,
 ElevenLabs audio, Alpaca ingestion and a real-data tournament/session, and verified an existing Solana
@@ -37,9 +46,9 @@ orders, funds or brokerage connections. See [VERIFICATION](VERIFICATION.md) for 
 |---|---|
 | **User and problem** | A desk letting autonomous agents propose trades needs a hard boundary that keeps a buggy or overconfident agent from overspending, double-filling, shorting, or corrupting the books. |
 | **Core claim** | No sequence of duplicated, concurrent, malformed, delayed, or crash-interrupted commands can create cash or shares from nothing or apply a fill twice, and the ledger can always be rebuilt bit-for-bit from its event log. |
-| **Boundary** | Bar-based simulated fills (no order book or queue position), long-only cash account, 5 symbols, no auth. See [LIMITATIONS](LIMITATIONS.md). |
-| **Correctness** | 11 invariants (idempotency, cash/position safety, risk enforcement, fill validity, determinism, accounting identity, recovery, causality, audit integrity, ordering): [INVARIANTS](INVARIANTS.md). |
-| **Evidence** | 92 passing tests on Windows and Linux: unit, property-based (random command programs checked after every step), real-Postgres concurrency, SIGKILL fault injection, tamper detection. `make prove` prints the invariant table. |
+| **Boundary** | Bar-based simulated fills (no order book or queue position), long-only cash account, 5 symbols, single-operator authentication. See [LIMITATIONS](LIMITATIONS.md). |
+| **Correctness** | 12 invariant categories (idempotency, cash/position safety, risk enforcement, fill validity, determinism, accounting identity, recovery, causality, audit integrity, ordering and operator access): [INVARIANTS](INVARIANTS.md). |
+| **Evidence** | The proof suite covers unit, property-based (random command programs checked after every step), real-Postgres concurrency, SIGKILL fault injection, tamper detection. `make prove` prints the invariant table. |
 | **Interfaces** | HTTP API ⇄ Postgres command log ⇄ execution worker; agents and UI are API clients. [ARCHITECTURE](ARCHITECTURE.md). |
 | **Measurement** | Risk-check latency, durable order throughput at 1/10/50 clients, replay speed on 131k real Binance bars, recovery time vs ledger size, all under fixed container limits: [PERFORMANCE](PERFORMANCE.md). |
 | **Failure behavior** | Invalid ⇒ 422 or recorded rejection with rule code. Duplicate ⇒ original decision. Same id, new payload ⇒ 409. Stale or future signal ⇒ R7. Out-of-order bar ⇒ rejected, no effect. Worker down ⇒ commands queue (HTTP 202) and drain in order on restart. Corrupted checkpoint, suffix or projection ⇒ worker refuses to start; full-history verification audits the saved prefix. |
@@ -85,7 +94,7 @@ does not establish a fast durable system, so we measure both under disclosed wor
 The next limits are the single writer per portfolio, position marking and fill scans, state hashing per
 batch, and growing event/retry histories. We would first shard independent portfolios, profile the remaining
 scans, then design archival and retry-retention policies. Bar-based fills, a five-symbol default universe,
-long-only cash accounting and an unauthenticated local API remain deliberate boundaries.
+long-only cash accounting and shared demo identities remain boundaries. Operator authentication and full-trace Devnet commitments are implemented; see [SECURITY](SECURITY.md).
 
 ## Reproduce and demonstrate
 

@@ -5,14 +5,14 @@ RUN ?= $(shell uv run python -c "import glob, os; f = [p for p in glob.glob('dat
 
 .PHONY: check-integrations setup up backend down reset fixture tournament session demo web test prove prove-docker bench report crash-worker restart-worker
 
-setup:            ## install Python + web dependencies
+setup: auth-init   ## install Python + web dependencies
 	uv sync
 	cd apps/web && npm ci --no-audit --no-fund
 
-up:               ## start the persisted stack and local job manager on http://localhost:3000
+up: auth-init      ## start the persisted stack and local job manager on http://localhost:3000
 	docker compose up -d --build db worker api manager web
 
-backend:          ## rebuild backend services in place, preserving the database volume
+backend: auth-init ## rebuild backend services in place, preserving the database volume
 	docker compose up -d --build db worker api manager
 
 down:
@@ -58,7 +58,7 @@ crash-worker:     ## SIGKILL the execution worker (commands keep queueing in Pos
 
 restart-worker:   ## restart it: replays the hash-chained log, verifies the digest, resumes
 	docker compose start worker
-	@uv run python -c "import httpx, json, time; time.sleep(3); print(json.dumps({'health': httpx.get('$(API)/v1/health').json(), 'verify': httpx.get('$(API)/v1/verify').json()}, indent=1))"
+	@uv run python -c "import httpx, json, time; from quantswarm.api.client import api_headers; time.sleep(3); c=httpx.Client(headers=api_headers()); print(json.dumps({'health': c.get('$(API)/v1/health').json(), 'verify': c.get('$(API)/v1/verify').json()}, indent=1))"
 
 check-integrations: ## which optional keys are configured + one live smoke call each
 	uv run python scripts/check_integrations.py
@@ -69,3 +69,19 @@ solana-commit: ## commit the selected/latest manifest and publish its verified D
 
 verify-solana: ## read the memo back from Devnet and compare the canonical manifest fingerprint
 	uv run python -m quantswarm.audit.solana verify "$(RUN)"
+
+.PHONY: auth-init audit-init audit-up audit-seal audit-verify
+auth-init:
+	python scripts/init_auth.py
+
+audit-init: ## create a local test wallet and pin its public address in ignored .env
+	uv run python scripts/init_audit.py
+
+audit-up: audit-init ## run the isolated periodic Devnet signer
+	docker compose --profile audit up -d --build auditor
+
+audit-seal:
+	uv run python -m quantswarm.audit.traces seal
+
+audit-verify:
+	uv run python -m quantswarm.audit.traces verify

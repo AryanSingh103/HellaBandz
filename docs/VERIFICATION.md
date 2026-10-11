@@ -3,7 +3,8 @@
 Verified October 10, 2026 on `p1-demo` checkout `45e51e701ea64d7fc3bdf2898a179c34278bcf6e`.
 Runtime/benchmark source SHA-256:
 `29f61f2c8c1b4c1510ee8653bea8c67c30b400817f5deaf2e333540cb9738890`.
-Later changes in this verification handoff affect documentation and generated evidence only.
+This opening record describes that earlier combined checkout. Follow-up sections record
+subsequent runtime changes; use their source hashes and evidence for those versions.
 
 ## Setup and correctness
 
@@ -86,3 +87,40 @@ its normal polling and WebSocket connection were part of the background workload
 Redacted local logs and supplementary evidence are in ignored `runs/verification-20261010/`.
 Credentials and wallet keys are excluded from the committed records. See [SUBMISSION.md](SUBMISSION.md)
 for access and publication gates; passing these checks does not mean Devpost has been submitted.
+
+## Judge demo and full-trace seal (October 10, 2026)
+
+Operator authentication now protects HTTP and WebSocket access. Browser sessions use
+expiring HttpOnly cookies; untrusted origins are rejected. The isolated auditor seals
+16 durable record sets, including agent messages and strategy sales. See [SECURITY](SECURITY.md).
+The earlier complete security suite passed 141 tests; two subsequent focused checks
+passed, including a newly added sealer crash-recovery case. These are prior evidence,
+not a claim that the latest interrupted full-suite run completed.
+
+The production web build completed successfully in 79.41 seconds. The exhaustive
+benchmark and additional full-suite rerun were stopped at the user's request to
+prioritize a working judge presentation. Partial results remain local; the committed
+performance tables are explicitly historical. The report generator refuses stale,
+incomplete or mixed-source results.
+
+The active `quantswarm_judges` database preserves the actual demo records while the
+original `quantswarm` database retains all historical benchmark data. The copied
+portfolios contain 2,177 (`main`) and 2,163 (`real-check-20261010`) ledger events.
+Research, marketplace and market-data records were copied as well. This is a new
+audit baseline, not retroactive authentication of the import's earlier history.
+
+The running auditor published and independently verified a finalized Devnet seal:
+
+- Anchor: `3e8f9cb473834b11bcc5bc5169b412d7`.
+- Manifest SHA-256: `7f671102f015f90b7b6315758e4c70eb3d6978b41b808b7080997d7be2c752d2`.
+- [Actual Solana transaction](https://explorer.solana.com/tx/4A6j35zFwq8PN9uKvKkQqyeBrH11mp3CMjj1xngkRWVWegx3CxeK6Yn6a3LzEdg941QztcrMdFtX5VJQRxM6zgY9?cluster=devnet).
+- [Public receipt](../data/audits/3e8f9cb473834b11bcc5bc5169b412d7.json).
+- All 16 record roots matched: 9,603 sealed records, including 106 agent messages and
+  two strategy sales; zero pending changes at verification.
+
+The browser's **Verify blockchain & records** action displayed the same successful
+9,603-record result, alongside a matching 2,177-event main-portfolio replay and a
+running audit service. The judge demo tab is left open on that result.
+
+The production terminal is running at http://localhost:3000. Use [JUDGE_DEMO](JUDGE_DEMO.md)
+for the presentation sequence. API, worker, manager and periodic auditor are running.

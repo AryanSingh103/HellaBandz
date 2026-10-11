@@ -10,8 +10,9 @@ export function url(path: string, params: Record<string, string | number | boole
 }
 export class ApiError extends Error { constructor(public status: number, message: string) { super(message); } }
 export async function request<T>(path: string, params: Record<string, string | number | boolean | undefined> = {}, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(url(path, params), { ...init, signal: init.signal || AbortSignal.timeout(45000) });
+  const response = await fetch(url(path, params), { ...init, credentials: "include", signal: init.signal || AbortSignal.timeout(45000) });
   const data = await response.json().catch(() => null);
+  if (response.status === 401 && path !== "/v1/auth/session" && typeof window !== "undefined") window.dispatchEvent(new Event("qs-auth-expired"));
   if (!response.ok) throw new ApiError(response.status, typeof data?.detail === "string" ? data.detail :
     Array.isArray(data?.detail) ? data.detail.map((d: { msg: string }) => d.msg).join("; ") : data?.detail ? JSON.stringify(data.detail) : `API request failed (${response.status})`);
   if (data === null) throw new Error("API returned an invalid response");

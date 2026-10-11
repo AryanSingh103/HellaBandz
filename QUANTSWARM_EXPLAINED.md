@@ -502,7 +502,7 @@ are strong on the last two; P1 secures the first.
   scaling comes from more portfolios and workers.
 - **AI is non-deterministic.** Reproducibility starts from the *recorded* AI proposals in the manifest;
   re-asking the AI gives different ideas.
-- **No API authentication**: it's a local demo.
+- **Single-operator API authentication**: sign-in protects the local workspace; demo identities are shared. See [SECURITY](docs/SECURITY.md).
 - **Good backtest ≠ future profit.** The "winner" is the best of a few candidates under these assumptions.
 
 ---
