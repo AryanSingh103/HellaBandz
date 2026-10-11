@@ -415,6 +415,9 @@ built a lot around the engine. Present the extras as extras.
   In 7 of them nothing passed the funding test, so the system just held buy-and-hold.
 - Real Alpaca data, held out Jan–Sep 2026: **+12.42% versus +12.42%**. No strategy earned money,
   so the portfolio *was* buy-and-hold.
+- The demo run on the Markets page (`T20261010194733`, an older tournament): the portfolio made
+  **+6.3%** on the 9-month final exam while buy-and-hold made **+15.8%**. The Markets card now shows
+  that comparison next to the result, so say it before a judge reads it.
 
 The guide says to *"focus on trustworthy mechanics rather than sophisticated strategy returns."*
 Our system's job is to refuse to fund strategies without evidence, and it did. Say it plainly. It

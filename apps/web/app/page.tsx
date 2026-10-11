@@ -53,7 +53,7 @@ function Terminal() {
   const stream = useEventStream(observing ? route.p : null);
   const equity = useLiveEquity(charting ? route.p : null, revision);
   const jobs = useResource<Job[]>(charting ? "/v1/jobs" : null, { portfolio_id: route.p, include_cleared: "true" }, 30000, revision);
-  const crash = crashBand(jobs.data || undefined, route.p, equity.data || undefined);
+  const crash = crashBand(jobs.data || undefined, route.p, equity.data || undefined, context.data?.session);
   const manifest = (route.run ? runs.data?.find(t => t.run_id === route.run)?.manifest : context.data?.manifest) || null;
   const dataset = datasets.data?.find(d => d.content_sha256 === manifest?.dataset.content_sha256 || (!manifest && d.dataset_id === context.data?.dataset_id));
   const portfolioDataset = datasets.data?.find(d => d.dataset_id === context.data?.dataset_id || d.content_sha256 === context.data?.manifest?.dataset.content_sha256);
@@ -86,7 +86,7 @@ function Terminal() {
       {route.view === "browse" && <div className="home-grid"><div className="home-main">
         <PageIntro view="browse" manifest={manifest} />
         {!manifest ? <div className="card"><Empty>{context.loading || runs.loading ? "Loading research context..." : "No research associated with this portfolio."}<div className="row centered"><button className="cta-pill" onClick={() => navigate({ view: "run" })}>Run research <ArrowUpRight size={15} /></button>{!!runs.data?.length && <button onClick={() => navigate({ run: runs.data![0].run_id })}>Browse latest research</button>}</div></Empty></div>
-          : visible.length ? <Hero manifest={manifest} strategies={visible} currency={currency} live={live} equity={equity.data || undefined} crash={crash} open={setStrategy} /> : null}
+          : visible.length ? <Hero manifest={manifest} strategies={visible} currency={currency} live={live} equity={manifest.run_id === context.data?.run_id ? equity.data || undefined : undefined} crash={manifest.run_id === context.data?.run_id ? crash : undefined} open={setStrategy} /> : null}
         <HowItWorks go={v => navigate({ view: v })} />
         <Pillars go={v => navigate({ view: v })} />
         <div className="browse-title"><h2 className="section-h">{route.category === "All strategies" ? "All strategies" : route.category}</h2><div className="filters">

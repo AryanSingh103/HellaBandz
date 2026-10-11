@@ -610,6 +610,9 @@ main {
   color: var(--text-2);
   font-size: 14px;
 }
+.pager span {
+  white-space: nowrap;
+}
 .pager .round {
   width: 42px;
   height: 42px;
@@ -700,6 +703,41 @@ main {
 .underline.rose {
   background: var(--red);
 }
+.underline.green {
+  background: var(--green);
+}
+.o-name small {
+  display: block;
+  white-space: normal;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.plain {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text-2);
+  margin: -6px 0 14px;
+}
+.plain b {
+  color: var(--text);
+}
+.verdict {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--bg-2);
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 0 0 16px;
+}
+.scope-note {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 4px 0 10px;
+}
 .o-box {
   border: 1px solid var(--line-2);
   border-radius: 10px;
@@ -722,6 +760,17 @@ main {
   font-variant-numeric: tabular-nums;
   background: var(--green-dim);
   transition: transform .15s,box-shadow .15s;
+}
+.pill.muted {
+  border-color: var(--line-2);
+  color: var(--text-2);
+  background: transparent;
+  font-weight: 600;
+}
+.pill.muted.neg {
+  border-color: var(--line-2);
+  color: var(--red);
+  background: transparent;
 }
 .pill.neg {
   border-color: var(--red);
@@ -858,6 +907,7 @@ main {
 }
 .chart-foot {
   display: flex;
+  flex-wrap: wrap;
   gap: 22px;
   color: var(--muted);
   font-size: 13px;
