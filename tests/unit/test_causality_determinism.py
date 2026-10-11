@@ -22,6 +22,8 @@ PARAMS = {
     StrategyFamily.VOL_TARGET: {"vol_lookback": 30, "trend_lookback": 100, "target_vol": 0.15},
     StrategyFamily.RSI_REVERSION: {"lookback": 14, "entry_rsi": 30, "exit_rsi": 55},
     StrategyFamily.TS_MOMENTUM: {"lookback": 120, "threshold": 0.0},
+    StrategyFamily.REGIME_REVERSION: {"regime_lookback": 60, "min_reversion": 0.02, "lookback": 30, "sell_z": 1.0, "rebuy_z": 0.0},
+    StrategyFamily.BUY_HOLD: {},
 }
 
 

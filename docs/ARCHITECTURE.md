@@ -9,9 +9,10 @@ boundary, not the model.
                     │                                                                             │
   frozen dataset ──►│  Agent service (LangGraph + OpenAI, or recorded fixtures)                   │
   (Parquet + hash)  │   summarize(train) → momentum | mean_reversion | volatility (parallel LLM)  │
-                    │   → fit: deterministic grid search on TRAIN                                 │
-                    │   → rank: deterministic backtests on VALIDATION + 3 stability folds + gates │
+                    │   → fit: deterministic grid search on TRAIN, scored against a passive core  │
+                    │   → rank: excess over the core on walk-forward blocks + VALIDATION, gates   │
                     │   → supervisor (LLM, advisory) → deterministic allocator → test ONCE         │
+                    │     (unearned capital stays in the passive equal-weight core, not in cash)  │
                     │   → finalized immutable manifest (canonical sha256)                        │
                     │                                                                             │
                     │  Session runner: replays held-out bars + crash overlay, turns frozen        │

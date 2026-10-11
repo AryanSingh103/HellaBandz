@@ -66,6 +66,13 @@ def run_job(job_id: str):
                          "total = coalesce(%s,total), updated_at = now() WHERE job_id = %s AND status = 'running'",
                          (stage, value, total, job_id))
         try:
+            from hellabandz.api.auth import disabled, internal_token
+            api_headers = {}
+            if not disabled():
+                owner = conn.execute("SELECT owner_id FROM account_resources WHERE kind='job' AND resource_id=%s", (job_id,)).fetchone()
+                if not owner:
+                    raise RuntimeError("Unowned jobs cannot run with account authentication enabled")
+                api_headers = {"Authorization": "Bearer " + internal_token(str(owner["owner_id"]), job)}
             path = resolve(job["dataset_id"])
             if job["kind"] == "research":
                 from hellabandz.agents.tournament import run
@@ -75,7 +82,7 @@ def run_job(job_id: str):
                     nonlocal count
                     count += 1
                     progress(role, count, None)
-                result = run(path, job["run_id"], API, research_progress)
+                result = run(path, job["run_id"], API, research_progress, api_headers=api_headers)
                 progress("benchmark")
                 save_analytics(result["manifest"], path)
                 progress("benchmark", count + 1, count + 1)
@@ -87,7 +94,7 @@ def run_job(job_id: str):
                 deadline = time.monotonic() + 60
                 progress("waiting_for_worker")
                 while True:
-                    r = httpx.get(API + "/v1/runtime", params={"portfolio_id": job["portfolio_id"]}, timeout=5)
+                    r = httpx.get(API + "/v1/runtime", params={"portfolio_id": job["portfolio_id"]}, timeout=5, headers=api_headers)
                     r.raise_for_status()
                     if r.json()["ready"]:
                         break
@@ -97,7 +104,7 @@ def run_job(job_id: str):
                     if time.monotonic() > deadline:
                         raise TimeoutError("managed worker did not become ready")
                     time.sleep(0.2)
-                session = Session(API, manifest, path, job["portfolio_id"], stop_requested, progress)
+                session = Session(API, manifest, path, job["portfolio_id"], stop_requested, progress, api_headers=api_headers)
                 config = job["config"]
                 try:
                     session.setup()

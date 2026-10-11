@@ -40,10 +40,18 @@ services:
       ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
       ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID:-onwK4e9ZLuTAKqWW03F9}
       QS_OPENAI_MODEL: ${QS_OPENAI_MODEL:-gpt-4.1-mini}
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
+      QS_AUTH_DISABLED: ${QS_AUTH_DISABLED:-false}
+      QS_ALLOWED_ORIGINS: ${QS_ALLOWED_ORIGINS:-http://localhost:3000}
+      QS_INTERNAL_SIGNING_KEY: ${QS_INTERNAL_SIGNING_KEY:-}
+      QS_CREDENTIAL_ENCRYPTION_KEY: ${QS_CREDENTIAL_ENCRYPTION_KEY:-}
+      QS_KALSHI_DEMO_ORDERS_ENABLED: ${QS_KALSHI_DEMO_ORDERS_ENABLED:-false}
     ports: ["8000:8000"]
     depends_on: { db: { condition: service_healthy } }
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/v1/health', timeout=2)"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)"]
       interval: 2s
       retries: 30
     cpus: 1
@@ -61,6 +69,8 @@ services:
       DATABASE_URL: ${QS_DATABASE_URL:-postgresql://quantswarm:quantswarm@db:5432/quantswarm}
       QS_API: http://api:8000
       QS_TOURNAMENT_PROCS: 2
+      QS_AUTH_DISABLED: ${QS_AUTH_DISABLED:-false}
+      QS_INTERNAL_SIGNING_KEY: ${QS_INTERNAL_SIGNING_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       QS_OPENAI_MODEL: ${QS_OPENAI_MODEL:-gpt-4.1-mini}
     volumes:
@@ -77,6 +87,9 @@ services:
       context: apps/web
       args:
         NEXT_PUBLIC_API: ${NEXT_PUBLIC_API:-http://localhost:8000}
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:-}
+        NEXT_PUBLIC_QS_AUTH_DISABLED: ${NEXT_PUBLIC_QS_AUTH_DISABLED:-false}
     ports: ["3000:3000"]
     depends_on: { api: { condition: service_healthy } }
     cpus: 1

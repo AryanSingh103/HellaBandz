@@ -4,6 +4,9 @@ __pycache__/
 .pytest_cache/
 .hypothesis/
 .env
+.env.*
+!.env.example
+!**/.env.local.example
 data/snapshots/
 data/raw/
 runs/

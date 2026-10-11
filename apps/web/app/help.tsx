@@ -68,6 +68,8 @@ export const GLOSSARY: Record<string, string> = {
   "volatility": "Owns less when the market is wild and more when it is calm.",
   "breakout": "Buys when a price jumps above its recent high, sells if it falls back below its recent low.",
   "rsi": "Buys after a stretch of heavy selling (low RSI) and sells once the price has bounced back.",
+  "vs core": "Out-of-sample return minus a passive equal-weight hold of every symbol. Positive means the strategy beat just buying and holding on data it was not tuned on.",
+  "passive core": "Equal-weight buy-and-hold of every symbol. Capital no strategy has earned stays here.",
   "trend": "Holds a stock only while it is up over the last few weeks, and steps aside when it isn't.",
   "frozen": "This research is finished and locked: strategies, settings and allocations can't change anymore.",
   "live": "A paper-trading session is streaming right now: prices arrive and agents trade through the risk engine.",

@@ -162,6 +162,8 @@ class StrategyFamily(StrEnum):
     VOL_TARGET = "vol_target"
     RSI_REVERSION = "rsi_reversion"
     TS_MOMENTUM = "ts_momentum"
+    REGIME_REVERSION = "regime_reversion"
+    BUY_HOLD = "buy_hold"
 
 
 class StrategyProposal(_Frozen):

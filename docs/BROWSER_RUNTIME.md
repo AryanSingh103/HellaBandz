@@ -54,10 +54,12 @@ plus marked holdings minus remaining basis and fees; exposure is holdings times 
 Throughput counts processed portfolio commands per ten-second wall-clock bucket. Series are sampled
 from real ledger points with their stride disclosed.
 
-The baseline uses equal target weights over frozen dataset symbols and the same capital, period and
-engine costs. Orders are decided after the first evaluation bar, fill on later bars, and expire under the
-same rules. It targets 90% gross exposure with a cash buffer; unfilled quantities remain cash, without
-rebalancing or final liquidation. Research benchmark series use the full held-out period and do not
+The baseline is the tournament's passive core run on its own: equal dollar slots over frozen dataset
+symbols, 90% of capital, whole shares, with the same period and engine costs. Orders are decided after the
+first evaluation bar, fill on later bars, and expire under the same rules; positions are never trimmed,
+topped up or liquidated. A research portfolio that funds no strategy therefore matches it exactly. Research
+manifests record the core, each strategy's out-of-sample excess over it, and the share of capital left in it
+(see STRATEGY_EVALUATION). Research benchmark series use the full held-out period and do not
 include a session's optional crash overlay or a shorter session's steps. Legacy missing artifacts are
 reported unavailable; they can be derived separately without rewriting the manifest.
 
