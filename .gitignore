@@ -13,3 +13,5 @@ apps/web/.next/
 benchmarks/results/tmp/
 graphify-out/
 data/solana/
+.DS_Store
+data/manifests/job-logs/

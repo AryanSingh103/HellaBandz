@@ -1,0 +1,879 @@
+{
+ "allocations": {
+  "blended": {
+   "T20261010192424.mean_reversion": 0.20426607234983005,
+   "T20261010192424.momentum": 0.4547490927681735,
+   "T20261010192424.volatility": 0.29098483488199645
+  },
+  "by_strategy": {
+   "T20261010192424.mean_reversion": {
+    "capital_micros": 1935150000,
+    "weight": 0.193515
+   },
+   "T20261010192424.momentum": {
+    "capital_micros": 4000000000,
+    "weight": 0.4
+   },
+   "T20261010192424.volatility": {
+    "capital_micros": 2756700000,
+    "weight": 0.27567
+   }
+  },
+  "score_weights": {
+   "T20261010192424.mean_reversion": 0.20853214469966008,
+   "T20261010192424.momentum": 0.509498185536347,
+   "T20261010192424.volatility": 0.28196966976399296
+  }
+ },
+ "code_version": "05801b3",
+ "created_at": "2026-10-10T19:24:32+00:00",
+ "dataset": {
+  "content_sha256": "40ea8d6c017964faaa2147d0bb39d908f912c3a1c54ef48b1f117d3a32d4e68c",
+  "dataset_id": "synthetic-1h-seed42",
+  "source": "quantswarm.ingestion.synthetic (seed=42)",
+  "splits": {
+   "test": [
+    1767205800,
+    1790800201
+   ],
+   "train": [
+    1672756200,
+    1743607800
+   ],
+   "validation": [
+    1743607800,
+    1767205800
+   ]
+  }
+ },
+ "engine_config": {
+  "expiry_bars": 5,
+  "fee_per_share": 5000,
+  "kill_drawdown_bps": 1500,
+  "limit_band_bps": 1000,
+  "max_gross_bps": 9000,
+  "max_order_bps": 2500,
+  "max_signal_age_s": 7200,
+  "participation_bps": 100,
+  "reserve_buffer_bps": 200,
+  "slippage_bps": 5,
+  "stress_slippage_bps": 50
+ },
+ "engine_config_digest": "924400e7c89f2bb197d7064b51fc82fdba70152cc418f0b237e52cfee0829307",
+ "fitted": [
+  {
+   "candidates_tested": 27,
+   "spec": {
+    "agent_id": "mean_reversion",
+    "family": "zscore_reversion",
+    "params": {
+     "entry_z": 1.5,
+     "exit_z": 0.0,
+     "lookback": 100.0
+    },
+    "strategy_id": "T20261010192424.mean_reversion",
+    "universe": [
+     "AAPL",
+     "QQQ",
+     "SPY"
+    ],
+    "version": "1"
+   },
+   "train": {
+    "fees_usd": 18.805,
+    "final_equity_usd": 13135.00497,
+    "max_drawdown": 0.06397363,
+    "n_fills": 314,
+    "net_return": 0.3135005,
+    "sharpe": 1.467884,
+    "slippage_usd": 356.73003,
+    "turnover": 71.345979
+   },
+   "train_objective": 1.37397813210108
+  },
+  {
+   "candidates_tested": 9,
+   "spec": {
+    "agent_id": "momentum",
+    "family": "sma_crossover",
+    "params": {
+     "fast": 20.0,
+     "slow": 100.0
+    },
+    "strategy_id": "T20261010192424.momentum",
+    "universe": [
+     "MSFT",
+     "QQQ",
+     "SPY"
+    ],
+    "version": "1"
+   },
+   "train": {
+    "fees_usd": 2.25,
+    "final_equity_usd": 8810.41777,
+    "max_drawdown": 0.1506575,
+    "n_fills": 70,
+    "net_return": -0.11895822,
+    "sharpe": -1.207607,
+    "slippage_usd": 64.47223,
+    "turnover": 12.894502
+   },
+   "train_objective": -1.0256719483975
+  },
+  {
+   "candidates_tested": 27,
+   "spec": {
+    "agent_id": "volatility",
+    "family": "vol_target",
+    "params": {
+     "target_vol": 0.2,
+     "trend_lookback": 40.0,
+     "vol_lookback": 20.0
+    },
+    "strategy_id": "T20261010192424.volatility",
+    "universe": [
+     "MSFT",
+     "SPY"
+    ],
+    "version": "1"
+   },
+   "train": {
+    "fees_usd": 8.01,
+    "final_equity_usd": 8773.297835,
+    "max_drawdown": 0.15518553,
+    "n_fills": 212,
+    "net_return": -0.12267022,
+    "sharpe": -1.358655,
+    "slippage_usd": 251.062165,
+    "turnover": 50.212481
+   },
+   "train_objective": -1.14781140373785
+  }
+ ],
+ "held_out_test": {
+  "equity_curve": {
+   "equity": [
+    10000000000,
+    9955025080,
+    9897004245,
+    9893041810,
+    9917811810,
+    9922730090,
+    9908002540,
+    9895312660,
+    9974681690,
+    9985162690,
+    9966811040,
+    9975851040,
+    9923384595,
+    9924445550,
+    9918215550,
+    9893104135,
+    9896040105,
+    9887054445,
+    9919037995,
+    9785180180,
+    9784160170,
+    9790559170,
+    9780743640,
+    9786913640,
+    9776879590,
+    9783421240,
+    9749203095,
+    9726562385,
+    9774360705,
+    9713702675,
+    9731120715,
+    9715099675,
+    9706447860,
+    9703433290,
+    9680175770,
+    9700382520,
+    9667711420,
+    9698884125,
+    9671751640,
+    9679594565,
+    9778806125,
+    9685126125,
+    9736162005,
+    9754042005,
+    9686989910,
+    9661233315,
+    9684574915,
+    9653870270,
+    9662700985,
+    9623614810,
+    9641118405,
+    9649351795,
+    9657049660,
+    9661400245,
+    9717773105,
+    9756073105,
+    9813133105,
+    9829673105,
+    9776601200,
+    9749048005,
+    9715427630,
+    9702245610,
+    9683027295,
+    9635517695,
+    9613909475,
+    9624439475,
+    9606409475,
+    9649194485,
+    9660940625,
+    9618429515,
+    9632226310,
+    9602879640,
+    9612519640,
+    9568075150,
+    9594999640,
+    9552447525,
+    9553077505,
+    9569453015,
+    9585696780,
+    9605170560,
+    9596750560,
+    9584250560,
+    9551806795,
+    9544197340,
+    9504515955,
+    9505847075,
+    9520433425,
+    9523936835,
+    9529844435,
+    9481167625,
+    9478660570,
+    9465713810,
+    9505044895,
+    9542336435,
+    9512710035,
+    9528506975,
+    9503130910,
+    9474341060,
+    9411805310,
+    9423526020,
+    9414067610,
+    9436135915,
+    9436245915,
+    9423144230,
+    9491714230,
+    9512564230,
+    9460884230,
+    9525088670,
+    9561428670,
+    9439186950,
+    9429426950,
+    9445909040,
+    9536430440,
+    9477685480,
+    9429180400,
+    9426847435,
+    9438199250,
+    9517128060,
+    9477392730,
+    9650386610,
+    9506377820,
+    9479805710,
+    9483824940,
+    9526302250,
+    9643502250,
+    9696282250,
+    9639902250,
+    9693082250,
+    9754782250,
+    9752302250,
+    9702476360,
+    9654136360,
+    9653196360,
+    9691713360,
+    9740185265,
+    9888495265,
+    10004965265,
+    10027525265,
+    10126375265,
+    10266905265,
+    10070511785,
+    10090888250,
+    10052900280,
+    10095160280,
+    10252591900,
+    10068615600,
+    10113525600,
+    10175406590,
+    10162476900,
+    10165584980,
+    10067504160,
+    10050036880,
+    10052832770,
+    10048928210,
+    10024776640,
+    10018566640,
+    10031626640,
+    10025041910,
+    10031220470,
+    10012641540,
+    10003746860,
+    10021388850,
+    9988257125,
+    9995686130,
+    9958590235,
+    9957950235,
+    9970020235,
+    9961530235,
+    9952500235,
+    9955839635,
+    9961439635,
+    9933567765,
+    9928374615,
+    9958359980,
+    9885811895,
+    9862812915,
+    9838926110,
+    9840238750,
+    9877197070,
+    9852632210,
+    9887306420,
+    9963640900,
+    9920496090,
+    9895588210,
+    9804185365,
+    9812275365,
+    9807049040,
+    9797830885,
+    9753181390,
+    9778637700,
+    9694849215,
+    9702679615,
+    9707909955,
+    9683891210,
+    9680417550,
+    9656045080
+   ],
+   "ts": [
+    1767205800,
+    1767292200,
+    1767378600,
+    1767637800,
+    1767724200,
+    1767810600,
+    1767897000,
+    1767983400,
+    1768242600,
+    1768329000,
+    1768415400,
+    1768501800,
+    1768588200,
+    1768847400,
+    1768933800,
+    1769020200,
+    1769106600,
+    1769193000,
+    1769452200,
+    1769538600,
+    1769625000,
+    1769711400,
+    1769797800,
+    1770057000,
+    1770143400,
+    1770229800,
+    1770316200,
+    1770402600,
+    1770661800,
+    1770748200,
+    1770834600,
+    1770921000,
+    1771007400,
+    1771266600,
+    1771353000,
+    1771439400,
+    1771525800,
+    1771612200,
+    1771871400,
+    1771957800,
+    1772044200,
+    1772130600,
+    1772217000,
+    1772476200,
+    1772562600,
+    1772649000,
+    1772735400,
+    1772821800,
+    1773081000,
+    1773167400,
+    1773253800,
+    1773340200,
+    1773426600,
+    1773685800,
+    1773772200,
+    1773858600,
+    1773945000,
+    1774031400,
+    1774290600,
+    1774377000,
+    1774463400,
+    1774549800,
+    1774636200,
+    1774895400,
+    1774981800,
+    1775068200,
+    1775154600,
+    1775241000,
+    1775500200,
+    1775586600,
+    1775673000,
+    1775759400,
+    1775845800,
+    1776105000,
+    1776191400,
+    1776277800,
+    1776364200,
+    1776450600,
+    1776709800,
+    1776796200,
+    1776882600,
+    1776969000,
+    1777055400,
+    1777314600,
+    1777401000,
+    1777487400,
+    1777573800,
+    1777660200,
+    1777919400,
+    1778005800,
+    1778092200,
+    1778178600,
+    1778265000,
+    1778524200,
+    1778610600,
+    1778697000,
+    1778783400,
+    1778869800,
+    1779129000,
+    1779215400,
+    1779301800,
+    1779388200,
+    1779474600,
+    1779733800,
+    1779820200,
+    1779906600,
+    1779993000,
+    1780079400,
+    1780338600,
+    1780425000,
+    1780511400,
+    1780597800,
+    1780684200,
+    1780943400,
+    1781029800,
+    1781116200,
+    1781202600,
+    1781289000,
+    1781548200,
+    1781634600,
+    1781721000,
+    1781807400,
+    1781893800,
+    1782153000,
+    1782239400,
+    1782325800,
+    1782412200,
+    1782498600,
+    1782757800,
+    1782844200,
+    1782930600,
+    1783017000,
+    1783103400,
+    1783362600,
+    1783449000,
+    1783535400,
+    1783621800,
+    1783708200,
+    1783967400,
+    1784053800,
+    1784140200,
+    1784226600,
+    1784313000,
+    1784572200,
+    1784658600,
+    1784745000,
+    1784831400,
+    1784917800,
+    1785177000,
+    1785263400,
+    1785349800,
+    1785436200,
+    1785522600,
+    1785781800,
+    1785868200,
+    1785954600,
+    1786041000,
+    1786127400,
+    1786386600,
+    1786473000,
+    1786559400,
+    1786645800,
+    1786732200,
+    1786991400,
+    1787077800,
+    1787164200,
+    1787250600,
+    1787337000,
+    1787596200,
+    1787682600,
+    1787769000,
+    1787855400,
+    1787941800,
+    1788201000,
+    1788287400,
+    1788373800,
+    1788460200,
+    1788546600,
+    1788805800,
+    1788892200,
+    1788978600,
+    1789065000,
+    1789151400,
+    1789410600,
+    1789497000,
+    1789583400,
+    1789669800,
+    1789756200,
+    1790015400,
+    1790101800,
+    1790188200,
+    1790274600,
+    1790361000,
+    1790620200,
+    1790706600,
+    1790793000
+   ]
+  },
+  "per_strategy_standalone": {
+   "T20261010192424.mean_reversion": {
+    "fees_usd": 3.545,
+    "final_equity_usd": 10379.327255,
+    "max_drawdown": 0.07461824,
+    "n_fills": 93,
+    "net_return": 0.03793273,
+    "sharpe": 0.585718,
+    "slippage_usd": 88.557745,
+    "turnover": 17.711806
+   },
+   "T20261010192424.momentum": {
+    "fees_usd": 2.25,
+    "final_equity_usd": 10073.62956,
+    "max_drawdown": 0.07922658,
+    "n_fills": 96,
+    "net_return": 0.00736296,
+    "sharpe": 0.138726,
+    "slippage_usd": 82.46044,
+    "turnover": 16.492214
+   },
+   "T20261010192424.volatility": {
+    "fees_usd": 7.44,
+    "final_equity_usd": 8574.04372,
+    "max_drawdown": 0.15346521,
+    "n_fills": 273,
+    "net_return": -0.14259563,
+    "sharpe": -2.471619,
+    "slippage_usd": 310.55628,
+    "turnover": 62.111311
+   }
+  },
+  "portfolio": {
+   "config_digest": "924400e7c89f2bb197d7064b51fc82fdba70152cc418f0b237e52cfee0829307",
+   "end_ts": 1790800201,
+   "events": 8186,
+   "metrics": {
+    "fees_usd": 5.635,
+    "final_equity_usd": 9641.265875,
+    "max_drawdown": 0.06354049,
+    "n_fills": 447,
+    "net_return": -0.03587341,
+    "sharpe": -0.509604,
+    "slippage_usd": 224.089125,
+    "turnover": 44.818016
+   },
+   "rejections": 0,
+   "run_id": "T20261010192424.test",
+   "start_ts": 1767205800,
+   "state_digest": "ed83538794aa44c5ebbda14771d84d1f8b7126a03bffe5f89a9d8f1150ec2a85",
+   "trades_digest": "570d44cb1f5c8339a79230a6365c0f10c3f9935e434b77d0a8d7916a8d08adbb"
+  }
+ },
+ "policy": {
+  "cap_per_strategy": 0.4,
+  "deployable": 0.9,
+  "initial_cash_micros": 10000000000,
+  "max_dd": 0.25,
+  "min_fills": 10,
+  "supervisor_band": 0.2
+ },
+ "proposals": [
+  {
+   "agent_id": "mean_reversion",
+   "attempts": 1,
+   "llm": {
+    "completion_tokens": 181,
+    "latency_s": 1.805,
+    "model": "gpt-4.1-mini-2025-04-14",
+    "prompt_tokens": 641
+   },
+   "proposal": {
+    "agent_id": "mean_reversion",
+    "evidence": [
+     "AAPL total_return -0.347, vol 0.2442",
+     "QQQ total_return -0.2593, vol 0.2245",
+     "SPY total_return -0.2222, vol 0.1844"
+    ],
+    "family": "zscore_reversion",
+    "param_grid": {
+     "entry_z": [
+      1.0,
+      1.5,
+      2.0
+     ],
+     "exit_z": [
+      0.0,
+      0.5,
+      1.0
+     ],
+     "lookback": [
+      20.0,
+      50.0,
+      100.0
+     ]
+    },
+    "proposal_id": "T20261010192424.mean_reversion",
+    "rationale": "Selected symbols with moderate negative returns and reasonable volatility for mean reversion. Lookbacks chosen to capture short-to-medium term mean reversion. Entry and exit z-scores balance sensitivity and noise.",
+    "schema_version": "1",
+    "universe": [
+     "AAPL",
+     "QQQ",
+     "SPY"
+    ]
+   },
+   "source": "llm"
+  },
+  {
+   "agent_id": "momentum",
+   "attempts": 1,
+   "llm": {
+    "completion_tokens": 205,
+    "latency_s": 1.65,
+    "model": "gpt-4.1-mini-2025-04-14",
+    "prompt_tokens": 636
+   },
+   "proposal": {
+    "agent_id": "momentum",
+    "evidence": [
+     "MSFT positive return 0.0891, lag1_autocorr 0.0268, frac_above_sma200 0.4895",
+     "QQQ lag1_autocorr 0.0284, frac_above_sma200 0.3817",
+     "SPY lag1_autocorr 0.0137, frac_above_sma200 0.3873"
+    ],
+    "family": "sma_crossover",
+    "param_grid": {
+     "fast": [
+      5.0,
+      10.0,
+      20.0
+     ],
+     "slow": [
+      50.0,
+      100.0,
+      200.0
+     ]
+    },
+    "proposal_id": "T20261010192424.momentum",
+    "rationale": "Select symbols with positive or less negative returns and moderate volatility. SMA crossover suits these given moderate positive lag1 autocorrelations and fraction above SMA200 near 0.38-0.49, indicating trend presence. Fast and slow SMA ranges chosen to capture short-to-medium trends.",
+    "schema_version": "1",
+    "universe": [
+     "MSFT",
+     "QQQ",
+     "SPY"
+    ]
+   },
+   "source": "llm"
+  },
+  {
+   "agent_id": "volatility",
+   "attempts": 1,
+   "llm": {
+    "completion_tokens": 188,
+    "latency_s": 1.64,
+    "model": "gpt-4.1-mini-2025-04-14",
+    "prompt_tokens": 643
+   },
+   "proposal": {
+    "agent_id": "volatility",
+    "evidence": [
+     "MSFT max_drawdown 0.1795 lowest",
+     "SPY max_drawdown 0.266 low",
+     "annualized_vol MSFT 0.2301, SPY 0.1844 moderate",
+     "lag1_autocorr positive for MSFT 0.0268 and SPY 0.0137"
+    ],
+    "family": "vol_target",
+    "param_grid": {
+     "target_vol": [
+      0.1,
+      0.15,
+      0.2
+     ],
+     "trend_lookback": [
+      40.0,
+      100.0,
+      200.0
+     ],
+     "vol_lookback": [
+      20.0,
+      60.0,
+      120.0
+     ]
+    },
+    "proposal_id": "T20261010192424.volatility",
+    "rationale": "Select MSFT and SPY for lower max drawdown and moderate vol; mid-range lookbacks balance responsiveness and stability; target vol set moderately below annualized vol for risk control.",
+    "schema_version": "1",
+    "universe": [
+     "MSFT",
+     "SPY"
+    ]
+   },
+   "source": "llm"
+  }
+ ],
+ "ranked": [
+  {
+   "agent_id": "mean_reversion",
+   "family": "zscore_reversion",
+   "fold_returns": [
+    0.18544612,
+    0.15668494,
+    -0.00174822
+   ],
+   "gates": [],
+   "params": {
+    "entry_z": 1.5,
+    "exit_z": 0.0,
+    "lookback": 100.0
+   },
+   "score": 0.402994,
+   "stability": 0.6666666666666666,
+   "strategy_id": "T20261010192424.mean_reversion",
+   "train": {
+    "fees_usd": 18.805,
+    "final_equity_usd": 13135.00497,
+    "max_drawdown": 0.06397363,
+    "n_fills": 314,
+    "net_return": 0.3135005,
+    "sharpe": 1.467884,
+    "slippage_usd": 356.73003,
+    "turnover": 71.345979
+   },
+   "validation": {
+    "fees_usd": 2.69,
+    "final_equity_usd": 10296.090475,
+    "max_drawdown": 0.03283605,
+    "n_fills": 52,
+    "net_return": 0.02960905,
+    "sharpe": 0.625014,
+    "slippage_usd": 47.109525,
+    "turnover": 9.421888
+   },
+   "validation_trades_digest": "fbc6a4d738fd1300756726a173784d32126b645cfb70c0d799a3249d10afcfb4"
+  },
+  {
+   "agent_id": "momentum",
+   "family": "sma_crossover",
+   "fold_returns": [
+    -0.11895822,
+    -0.03121831,
+    0.23997742
+   ],
+   "gates": [],
+   "params": {
+    "fast": 20.0,
+    "slow": 100.0
+   },
+   "score": 0.984619,
+   "stability": 0.3333333333333333,
+   "strategy_id": "T20261010192424.momentum",
+   "train": {
+    "fees_usd": 2.25,
+    "final_equity_usd": 8810.41777,
+    "max_drawdown": 0.1506575,
+    "n_fills": 70,
+    "net_return": -0.11895822,
+    "sharpe": -1.207607,
+    "slippage_usd": 64.47223,
+    "turnover": 12.894502
+   },
+   "validation": {
+    "fees_usd": 2.215,
+    "final_equity_usd": 13548.27821,
+    "max_drawdown": 0.05509902,
+    "n_fills": 73,
+    "net_return": 0.35482782,
+    "sharpe": 3.126101,
+    "slippage_usd": 61.07679,
+    "turnover": 12.215645
+   },
+   "validation_trades_digest": "a8859e66273215502f2ca6cfd4f0096eba20dd215cb7c54a92f2821205fa7bbf"
+  },
+  {
+   "agent_id": "volatility",
+   "family": "vol_target",
+   "fold_returns": [
+    -0.12267022,
+    -0.14552697,
+    0.08579189
+   ],
+   "gates": [],
+   "params": {
+    "target_vol": 0.2,
+    "trend_lookback": 40.0,
+    "vol_lookback": 20.0
+   },
+   "score": 0.544914,
+   "stability": 0.3333333333333333,
+   "strategy_id": "T20261010192424.volatility",
+   "train": {
+    "fees_usd": 8.01,
+    "final_equity_usd": 8773.297835,
+    "max_drawdown": 0.15518553,
+    "n_fills": 212,
+    "net_return": -0.12267022,
+    "sharpe": -1.358655,
+    "slippage_usd": 251.062165,
+    "turnover": 50.212481
+   },
+   "validation": {
+    "fees_usd": 12.88,
+    "final_equity_usd": 11686.13567,
+    "max_drawdown": 0.09181883,
+    "n_fills": 340,
+    "net_return": 0.16861357,
+    "sharpe": 1.800018,
+    "slippage_usd": 407.18433,
+    "turnover": 81.436761
+   },
+   "validation_trades_digest": "c35a34c1f106386b70657cb2028326309d7770da9805647e77d1c9b491eadbb0"
+  }
+ ],
+ "run_id": "T20261010192424",
+ "supervisor": {
+  "llm": {
+   "completion_tokens": 179,
+   "latency_s": 1.548,
+   "model": "gpt-4.1-mini-2025-04-14",
+   "prompt_tokens": 626
+  },
+  "rationale": "The momentum strategy has the highest score (0.985) and delivers strong net returns with a high Sharpe ratio, justifying the maximum allocation of 40%. The volatility targeting strategy has a moderate score (0.545) and reasonable risk-adjusted returns, so it receives a substantial allocation of 30%. The mean reversion strategy has the lowest score (0.403) and more modest returns, so it is allocated 20%. A 10% cash reserve is maintained for risk control. The allocations respect the +/-20% bounds around score-proportional weights and the 40% cap per strategy.",
+  "source": "llm",
+  "weights": {
+   "T20261010192424.mean_reversion": 0.2,
+   "T20261010192424.momentum": 0.4,
+   "T20261010192424.volatility": 0.3
+  }
+ }
+}

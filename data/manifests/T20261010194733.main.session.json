@@ -1,0 +1,24 @@
+{
+ "run_id": "T20261010194733",
+ "steps": 300,
+ "crash_start_step": 150,
+ "bars": 1500,
+ "orders": 96,
+ "approved": 91,
+ "reduced": 1,
+ "rejected": 4,
+ "duplicates": 8,
+ "final_equity_usd": 9560.61522,
+ "ledger_digest": "e02a39f797e9476ada7b1edb18eff3da24cb6343987e68edeeead60491bee54c",
+ "head_hash": "e7351f99228b73948e4881af6d255d7c94b8b06d7943a0eefe08e8b1313cd5dc",
+ "verify": {
+  "events": 1760,
+  "chain_ok": true,
+  "error": null,
+  "replayed_digest": "e02a39f797e9476ada7b1edb18eff3da24cb6343987e68edeeead60491bee54c",
+  "stored_digest": "e02a39f797e9476ada7b1edb18eff3da24cb6343987e68edeeead60491bee54c",
+  "match": true,
+  "head_hash": "e7351f99228b73948e4881af6d255d7c94b8b06d7943a0eefe08e8b1313cd5dc"
+ },
+ "elapsed_s": 7.15
+}
