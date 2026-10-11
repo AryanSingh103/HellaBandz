@@ -18,7 +18,7 @@ import httpx
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from quantswarm.config import load_env  # noqa: E402
+from hellabandz.config import load_env  # noqa: E402
 
 load_env()
 
@@ -26,7 +26,7 @@ load_env()
 def check_openai() -> tuple[str, str]:
     if not os.environ.get("OPENAI_API_KEY"):
         return "SKIP", "OPENAI_API_KEY not set (agents use recorded fixture proposals)"
-    from quantswarm.agents import llm
+    from hellabandz.agents import llm
     t = time.perf_counter()
     out, meta = llm.chat_json("Reply with JSON.", 'Return {"ok": true}.', timeout=30)
     return ("OK" if out.get("ok") is True else "WARN"), f"model {meta['model']}, {time.perf_counter() - t:.1f}s"
@@ -39,7 +39,7 @@ def check_elevenlabs() -> tuple[str, str]:
     voice = os.environ.get("ELEVENLABS_VOICE_ID", "onwK4e9ZLuTAKqWW03F9")
     r = httpx.post(f"https://api.elevenlabs.io/v1/text-to-speech/{voice}", timeout=30,
                    headers={"xi-api-key": key, "accept": "audio/mpeg"},
-                   json={"text": "QuantSwarm online.", "model_id": os.environ.get("ELEVENLABS_MODEL", "eleven_flash_v2_5")})
+                   json={"text": "HellaBandz online.", "model_id": os.environ.get("ELEVENLABS_MODEL", "eleven_flash_v2_5")})
     if r.status_code != 200:
         return "FAIL", f"HTTP {r.status_code}: {r.text[:160]}"
     return "OK", f"{len(r.content):,} bytes of audio"
@@ -63,7 +63,7 @@ def check_alpaca() -> tuple[str, str]:
 
 
 def check_solana() -> tuple[str, str]:
-    from quantswarm.audit import solana as sol
+    from hellabandz.audit import solana as sol
     kp = sol.load_keypair()
     bal = sol.rpc("getBalance", [str(kp.pubkey())])["value"]
     if bal < 1_000_000:
@@ -74,7 +74,7 @@ def check_solana() -> tuple[str, str]:
 
 def check_database() -> tuple[str, str]:
     import psycopg
-    from quantswarm.execution.db import database_url
+    from hellabandz.execution.db import database_url
     url = database_url()
     where = "Tiger Cloud" if "tsdb.cloud.timescale.com" in url or "tigerdata" in url else url.split("@")[-1]
     with psycopg.connect(url, connect_timeout=5) as c:

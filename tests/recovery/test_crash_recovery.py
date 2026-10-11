@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from quantswarm.contracts import OpenPortfolio, SetAllocation
+from hellabandz.contracts import OpenPortfolio, SetAllocation
 from tests.conftest import enqueue, expected_from_command_log, wait_until
 from tests.helpers import bar, order, usd
 

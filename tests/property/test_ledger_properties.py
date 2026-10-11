@@ -12,8 +12,8 @@ no-op (I-01).
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from quantswarm.contracts import CancelOrder, SetKillSwitch
-from quantswarm.ledger import PortfolioState, check_invariants, process, replay
+from hellabandz.contracts import CancelOrder, SetKillSwitch
+from hellabandz.ledger import PortfolioState, check_invariants, process, replay
 from tests.helpers import CFG, bar, fresh, order
 from tests.unit.test_incremental_exposure import assert_totals
 
@@ -108,7 +108,7 @@ def test_no_sequence_breaks_the_ledger(prog):
 def setup_events():
     s = PortfolioState()
     out = []
-    from quantswarm.contracts import OpenPortfolio, SetAllocation
+    from hellabandz.contracts import OpenPortfolio, SetAllocation
     from tests.helpers import usd
     for cmd in [OpenPortfolio(initial_cash=usd(10_000)), SetAllocation(agent_id="a", capital=usd(4_000)),
                 SetAllocation(agent_id="b", capital=usd(3_000)), SetAllocation(agent_id="c", capital=usd(2_000)),

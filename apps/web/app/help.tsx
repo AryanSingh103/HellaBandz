@@ -164,7 +164,7 @@ export function HowItWorks({ go }: { go: (v: View) => void }) {
     { n: 4, icon: <ShieldCheck size={18} />, t: "Verify", d: "Books are replayed and checked. Results sealed on Solana", v: "audit" as View },
   ];
   return <div className="how card">
-    <div className="how-head"><span className="eyebrow"><BookOpen size={13} /> How QuantSwarm works</span>
+    <div className="how-head"><span className="eyebrow"><BookOpen size={13} /> How HellaBandz works</span>
       <button className="intro-close" aria-label="Hide how it works" title="Hide" onClick={() => dismiss("how")}><X size={15} /></button></div>
     <div className="how-steps">{steps.map(s => <button key={s.n} className="how-step" onClick={() => go(s.v)}>
       <span className="how-n">{s.n}</span><span className="how-icon">{s.icon}</span>

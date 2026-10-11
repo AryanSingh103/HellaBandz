@@ -3,7 +3,7 @@ import asyncio
 
 from starlette.datastructures import QueryParams
 
-from quantswarm.api.app import stream
+from hellabandz.api.app import stream
 
 
 def test_stream_rejects_duplicate_portfolio_parameters_before_accept():

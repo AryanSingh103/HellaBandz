@@ -1,7 +1,7 @@
 """Risk rules, fill model and idempotency of the deterministic engine."""
 
-from quantswarm.contracts import CancelOrder, SetKillSwitch
-from quantswarm.ledger import check_invariants, process
+from hellabandz.contracts import CancelOrder, SetKillSwitch
+from hellabandz.ledger import check_invariants, process
 from tests.helpers import CFG, bar, fresh, order, usd
 
 

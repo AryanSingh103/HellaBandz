@@ -114,7 +114,7 @@ export function Hero({ manifest, strategies, currency, live, equity, crash, open
       <div className="legend">
         <span><i style={{ background: "#28d49b" }} /><Term k="held-out">Held-out</Term> <b>{signed(test.net_return)}</b></span>
         {liveRet !== undefined && <span><i style={{ background: "#ff4d7d" }} />Live <b>{signed(liveRet)}</b></span>}
-        <span className="brand">QuantSwarm</span>
+        <span className="brand">HellaBandz</span>
       </div>
       <KChart lines={lines} bands={crash ? [crash] : []} />
       <p className="chart-note">Dates are market time of the replayed data.{livePts?.length ? ` Live replay covered ${day(livePts[0][0])} – ${day(livePts[livePts.length - 1][0])}.` : ""}{crash ? " Shaded = scripted crash injected to test the risk engine, not a real event." : ""}</p>

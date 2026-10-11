@@ -1,4 +1,4 @@
-# QuantSwarm — common workflows. Everything runs offline (no API keys) using committed fixtures.
+# HellaBandz — common workflows. Everything runs offline (no API keys) using committed fixtures.
 # Recipes avoid Unix-only tools so they also work with GNU make on Windows (cmd.exe or Git Bash).
 API ?= http://localhost:8000
 RUN ?= $(shell uv run python -c "import glob, os; f = [p for p in glob.glob('data/manifests/T*.json') if p.count('.') == 1]; print(max(f, key=os.path.getmtime).replace(os.sep, '/') if f else '')")
@@ -25,10 +25,10 @@ fixture:          ## regenerate the committed synthetic dataset (deterministic, 
 	uv run python scripts/make_fixture.py
 
 tournament:       ## agents propose -> grid search on train -> rank on validation -> allocate -> test once
-	uv run python -m quantswarm.agents.tournament --api $(API)
+	uv run python -m hellabandz.agents.tournament --api $(API)
 
 session:          ## replay the held-out period through API -> worker, with a crash at 50%
-	uv run python -m quantswarm.agents.session --api $(API)
+	uv run python -m hellabandz.agents.session --api $(API)
 
 demo: up tournament session   ## full pipeline end to end
 

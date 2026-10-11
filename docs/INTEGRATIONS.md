@@ -47,8 +47,8 @@ restart the API after editing it: `docker compose up -d api`.
 
 ```bash
 uv run python scripts/ingest_alpaca.py --symbols SPY QQQ AAPL MSFT NVDA --start 2023-01-03 --end 2026-09-30
-uv run python -m quantswarm.agents.tournament --dataset data/snapshots/alpaca-sip-1hour-2023-01-03-2026-09-30 --api http://localhost:8000
-uv run python -m quantswarm.agents.session --dataset data/snapshots/alpaca-sip-1hour-2023-01-03-2026-09-30
+uv run python -m hellabandz.agents.tournament --dataset data/snapshots/alpaca-sip-1hour-2023-01-03-2026-09-30 --api http://localhost:8000
+uv run python -m hellabandz.agents.session --dataset data/snapshots/alpaca-sip-1hour-2023-01-03-2026-09-30
 ```
 
 Hourly bars are stamped with their start time. Bars starting 09:00–15:00 New York time are kept (7 per

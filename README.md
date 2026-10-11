@@ -1,4 +1,4 @@
-# QuantSwarm
+# HellaBandz
 
 **Autonomous AI strategy agents on top of trading infrastructure they cannot break.**
 HackRU Fall 2026 · Lucera Trading Systems Challenge (also: Tiger Data, Solana)
@@ -9,7 +9,7 @@ single-writer execution worker decides what actually happens to money. It enforc
 fills, and keeps a hash-chained ledger that survives duplicate requests, concurrent clients, malformed input,
 and `kill -9`.
 
-> **New to trading or to this project?** Start with [QUANTSWARM_EXPLAINED.md](QUANTSWARM_EXPLAINED.md): concepts, pipeline, and the track scorecard.
+> **New to trading or to this project?** Start with [HELLABANDZ_EXPLAINED.md](HELLABANDZ_EXPLAINED.md): concepts, pipeline, and the track scorecard.
 
 > Paper trading only. No real orders, no real funds, no brokerage connection. Market data is synthetic
 > (committed fixture) or historical (Alpaca / Binance scripts).
@@ -99,7 +99,7 @@ If something goes wrong on stage: `docker compose ps` should list `db`, `worker`
 ## Repository map
 
 ```
-quantswarm/
+hellabandz/
   contracts/      versioned Pydantic schemas (orders, bars, commands, proposals, specs)
   ledger/         ★ pure deterministic core: state, events, risk rules, fill model, invariants, replay
   execution/      worker (single writer) + Postgres/Timescale schema
@@ -119,7 +119,7 @@ data/manifests/   tournament manifests (hash-committed)
 
 ## What we built vs. what we used
 
-**Built during HackRU:** everything under `quantswarm/`, `apps/web/`, `tests/`, `benchmarks/`, `scripts/`,
+**Built during HackRU:** everything under `hellabandz/`, `apps/web/`, `tests/`, `benchmarks/`, `scripts/`,
 the synthetic dataset generator, the schema, the docs, and the recorded fixture proposals.
 
 **External components:**

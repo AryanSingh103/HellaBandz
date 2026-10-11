@@ -1,5 +1,5 @@
 # Resource limits are part of the benchmark methodology (docs/PERFORMANCE.md).
-name: quantswarm
+name: quantswarm  # Docker project name kept: renaming it starts fresh containers and empty volumes
 services:
   db:
     image: timescale/timescaledb:2.17.2-pg16
@@ -20,7 +20,7 @@ services:
 
   worker:
     build: .
-    command: ["python", "-m", "quantswarm.execution.worker"]
+    command: ["python", "-m", "hellabandz.execution.worker"]
     environment:
       DATABASE_URL: ${QS_DATABASE_URL:-postgresql://quantswarm:quantswarm@db:5432/quantswarm}
     depends_on: { db: { condition: service_healthy } }
@@ -30,7 +30,7 @@ services:
 
   api:
     build: .
-    command: ["uvicorn", "quantswarm.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+    command: ["uvicorn", "hellabandz.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
     environment:
       DATABASE_URL: ${QS_DATABASE_URL:-postgresql://quantswarm:quantswarm@db:5432/quantswarm}
       QS_API_POOL: ${QS_API_POOL:-20}
@@ -56,7 +56,7 @@ services:
     build: .
     init: true
     stop_grace_period: 45s
-    command: ["python", "-m", "quantswarm.execution.manager"]
+    command: ["python", "-m", "hellabandz.execution.manager"]
     environment:
       DATABASE_URL: ${QS_DATABASE_URL:-postgresql://quantswarm:quantswarm@db:5432/quantswarm}
       QS_API: http://api:8000

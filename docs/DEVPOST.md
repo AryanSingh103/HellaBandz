@@ -1,4 +1,4 @@
-# QuantSwarm
+# HellaBandz
 
 **Autonomous AI strategy agents on trading infrastructure they cannot break.**
 
@@ -106,7 +106,7 @@ explicitly reports which larger recovery sizes are unavailable. `make crash-work
 `make restart-worker` demonstrate durable queueing and recovery. The automated suite also crashes before
 and after transaction commit, repeatedly terminates the worker, and corrupts stored evidence.
 
-Source: https://github.com/AryanSingh103/QuantSwarm
+Source: https://github.com/AryanSingh103/HellaBandz
 
 See `docs/PERFORMANCE.md` for measured percentiles, workloads, hardware, container limits and exact procedures;
 `docs/INVARIANTS.md` for the correctness claims; and `docs/LIMITATIONS.md` for unsupported behavior.

@@ -4,10 +4,10 @@ import json
 
 import pytest
 
-from quantswarm.agents.tournament import CAP_PER_STRATEGY, DEPLOYABLE, SUPERVISOR_BAND, allocate, score
-from quantswarm.audit.solana import manifest_hash_file, memo_for, verify
-from quantswarm.contracts import StrategyFamily, StrategyProposal
-from quantswarm.agents.tournament import expand_grid
+from hellabandz.agents.tournament import CAP_PER_STRATEGY, DEPLOYABLE, SUPERVISOR_BAND, allocate, score
+from hellabandz.audit.solana import manifest_hash_file, memo_for, verify
+from hellabandz.contracts import StrategyFamily, StrategyProposal
+from hellabandz.agents.tournament import expand_grid
 
 
 def test_allocator_caps_and_cash_reserve():

@@ -7,9 +7,9 @@ from contextlib import contextmanager
 import httpx
 import pytest
 
-from quantswarm.agents.tournament import AGENTS
-from quantswarm.contracts import OrderRequest
-from quantswarm.ledger import canonical, sha256_hex
+from hellabandz.agents.tournament import AGENTS
+from hellabandz.contracts import OrderRequest
+from hellabandz.ledger import canonical, sha256_hex
 from tests.conftest import ROOT, wait_until
 
 pytestmark = pytest.mark.db
@@ -18,7 +18,7 @@ pytestmark = pytest.mark.db
 @contextmanager
 def manager(stack, tmp_path, **extra):
     with (tmp_path / "manager.log").open("a") as out:
-        child = subprocess.Popen([sys.executable, "-m", "quantswarm.execution.manager"], cwd=ROOT,
+        child = subprocess.Popen([sys.executable, "-m", "hellabandz.execution.manager"], cwd=ROOT,
                                  env=stack.env(QS_API=stack.base, QS_MANIFESTS=str(tmp_path), OPENAI_API_KEY="", **extra),
                                  stdout=out, stderr=subprocess.STDOUT)
         try:
@@ -129,7 +129,7 @@ def test_session_stop_while_worker_down_and_manager_restart_reconcile(stack, tmp
 
 
 def test_session_waits_for_command_before_using_projection_and_can_stop():
-    from quantswarm.agents.session import Session, SessionStopped
+    from hellabandz.agents.session import Session, SessionStopped
     session = Session.__new__(Session)
     calls = []
     def respond(request):
@@ -150,7 +150,7 @@ def test_session_waits_for_command_before_using_projection_and_can_stop():
 
 @pytest.mark.skipif(sys.platform == "win32", reason="supervisor process lifecycle is verified by the Linux proof")
 def test_real_research_job_persists_manifest_baseline_and_session(stack, tmp_path):
-    from quantswarm.ingestion.dataset import load_snapshot, write_snapshot
+    from hellabandz.ingestion.dataset import load_snapshot, write_snapshot
     table, _ = load_snapshot(ROOT / "data/fixtures/synthetic_1h")
     times = sorted(set(table.ts))
     table = table.select(table.ts < times[120])

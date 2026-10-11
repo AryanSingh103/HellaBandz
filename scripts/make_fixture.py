@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from quantswarm.ingestion.dataset import validate, write_snapshot
-from quantswarm.ingestion.synthetic import generate
+from hellabandz.ingestion.dataset import validate, write_snapshot
+from hellabandz.ingestion.synthetic import generate
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -14,7 +14,7 @@ if __name__ == "__main__":
     m = write_snapshot(
         t,
         ROOT / "data/fixtures/synthetic_1h",
-        {"dataset_id": "synthetic-1h-seed42", "source": "quantswarm.ingestion.synthetic (seed=42)",
+        {"dataset_id": "synthetic-1h-seed42", "source": "hellabandz.ingestion.synthetic (seed=42)",
          "interval_s": 3600, "adjustment": "n/a (synthetic)", "seed": 42},
     )
     print(f"{m['dataset_id']}: {m['row_count']} rows, sha256={m['content_sha256'][:16]}..., splits={m['splits']}")

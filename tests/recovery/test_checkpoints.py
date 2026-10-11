@@ -5,9 +5,9 @@ import copy
 import psycopg
 import pytest
 
-from quantswarm.contracts import SetKillSwitch
-from quantswarm.execution.worker import StartupDigestMismatch, Worker
-from quantswarm.ledger import LedgerInvariantError, PortfolioState, process, replay
+from hellabandz.contracts import SetKillSwitch
+from hellabandz.execution.worker import StartupDigestMismatch, Worker
+from hellabandz.ledger import LedgerInvariantError, PortfolioState, process, replay
 from tests.conftest import enqueue
 from tests.recovery.test_crash_recovery import _seed_commands
 
@@ -40,7 +40,7 @@ def test_checkpoint_recovery_replays_only_suffix_and_preserves_retry_decisions(s
         assert replay(events).snapshot() == expected
         # The snapshot hash includes decisions, although the economic digest does not.
         assert restarted.state.decisions == w.state.decisions
-        from quantswarm.execution.db import decode_command
+        from hellabandz.execution.db import decode_command
         payload = stack.sql("SELECT payload FROM commands WHERE kind = 'submit_order' LIMIT 1")[0][0]
         assert process(restarted.state, decode_command(payload), restarted.cfg)[0] == []
 

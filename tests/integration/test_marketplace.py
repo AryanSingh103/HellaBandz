@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 import httpx
 import pytest
 
-from quantswarm.contracts import MICROS
+from hellabandz.contracts import MICROS
 
 pytestmark = pytest.mark.db
 ROOT = "/v1/marketplace"

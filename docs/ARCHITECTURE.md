@@ -1,6 +1,6 @@
 # Architecture
 
-QuantSwarm separates **who proposes trades** (LLM research agents, untrusted) from **what is allowed to
+HellaBandz separates **who proposes trades** (LLM research agents, untrusted) from **what is allowed to
 happen to money** (a deterministic, single-writer execution worker). The interesting part is the
 boundary, not the model.
 
@@ -50,14 +50,14 @@ boundary, not the model.
 
 | Component | Code | Responsibility | Why it is separate |
 |---|---|---|---|
-| Ledger core | `quantswarm/ledger/` | Pure state machine: `process(state, command) → events`, `apply_event`, invariants, digests | Shared by worker, backtester, recovery and tests, so "backtest == live" by construction |
-| Execution worker | `quantswarm/execution/worker.py` | Only writer of financial state. Batches commands, commits events + projections atomically | Single writer per portfolio removes races without distributed locks; crash domain is isolated from the API |
-| API gateway | `quantswarm/api/app.py` | Schema validation, idempotent command intake, read models, verification | Lets the worker die without losing requests (commands queue durably) |
-| Backtester | `quantswarm/backtester/` | `DataProvider`, `Strategy`, `ExecutionModel`, `Portfolio`, `ResultStore` over the same engine | No second implementation of fills or accounting |
-| Strategies | `quantswarm/strategies/` | Whitelisted causal families; agents choose parameters only | LLMs never ship executable code |
-| Agents | `quantswarm/agents/` | LangGraph tournament, live session client, grounded Q&A | Nondeterministic, so kept strictly upstream of the command log |
-| Local manager | `quantswarm/execution/manager.py` | Durable research/session jobs and explicitly owned execution children | API stays responsive; workers retain independent single-writer locks |
-| Browser workflows | `quantswarm/api/workflows.py` | Registered datasets, jobs, runtime controls, paged history, read-only selected-event replay and ledger analytics | Financial mutations still use the command queue |
+| Ledger core | `hellabandz/ledger/` | Pure state machine: `process(state, command) → events`, `apply_event`, invariants, digests | Shared by worker, backtester, recovery and tests, so "backtest == live" by construction |
+| Execution worker | `hellabandz/execution/worker.py` | Only writer of financial state. Batches commands, commits events + projections atomically | Single writer per portfolio removes races without distributed locks; crash domain is isolated from the API |
+| API gateway | `hellabandz/api/app.py` | Schema validation, idempotent command intake, read models, verification | Lets the worker die without losing requests (commands queue durably) |
+| Backtester | `hellabandz/backtester/` | `DataProvider`, `Strategy`, `ExecutionModel`, `Portfolio`, `ResultStore` over the same engine | No second implementation of fills or accounting |
+| Strategies | `hellabandz/strategies/` | Whitelisted causal families; agents choose parameters only | LLMs never ship executable code |
+| Agents | `hellabandz/agents/` | LangGraph tournament, live session client, grounded Q&A | Nondeterministic, so kept strictly upstream of the command log |
+| Local manager | `hellabandz/execution/manager.py` | Durable research/session jobs and explicitly owned execution children | API stays responsive; workers retain independent single-writer locks |
+| Browser workflows | `hellabandz/api/workflows.py` | Registered datasets, jobs, runtime controls, paged history, read-only selected-event replay and ledger analytics | Financial mutations still use the command queue |
 | Terminal | `apps/web/` | Strategy browsing, historical runs, manual simulated orders, history and voice Q&A | Uses the public API; provider keys stay server-side |
 
 ## Data flow of one order

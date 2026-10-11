@@ -30,8 +30,8 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from quantswarm.backtester import SnapshotProvider, Slot, run_backtest  # noqa: E402
-from quantswarm.contracts import (  # noqa: E402
+from hellabandz.backtester import SnapshotProvider, Slot, run_backtest  # noqa: E402
+from hellabandz.contracts import (  # noqa: E402
     MICROS,
     ApplyBar,
     Bar,
@@ -41,8 +41,8 @@ from quantswarm.contracts import (  # noqa: E402
     StrategySpec,
     SubmitOrder,
 )
-from quantswarm.ingestion.dataset import load_snapshot  # noqa: E402
-from quantswarm.ledger import EngineConfig, PortfolioState, evaluate_order, process, replay  # noqa: E402
+from hellabandz.ingestion.dataset import load_snapshot  # noqa: E402
+from hellabandz.ledger import EngineConfig, PortfolioState, evaluate_order, process, replay  # noqa: E402
 
 RESULTS = ROOT / "benchmarks/results"
 WARMUP, REPS = 3, 5
@@ -80,7 +80,7 @@ def environment() -> dict:
     env = {"python": platform.python_version(), "platform": platform.platform(), "machine": platform.machine(),
            "captured_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
     env["git_revision"] = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
-    sources = sorted([*ROOT.glob("quantswarm/**/*.py"), *ROOT.glob("quantswarm/**/*.sql"),
+    sources = sorted([*ROOT.glob("hellabandz/**/*.py"), *ROOT.glob("hellabandz/**/*.sql"),
                       *ROOT.glob("benchmarks/*.py"), ROOT / "Dockerfile", ROOT / "docker-compose.yml",
                       ROOT / "pyproject.toml", ROOT / "uv.lock"])
     h = hashlib.sha256()
@@ -268,7 +268,7 @@ def bench_engine() -> dict:
 def _events_for(p: SnapshotProvider, spec: StrategySpec, start: int, end: int,
                 boundaries: list[int] | None = None) -> list[dict]:
     """Produce a realistic event log by running the engine (captures events as the worker would store them)."""
-    import quantswarm.backtester as bt
+    import hellabandz.backtester as bt
     captured: list[dict] = []
     orig = bt.process
 
@@ -297,7 +297,7 @@ def compose(*args: str, check=True, capture=False):
 def start_bench_worker(portfolio: str, batch: int) -> str:
     name = f"qsbench-{portfolio}"
     subprocess.run(["docker", "rm", "-f", name], capture_output=True)
-    compose("run", "-d", "--rm", "--name", name, "worker", "python", "-m", "quantswarm.execution.worker",
+    compose("run", "-d", "--rm", "--name", name, "worker", "python", "-m", "hellabandz.execution.worker",
             "--portfolio", portfolio, "--batch-size", str(batch), capture=True)
     return name
 
@@ -402,7 +402,7 @@ def bench_recovery(sizes: list[int], reps: int) -> dict:
     import psycopg
     from psycopg.types.json import Jsonb
 
-    from quantswarm.execution.worker import Worker, public_state
+    from hellabandz.execution.worker import Worker, public_state
     compose("up", "-d", "db")
     compose("stop", "worker", check=False)
     url = "postgresql://quantswarm:quantswarm@localhost:5432/quantswarm"

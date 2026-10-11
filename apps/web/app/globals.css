@@ -1,4 +1,4 @@
-/* QuantSwarm — dark exchange theme (Kalshi-inspired) */
+/* HellaBandz — dark exchange theme (Kalshi-inspired) */
 :root {
   --bg:#0a0c0e; --bg-2:#0e1113; --panel:#121518; --panel-2:#171b1e; --panel-3:#1d2226;
   --line:#22272b; --line-2:#2c3237; --text:#eef2f4; --text-2:#c3cbd0; --muted:#7f8a92; --faint:#56616a;
@@ -58,8 +58,14 @@ progress::-webkit-progress-bar { background:var(--panel-3); } progress::-webkit-
 .site-header { position:sticky; top:0; z-index:10; background:rgba(10,12,14,.82); backdrop-filter:saturate(160%) blur(14px); -webkit-backdrop-filter:saturate(160%) blur(14px); border-bottom:1px solid var(--line); }
 .header-inner,.category-inner { max-width:1440px; margin:auto; display:flex; align-items:center; padding:0 28px; }
 .header-inner { min-height:72px; gap:20px; }
-.wordmark { color:var(--green); font-family:var(--sans); font-size:30px; font-weight:800; letter-spacing:-1.2px; line-height:1; white-space:nowrap; text-shadow:0 0 28px rgba(40,212,155,.25); }
-.wordmark span { color:var(--text); }
+/* HellaBandz wordmark: stacked heavy italic, white "Hella" over glowing green "Bandz" with a struck-through z */
+.wordmark { display:inline-flex; flex-direction:column; font-family:var(--sans); font-style:italic; font-weight:900; font-size:26px; line-height:.84; letter-spacing:-1.1px; white-space:nowrap; padding:2px 6px 2px 0; }
+.wm-hella { color:#f3f6f5; }
+.wm-bandz { margin-left:.9em; color:var(--green); background:linear-gradient(180deg,#7af7cf 0%,var(--green) 55%,var(--green-2) 100%); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; filter:drop-shadow(0 0 7px var(--green-glow)); }
+.wm-z { position:relative; display:inline-block; }
+.wm-z::before,.wm-z::after { content:""; position:absolute; width:.1em; height:.2em; background:var(--green); transform:skewX(-12deg); }
+.wm-z::before { top:-.06em; right:.12em; }
+.wm-z::after { bottom:-.14em; left:.1em; background:var(--green-2); }
 .header-inner nav { display:flex; align-items:center; gap:18px; flex-shrink:0; }
 .header-inner nav a { text-transform:uppercase; font-size:12.5px; font-weight:700; letter-spacing:1px; white-space:nowrap; padding:24px 0; color:var(--text-2); position:relative; transition:color .15s; display:inline-flex; align-items:center; gap:7px; }
 .header-inner nav a:hover { color:var(--text); }
@@ -319,7 +325,7 @@ td .link { max-width:230px; font-size:12px; }
 
 /* ---------- responsive ---------- */
 @media(max-width:1640px) { .header-inner nav a[href*='view=run'] { display:none; } }
-@media(max-width:1440px) { .wordmark { font-size:26px; } .header-inner nav a,.nav-live { font-size:12px; letter-spacing:.8px; } .header-inner nav { gap:15px; } }
+@media(max-width:1440px) { .wordmark { font-size:23px; } .header-inner nav a,.nav-live { font-size:12px; letter-spacing:.8px; } .header-inner nav { gap:15px; } }
 @media(max-width:1240px) { .home-grid { grid-template-columns:minmax(0,1fr) 320px; } .hero { grid-template-columns:minmax(0,1fr); } .header-inner { gap:20px; } .header-inner nav { gap:18px; } .strategy-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:1060px) { .header-inner { flex-wrap:wrap; gap:0 18px; padding-top:14px; } .header-inner nav { order:3; width:100%; overflow:auto; scrollbar-width:none; } .header-inner nav a,.nav-live { padding:14px 0; } .home-grid { grid-template-columns:minmax(0,1fr); } .sidebar { position:static; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); } .sidebar .list-card { grid-column:span 1; } .simulation { display:none; } }
 @media(max-width:760px) { .header-inner,.category-inner,main { padding:0 16px; } .header-inner { padding-top:12px; } .header-search { order:4; flex-basis:100%; max-width:none; margin:0 0 12px; } .header-inner .ghost-pill { margin-left:auto; } .sidebar { grid-template-columns:1fr; } .pillars { grid-template-columns:1fr; } .strategy-grid { grid-template-columns:1fr; } .hero { padding:22px 18px; } .hero-title { font-size:38px; } .outcome { grid-template-columns:30px minmax(0,1fr) 92px; } .o-box { display:none; } .browse-title { flex-direction:column; align-items:flex-start; padding:10px 0; } .filters { flex-wrap:wrap; } .scopebar { flex-wrap:wrap; padding:8px 0; gap:4px; } .research-summary { padding:20px; } .modal { padding:20px; } section { padding:18px; } }

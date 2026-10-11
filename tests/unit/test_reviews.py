@@ -4,8 +4,8 @@ import copy
 import pytest
 from pydantic import ValidationError
 
-from quantswarm.agents import reviews
-from quantswarm.agents.reviews import ReviewRequest, analyze, example
+from hellabandz.agents import reviews
+from hellabandz.agents.reviews import ReviewRequest, analyze, example
 
 
 def request():
@@ -63,7 +63,7 @@ def test_claude_requires_key_and_never_silently_uses_other_provider(monkeypatch)
                                      [{"review_id": "synthetic-0", "sentiment": float("nan"), "themes": ["other"]}]])
 def test_provider_cannot_invent_evidence_or_nonfinite_scores(monkeypatch, labels):
     monkeypatch.setenv("OPENAI_API_KEY", "test-placeholder")
-    from quantswarm.agents import llm
+    from hellabandz.agents import llm
     monkeypatch.setattr(llm, "chat_json", lambda *a, **kw: ({"reviews": labels}, {"model": "test"}))
     data = request()
     data["provider"] = "openai"
@@ -73,7 +73,7 @@ def test_provider_cannot_invent_evidence_or_nonfinite_scores(monkeypatch, labels
 
 def test_provider_only_sees_eligible_untrusted_text_and_is_labeled(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "test-placeholder")
-    from quantswarm.agents import llm
+    from hellabandz.agents import llm
     import json
     def fake(system, user, **kw):
         assert "untrusted" in system

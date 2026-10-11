@@ -19,7 +19,7 @@ from pathlib import Path
 
 import httpx
 
-from quantswarm.ingestion.dataset import BarTable, write_snapshot
+from hellabandz.ingestion.dataset import BarTable, write_snapshot
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "https://data.binance.vision/data/spot/monthly/klines"

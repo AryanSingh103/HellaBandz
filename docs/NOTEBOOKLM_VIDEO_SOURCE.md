@@ -1,7 +1,7 @@
-# QuantSwarm: Source Document for a Video Explanation
+# HellaBandz: Source Document for a Video Explanation
 
 > **How to use this file with NotebookLM**
-> 1. Create a new notebook and upload this file as a source. Optionally also upload `QUANTSWARM_EXPLAINED.md`.
+> 1. Create a new notebook and upload this file as a source. Optionally also upload `HELLABANDZ_EXPLAINED.md`.
 > 2. Open **Studio → Video Overview → Customize** and paste the prompt from Part A.
 > 3. Generate. Part B is the content NotebookLM will draw from.
 
@@ -10,11 +10,11 @@
 ## Part A: Prompt to paste into NotebookLM's "Customize" box
 
 ```
-Make a 5-7 minute explainer video about QuantSwarm for a smart audience that knows nothing about
+Make a 5-7 minute explainer video about HellaBandz for a smart audience that knows nothing about
 trading or finance. Structure it as a story:
 1) Hook: AI agents are starting to take real actions like moving money. What stops a confident but
    wrong AI from wrecking the books?
-2) The analogy: QuantSwarm is a tiny trading firm in software. AI "researchers" invent strategies,
+2) The analogy: HellaBandz is a tiny trading firm in software. AI "researchers" invent strategies,
    but a strict "risk desk" and "back office" that the AI cannot override decide what happens to money.
 3) Explain only the trading terms you need, each with an everyday example: order, fill, slippage,
    backtest, look-ahead bias, overfitting, train/validation/test, Sharpe ratio, drawdown, idempotency.
@@ -37,7 +37,7 @@ Use simple diagrams: the trust boundary, the pipeline, the life of one order, a 
 
 ### 1. The one-sentence idea
 
-QuantSwarm lets AI agents act like traders, but every order passes through strict, deterministic
+HellaBandz lets AI agents act like traders, but every order passes through strict, deterministic
 infrastructure that the AI cannot override, and that infrastructure can prove it never lost, duplicated or
 invented a single cent. **The AI proposes, the engine disposes, and the engine can prove it.**
 
@@ -55,14 +55,14 @@ placing trades. The scary failures aren't about whether the AI is smart. They're
 - Someone **edits the records** afterwards to make results look better.
 - A strategy looks brilliant in testing because it was **secretly peeking at future prices.**
 
-QuantSwarm is built so none of these can corrupt the books, and it ships automated tests that try each one
+HellaBandz is built so none of these can corrupt the books, and it ships automated tests that try each one
 on purpose. It was built for the **Lucera Trading Systems Challenge at HackRU Fall 2026**, which asks for
 "simple, reliable, and scalable" trading infrastructure with "explicit correctness guarantees and
 evidence that they hold."
 
 ### 3. The analogy: a tiny trading firm in software
 
-| Real trading firm | QuantSwarm | Can it be trusted? |
+| Real trading firm | HellaBandz | Can it be trusted? |
 |---|---|---|
 | Researchers who invent strategies | Three AI agents (GPT-4.1-mini): Momentum, Mean Reversion, Volatility | No: creative but fallible |
 | Portfolio manager | An AI supervisor whose advice is clamped by a fixed formula | Advice only |
@@ -168,7 +168,7 @@ Money is stored as whole micro-dollars (integers), never as decimals that can dr
 
 ### 7. The promises, and how they are proven
 
-QuantSwarm states eleven "invariants": things that must always be true.
+HellaBandz states eleven "invariants": things that must always be true.
 
 1. Sending an order a hundred times is the same as sending it once.
 2. Cash never goes negative, and agents can't double-spend shared cash.
@@ -245,7 +245,7 @@ changing one allocation weight by 1% makes it fail.
 
 ### 12. The closing idea
 
-The interesting part of QuantSwarm isn't whether an AI can pick stocks. It's the **boundary**: a small, boring,
+The interesting part of HellaBandz isn't whether an AI can pick stocks. It's the **boundary**: a small, boring,
 provably correct system that lets creative but unreliable AI agents act, without ever letting them break the
 rules or the books. **The AI proposes. The engine disposes. And the engine can prove it.**
 
