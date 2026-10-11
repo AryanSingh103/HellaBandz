@@ -30,6 +30,7 @@ from hellabandz.trading.attribution import AttributionBook
 from hellabandz.trading.clob import InstrumentRule
 from hellabandz.trading.coordinator import EXEC_AGENT, AccountView, ActiveStrategy, Coordinator, RiskBudget
 from hellabandz.trading.execution import LEDGER_VENUE, ExecutionAuthority, LiquidityConfig, LocalLedger, VenueMode
+from hellabandz.trading.diagnostics import ReturnAttribution
 from hellabandz.trading.instruments import Instrument
 from hellabandz.trading.intents import Decision, Outcome
 from hellabandz.trading.marketdata import DataClass, EventType, MarketDataGateway, MarketEvent
@@ -84,13 +85,15 @@ class RuntimeResult:
     cpu_s: float = 0.0
     peak_rss_mb: float | None = None
     shadow_orders: list[dict] = field(default_factory=list)
+    return_attribution: dict = field(default_factory=dict)
+    telemetry: list[dict] = field(default_factory=list)
 
 
 class CoordinatedRuntime:
     def __init__(self, run_id: str, mode: VenueMode, strategies: list[RuntimeStrategy], capital: dict[str, int],
                  budget: RiskBudget, instruments: dict[str, Instrument], data_class: DataClass,
                  initial_cash: int = 10_000 * MICROS, ledger=None, liquidity: LiquidityConfig | None = None,
-                 keep_decisions: bool = True):
+                 keep_decisions: bool = True, keep_telemetry: bool = False):
         self.run_id = run_id
         self.mode = mode
         self.strategies = sorted(strategies, key=lambda s: s.v.strategy_id)
@@ -100,7 +103,9 @@ class CoordinatedRuntime:
         self.gateway = MarketDataGateway(data_class)
         venue = LEDGER_VENUE[mode]
         self.active = {s.v.strategy_id: ActiveStrategy(s.v.strategy_id, s.v.version, s.v.universe, capital[s.v.strategy_id],
-                                                       hold=s.hold) for s in self.strategies}
+                                                       hold=s.hold, weight_scope="sleeve" if s.allocation else "slot",
+                                                       fixed_units=s.fixed_units)
+                       for s in self.strategies}
         self.book = AttributionBook(initial_cash, {k: a.capital for k, a in self.active.items()})
         self.coordinator = Coordinator(budget, instruments, venue, run_id)
         rules = [InstrumentRule(sym, tick=i.tick, lot=i.lot) for sym, i in sorted(instruments.items())]
@@ -112,6 +117,9 @@ class CoordinatedRuntime:
         self.outcomes: dict[str, int] = {o.value: 0 for o in Outcome}
         self.n_decisions = 0
         self.exposure_bps: list[int] = []
+        self.keep_telemetry = keep_telemetry
+        self.telemetry = []
+        self.return_attribution = ReturnAttribution()
 
     # ------------------------------------------------------------------ setup
 
@@ -139,6 +147,9 @@ class CoordinatedRuntime:
     def step(self, bars: list[Bar]) -> CycleRecord:
         clock = time.perf_counter_ns
         c0 = clock()
+        before = AccountView.from_state(self.ledger.state)
+        before_marks = {sym: v[1] for sym, v in self.ledger.state.last_bar.items()}
+        event_start = len(self.ledger.events)
         ts = int(bars[0].ts.timestamp())
         for b in sorted(bars, key=lambda x: x.symbol):
             seq = self.md_seq.get(b.symbol, 0) + 1
@@ -154,6 +165,9 @@ class CoordinatedRuntime:
         c1 = clock()
         snap = self.gateway.snapshot()
         intents = [i for s in self.strategies for i in s.on_snapshot(snap)]
+        # Reporting reads the exact inputs used by the coordinator. Calling a
+        # strategy again for telemetry can advance a stateful rule twice.
+        self.last_intents = intents
         c2 = clock()
         acct = AccountView.from_state(self.ledger.state)
         decisions = self.coordinator.decide(snap, intents, acct, self.book, self.active)
@@ -172,6 +186,16 @@ class CoordinatedRuntime:
                      ("reconcile", c5 - c4), ("cycle", c5 - c0)):
             self.timings[k].append(v)
         eq = s.equity()
+        fills = [e for e in self.ledger.events[event_start:] if e["type"] == "OrderFilled"]
+        self.return_attribution.record(before.positions, before_marks, marks, fills, eq - before.equity)
+        if self.keep_telemetry:
+            self.telemetry.append({"ts": ts, "equity_before": before.equity, "cash_before": before.cash,
+                                   "exposure_before_bps": (before.equity - before.cash) * 10_000 // before.equity
+                                                          if before.equity > 0 else 0,
+                                   "cash": s.cash, "positions": dict(acct.positions),
+                                   "marks": dict(marks), "fees": s.fees_paid, "slippage": s.slippage_cost,
+                                   "fee_delta": s.fees_paid - before.fees,
+                                   "slippage_delta": s.slippage_cost - before.slippage})
         self.exposure_bps.append((eq - s.cash) * 10_000 // eq if eq > 0 else 0)
         for d in decisions:
             self.n_decisions += 1
@@ -182,15 +206,19 @@ class CoordinatedRuntime:
         return rec
 
     def run(self, provider, start_ts: int, end_ts: int, max_cycles: int | None = None,
-            overlay=None) -> RuntimeResult:
+            overlay=None, check=None) -> RuntimeResult:
         cpu0 = time.process_time()
         groups: list[list[Bar]] = []
         for b in provider.bars(start_ts, end_ts):
+            if check is not None:
+                check()
             if groups and groups[-1][0].ts == b.ts:
                 groups[-1].append(b)
             else:
                 groups.append([b])
         for i, g in enumerate(groups[:max_cycles] if max_cycles else groups):
+            if check is not None:
+                check()
             self.step(overlay(i, g) if overlay else g)
         return self.result(time.process_time() - cpu0)
 
@@ -223,7 +251,9 @@ class CoordinatedRuntime:
             events=len(self.ledger.events), exposure_bps_mean=float(np.mean(self.exposure_bps)) if self.exposure_bps else 0.0,
             turnover=notional / self.initial_cash, fees=s.fees_paid, slippage=s.slippage_cost, final_equity=s.equity(),
             initial_cash=self.initial_cash, cpu_s=round(cpu_s, 3), peak_rss_mb=rss_mb,
-            shadow_orders=self.authority.shadow_orders)
+            shadow_orders=self.authority.shadow_orders,
+            return_attribution=self.return_attribution.report(s.equity() - self.initial_cash, s.cash, self.initial_cash),
+            telemetry=list(self.telemetry))
 
 
 def checkpoint(rt: "CoordinatedRuntime") -> bytes:

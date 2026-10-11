@@ -30,6 +30,16 @@ def connect():
     return psycopg.connect(database_url(), autocommit=True, row_factory=dict_row)
 
 
+def adaptive_progress(callback, stage: str, role: str, value) -> None:
+    """Only optimizer counts belong in the integer job progress column.
+
+    Validation emits an acceptance boolean for research listeners, which is stage
+    information rather than a completed-work count. Do not bind it as a SQL boolean.
+    """
+    count = value if stage == "optimized" and type(value) is int else None
+    callback(f"adaptive:{role}:{stage}", count)
+
+
 def import_associations(conn):
     # A historical filename alone is insufficient: its recorded final digest
     # must agree with the actual portfolio, and its tournament must exist.
@@ -69,8 +79,33 @@ def run_job(job_id: str):
             api_headers = operator_headers()
             path = resolve(job["dataset_id"])
             if job["kind"] == "research":
+                # CPU quotas do not change os.cpu_count(); leave room for execution
+                # when producing the backwards-compatible tournament manifest.
+                os.environ.setdefault("QS_TOURNAMENT_PROCS", "1")
                 from hellabandz.agents.tournament import run
                 from hellabandz.agents.baseline import save_analytics
+                from pathlib import Path
+                from hellabandz.trading.registry import Registry
+                from hellabandz.trading.research import research
+                from hellabandz.ingestion.dataset import load_snapshot
+                from hellabandz.trading.instruments import COORDINATED_ASSET_CLASSES, instruments_for_dataset
+                # The existing research button now refreshes coordinated research too.
+                # Its proposals are generated from the development prefix, independently
+                # of the legacy tournament's later validation/test reporting.
+                _, adaptive_meta = load_snapshot(path)
+                supported = adaptive_meta.get("interval_s") == 3600 and all(
+                    i.asset_class in COORDINATED_ASSET_CLASSES for i in instruments_for_dataset(adaptive_meta).values())
+                adaptive = ({"status": "skipped", "reason": "adaptive research requires hourly stock/ETF data"}
+                            if not supported else research(
+                                path, Registry(Path(__file__).resolve().parents[2] / "data/registry" /
+                                               f"{job['dataset_id']}.json"),
+                                budget_s=float(job["config"].get("research_budget_s", 600)),
+                                use_llm=True, stop_requested=stop_requested,
+                                progress=lambda stage, role, n: adaptive_progress(progress, stage, role, n)))
+                if stop_requested():
+                    conn.execute("UPDATE jobs SET status = 'stopped', stage = 'stopped', finished_at = now() "
+                                 "WHERE job_id = %s", (job_id,))
+                    return
                 count = 0
                 def research_progress(agent, role, content):
                     nonlocal count
@@ -80,7 +115,10 @@ def run_job(job_id: str):
                 progress("benchmark")
                 save_analytics(result["manifest"], path)
                 progress("benchmark", count + 1, count + 1)
-                result = {"run_id": result["run_id"], "manifest_hash": result["manifest_hash"]}
+                result = {"run_id": result["run_id"], "manifest_hash": result["manifest_hash"],
+                          "adaptive_research": {k: adaptive[k] for k in
+                                                ("status", "reason", "policy_version", "candidates_tested", "roles", "seconds")
+                                                if k in adaptive}}
             elif job["kind"] == "coordinated":
                 from hellabandz.trading.live import run_coordinated
                 result = run_coordinated(job, path, API, api_headers, progress, stop_requested)
@@ -105,7 +143,7 @@ def run_job(job_id: str):
                 config = job["config"]
                 try:
                     session.setup()
-                    result = session.run(config["steps"], config["speed"], config["crash_at"])
+                    result = session.run(config["steps"], config["speed"], config["crash_at"], duration_s=config.get("duration_s"))
                 except SessionStopped:
                     result = {"run_id": job["run_id"], "portfolio_id": job["portfolio_id"], "stopped": True,
                               "detail": "Future session production stopped. Already queued commands and working orders are preserved.",

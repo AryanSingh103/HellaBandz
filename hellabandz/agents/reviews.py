@@ -34,7 +34,7 @@ class Review(BaseModel):
 class ReviewRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     as_of: AwareDatetime
-    provider: Literal["offline", "claude", "openai", "auto"] = "offline"
+    provider: Literal["offline", "gemini", "claude", "openai", "auto"] = "auto"
     reviews: list[Review] = Field(min_length=1, max_length=100)
 
 
@@ -61,15 +61,18 @@ class ProviderConfigurationError(ValueError):
 
 
 def classify(reviews: list[Review], provider: str):
+    from hellabandz.agents import llm
     if provider == "auto":
-        provider = "claude" if os.getenv("ANTHROPIC_API_KEY") else "openai" if os.getenv("OPENAI_API_KEY") else "offline"
+        provider = llm.selected_provider()
+        if not llm.available(provider):
+            provider = "offline"
     if provider == "offline":
         return [Classification(review_id=r.review_id, sentiment=(r.rating - 3) / 2, themes=["other"]) for r in reviews], {
             "provider": "offline", "model": "rating-baseline-v1"}
     user = json.dumps([{"review_id": r.review_id, "text": r.text} for r in reviews])
     if provider == "claude":
         if not os.getenv("ANTHROPIC_API_KEY"):
-            raise ProviderConfigurationError("Claude requires ANTHROPIC_API_KEY on the API server; choose offline or OpenAI meanwhile.")
+            raise ProviderConfigurationError("Claude requires ANTHROPIC_API_KEY on the API server; choose a configured provider or offline.")
         model = os.getenv("QS_ANTHROPIC_MODEL", "claude-sonnet-4-6")
         response = httpx.post("https://api.anthropic.com/v1/messages", timeout=60,
                               headers={"x-api-key": os.environ["ANTHROPIC_API_KEY"], "anthropic-version": "2023-06-01"},
@@ -81,12 +84,14 @@ def classify(reviews: list[Review], provider: str):
         if content.startswith("```json") and content.endswith("```"):
             content = content[7:-3].strip()
         result, meta = json.loads(content), {"provider": "claude", "model": data["model"]}
+    elif provider in ("gemini", "openai"):
+        if not llm.available(provider):
+            key_name = "GEMINI_API_KEY or GOOGLE_API_KEY" if provider == "gemini" else "OPENAI_API_KEY"
+            raise ProviderConfigurationError(f"{provider} requires {key_name} on the API server; choose offline meanwhile.")
+        result, meta = llm.chat_json(SYSTEM, user, temperature=0, timeout=60, provider=provider)
+        meta = {"provider": provider, **meta}
     else:
-        if not os.getenv("OPENAI_API_KEY"):
-            raise ProviderConfigurationError("OpenAI requires OPENAI_API_KEY on the API server; choose offline meanwhile.")
-        from hellabandz.agents.llm import chat_json
-        result, meta = chat_json(SYSTEM, user, temperature=0, timeout=60)
-        meta = {**meta, "provider": "openai"}
+        raise ProviderConfigurationError("Unknown review provider")
     labels = Classifications.model_validate(result).reviews
     ids = [r.review_id for r in labels]
     if len(ids) != len(set(ids)) or set(ids) != {r.review_id for r in reviews}:

@@ -1,7 +1,7 @@
 import { authFetch } from "./auth-client";
 export const API = process.env.NEXT_PUBLIC_API || "http://localhost:8000";
 export const validId = (s: string) => /^[A-Za-z0-9_.:\-]{1,96}$/.test(s);
-export type View = "browse" | "marketplace" | "portfolio" | "orders" | "research" | "audit" | "analytics" | "coordinator" | "run";
+export type View = "browse" | "simulation" | "marketplace" |"portfolio" | "orders" | "research" | "audit" | "analytics" | "coordinator" | "run";
 export type Route = { p: string; view: View; run: string; category: string; q: string; sort: string; dataset: string; order: string };
 export const initialRoute: Route = { p: "main", view: "browse", run: "", category: "All strategies", q: "", sort: "score", dataset: "", order: "" };
 export function url(path: string, params: Record<string, string | number | boolean | undefined> = {}) {
@@ -76,6 +76,16 @@ export type Replay = { event: Event; before: State; after: State; through_seq: n
 export type Point = { seq: number; ts: number; equity: number; exposure: number; agents: Record<string, { pnl: number; exposure: number }> };
 export type Analytics = { points: Point[]; definitions: Record<string, string>; benchmark: { status: string; reason?: string; assumptions?: string; start_ts?: number; end_ts?: number;
   baseline?: { ts: number; equity: number }[]; strategy?: { ts: number[]; equity: number[] }; baseline_metrics?: Metrics; strategy_metrics?: Metrics } };
+export type CoordinatedAgent = { agent_id: string; strategy_id: string; version: string; family: string; params: Record<string, number>; universe: string[];
+  funded: boolean; capital: number; status: string; reasons: string[]; hypothesis?: string; proposal_source?: string; evaluation?: Record<string, unknown> };
+export type CoordinatedContext = { current: boolean; policy_version: string; code_version: string; source_sha256: string; registry_sha256: string;
+  dataset: Dataset; agents: CoordinatedAgent[]; research: Record<string, unknown>; evaluation_status: string; depth: string };
+export type Sleeve = { capital: number; cash: number; equity: number; market_value: number; pnl: number; fees: number; slippage: number;
+  fills: number; positions: Record<string, { qty: number; basis: number }> };
+export type CoordinatedReport = { schema: string; portfolio_id: string; context: CoordinatedContext; status: string;
+  points: Point[]; steps: { step: number; ts: number; equity: number; cash: number; closes: Record<string, number>; sleeves: Record<string, Sleeve> }[];
+  decisions: Record<string, unknown>[]; rule_readings: Record<string, unknown>[]; summary?: Record<string, unknown>;
+  final_attribution?: Record<string, Sleeve>; benchmark: Analytics["benchmark"] };
 
 /** Shared ordering for measured strategy performance; missing results sort last. */
 export function comparePerformance(a: Metrics | null | undefined, b: Metrics | null | undefined, field: "net_return" | "sharpe" | "max_drawdown") {

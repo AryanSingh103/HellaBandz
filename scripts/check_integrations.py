@@ -3,7 +3,7 @@
     uv run python scripts/check_integrations.py          # or: make check-integrations
 
 Reads keys from the environment or `.env`. Nothing here places orders or spends real money
-(OpenAI/ElevenLabs calls are a few tokens/characters; Solana is Devnet).
+(Gemini/OpenAI/ElevenLabs calls are a few tokens/characters; Solana is Devnet).
 """
 
 from __future__ import annotations
@@ -23,13 +23,13 @@ from hellabandz.config import load_env  # noqa: E402
 load_env()
 
 
-def check_openai() -> tuple[str, str]:
-    if not os.environ.get("OPENAI_API_KEY"):
-        return "SKIP", "OPENAI_API_KEY not set (agents use recorded fixture proposals)"
+def check_llm() -> tuple[str, str]:
     from hellabandz.agents import llm
+    if not llm.available():
+        return "SKIP", "selected provider has no key (agents use recorded fixture proposals)"
     t = time.perf_counter()
     out, meta = llm.chat_json("Reply with JSON.", 'Return {"ok": true}.', timeout=30)
-    return ("OK" if out.get("ok") is True else "WARN"), f"model {meta['model']}, {time.perf_counter() - t:.1f}s"
+    return ("OK" if out.get("ok") is True else "WARN"), f"{meta['provider']} model {meta['model']}, {time.perf_counter() - t:.1f}s"
 
 
 def check_elevenlabs() -> tuple[str, str]:
@@ -84,7 +84,7 @@ def check_database() -> tuple[str, str]:
 
 def main() -> int:
     rows = []
-    for name, fn in [("TimescaleDB / Tiger Data", check_database), ("OpenAI", check_openai),
+    for name, fn in [("TimescaleDB / Tiger Data", check_database), ("Research LLM", check_llm),
                      ("ElevenLabs", check_elevenlabs), ("Alpaca", check_alpaca), ("Solana Devnet", check_solana)]:
         try:
             status, detail = fn()

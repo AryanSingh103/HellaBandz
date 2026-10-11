@@ -190,14 +190,17 @@ class StrategyFamily(StrEnum):
     RSI_REVERSION = "rsi_reversion"
     TS_MOMENTUM = "ts_momentum"
     REGIME_REVERSION = "regime_reversion"
+    REGIME_FIXED_UNITS = "regime_fixed_units"
     BUY_HOLD = "buy_hold"
+    RELATIVE_STRENGTH = "relative_strength"
+    RISK_ADJUSTED_ROTATION = "risk_adjusted_rotation"
 
 
 class StrategyProposal(_Frozen):
     proposal_id: Ident
     agent_id: Ident
     family: StrategyFamily
-    universe: list[Ident] = Field(min_length=1, max_length=10)
+    universe: list[Ident] = Field(min_length=1, max_length=32)
     param_grid: dict[str, list[float]] = Field(description="candidate values per parameter")
     rationale: str = Field(max_length=2000)
     evidence: list[str] = Field(default_factory=list, max_length=10)

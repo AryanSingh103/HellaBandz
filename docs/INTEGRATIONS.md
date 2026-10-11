@@ -15,13 +15,36 @@ restart the API after editing it: `docker compose up -d api`.
 
 | Integration | Key(s) | Verify | Then |
 |---|---|---|---|
-| OpenAI | `OPENAI_API_KEY`, optional `QS_OPENAI_MODEL` (default `gpt-4.1-mini`) | `make check-integrations` → `OK OpenAI` | `make tournament`: the summary table's `src` column should say `llm`; `make session` crisis messages say `source: llm` |
+| Gemini primary / OpenAI backup | `GEMINI_API_KEY` (or `GOOGLE_API_KEY`), `QS_GEMINI_MODEL=gemini-3.8-flash`; optional `OPENAI_API_KEY` backup | `make check-integrations` → `OK Research LLM` with actual provider/model | Research, supervisor, crisis responses, commentary, Ask and review classification use the selected provider |
 | ElevenLabs | `ELEVENLABS_API_KEY`, optional `ELEVENLABS_VOICE_ID`, `ELEVENLABS_MODEL` | `OK ElevenLabs … bytes of audio` | Ask panel in the terminal speaks through `/v1/speak` |
 | Alpaca | `ALPACA_API_KEY_ID`, `ALPACA_API_SECRET_KEY` (free Basic plan) | `OK Alpaca sip: ok` (or `WARN` ⇒ use `--feed iex`) | see "Real-data tournament" below |
 | Solana Devnet | none (keypair auto-created in `data/solana/`, gitignored) | `TODO` until funded, then `OK` | `make solana-commit && make verify-solana` |
 | Tiger Cloud | `DATABASE_URL` (host) **and** `QS_DATABASE_URL` (containers), same service URL with `?sslmode=require` | `OK … Tiger Cloud: timescaledb …` | `docker compose up -d worker api` (skip `db`), then `make tournament session` |
 
-## OpenAI behavior
+## Model providers and failover
+
+Set `QS_LLM_PROVIDER=gemini` (default). The exact model ID is `gemini-3.8-flash`.
+Gemini uses Google's official OpenAI-compatible endpoint through the existing SDK;
+no additional dependency is needed. Keys remain on the server. API and manager
+both receive these settings through Compose. Rebuild/recreate them after changing
+source or configuration: `docker compose up -d --build --no-deps api manager`.
+
+With `QS_OPENAI_FALLBACK=1` (default) and `OPENAI_API_KEY` configured, failed Gemini
+calls automatically use OpenAI (`QS_OPENAI_MODEL`, default `gpt-4.1-mini`). This
+covers transport, timeout, rate/auth/server/model errors and malformed JSON. The
+primary SDK timeout defaults to `QS_GEMINI_TIMEOUT_S=8`, or half the caller's
+remaining budget when shorter. Routed calls disable SDK retries; backup receives
+only the remaining caller budget. SDK timeouts apply to network phases, so this
+is a bounded request policy rather than a guaranteed hard wall-clock deadline.
+After failure, `QS_GEMINI_COOLDOWN_S=60` skips Gemini for subsequent calls, then
+tries it again. Actual provider, model and sanitized failover reason are recorded.
+If neither provider succeeds, existing labeled deterministic/fixture fallback
+remains. Set `QS_OPENAI_FALLBACK=0` to disable automatic backup.
+
+Explicit `QS_LLM_PROVIDER=openai` selects OpenAI directly; `offline` makes no
+model calls. Review classification also retains explicit Claude selection.
+Its `auto` option follows the global selection, and preserves the actual provider
+label when Gemini fails over to OpenAI.
 
 - Research agents get **training-split statistics only** and the whitelisted families/bounds. Answers are
   validated (JSON object, family allowed for that agent, symbols present in the dataset, at least one grid

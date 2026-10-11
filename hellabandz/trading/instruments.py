@@ -40,7 +40,8 @@ class Instrument:
     payout: int | None = None  # EVENT_CONTRACT only: micros paid per contract if the event happens
 
 
-KNOWN_ETFS = frozenset({"SPY", "QQQ", "IWM", "DIA", "VTI"})
+SECTOR_ETFS = ("XLB", "XLC", "XLE", "XLF", "XLI", "XLK", "XLP", "XLRE", "XLU", "XLV", "XLY")
+KNOWN_ETFS = frozenset({"SPY", "QQQ", "IWM", "DIA", "VTI", *SECTOR_ETFS})
 
 
 def equity(symbol: str) -> Instrument:

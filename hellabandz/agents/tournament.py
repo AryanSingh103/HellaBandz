@@ -34,7 +34,7 @@ from hellabandz.backtester import SnapshotProvider, Slot, run_backtest
 from hellabandz.contracts import MICROS, StrategyFamily, StrategyProposal, StrategySpec
 from hellabandz.ingestion.dataset import load_snapshot
 from hellabandz.ledger import EngineConfig, canonical, sha256_hex
-from hellabandz.strategies import BARS_PER_YEAR, FAMILIES, validate_params
+from hellabandz.strategies import ALLOCATION_FAMILIES, COORDINATED_ONLY_FAMILIES, BARS_PER_YEAR, FAMILIES, validate_params
 
 log = logging.getLogger("tournament")
 ROOT = Path(__file__).resolve().parents[2]
@@ -176,6 +176,8 @@ def relative_score(val: dict, oos_ir: float, stability: float, core_drawdown: fl
 
 
 def expand_grid(prop: StrategyProposal) -> list[dict[str, float]]:
+    if prop.family in COORDINATED_ONLY_FAMILIES:
+        raise ValueError("allocation and fixed-unit families require adaptive coordinated research; legacy tournament uses slot sizing")
     bounds = FAMILIES[prop.family][1]
     keys = sorted(bounds)
     grid = [sorted(set(prop.param_grid.get(k, []))) for k in keys]

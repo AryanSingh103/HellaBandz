@@ -22,6 +22,7 @@ import json
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, wait
 
 import httpx
 
@@ -34,9 +35,12 @@ from hellabandz.trading.coordinator import EXEC_AGENT, paper_budget
 from hellabandz.trading.execution import VenueMode
 from hellabandz.trading.instruments import instruments_for_dataset
 from hellabandz.trading.registry import Registry
-from hellabandz.trading.research import (INITIAL, data_class, portfolio_sleeves, research)
+from hellabandz.trading.research import (INITIAL, data_class, portfolio_sleeves, research, research_current)
+from hellabandz.trading.research import core_version, DEPLOYABLE, research_metrics
+from hellabandz.trading.reporting import research_context, registry_path, save_report
+from hellabandz.ingestion.registry import MANIFESTS
 from hellabandz.trading.runtime import CoordinatedRuntime, percentiles
-from hellabandz.trading.strategies import RuntimeStrategy, StrategyVersion
+from hellabandz.trading.strategies import FAMILY_CARDS, RuntimeStrategy, StrategyVersion
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -156,29 +160,40 @@ def run_coordinated(job: dict, dataset_dir: Path, api: str, headers: dict, progr
     pid, run_id = job["portfolio_id"], job["run_id"]
     t, meta = load_snapshot(dataset_dir)
     p = SnapshotProvider(t)
-    reg = Registry(ROOT / "data/registry" / f"{meta['dataset_id']}.json")
-    if not reg.data["versions"]:
+    reg = Registry(registry_path(meta['dataset_id']))
+    if not research_current(reg, meta):
         progress("research")
         research(dataset_dir, reg, budget_s=float(config.get("research_budget_s", 600)),
-                 progress=lambda stage, role, n: progress(f"research:{role}:{stage}"))
+                 use_llm=True,
+                 progress=lambda stage, role, n: progress(f"research:{role}:{stage}"),
+                 stop_requested=stop_requested)
+    if stop_requested():
+        return {"run_id": run_id, "portfolio_id": pid, "stopped": True, "cycles": 0,
+                "detail": "Stopped before creating trading commands."}
     universe = sorted(meta["symbols"])
+    holdout_views = reg.view_holdout(meta["content_sha256"])
+    context = research_context(reg, meta)
+    context.update(holdout_views=holdout_views, holdout_untouched=False)
+    if not context["current"]:
+        raise ValueError("coordinated execution requires completed compatible research")
     sleeves = portfolio_sleeves(reg, universe)
     funded = {s for s, _, _ in sleeves}
     # challengers that were not funded run in shadow: their intents are shown, never executed
     shadow = []
-    for key, rec in sorted(reg.data["versions"].items()):
-        if rec["role"] not in funded and rec.get("status") == "rejected" and rec["universe"] == universe:
+    for rec in context["agents"]:
+        if not rec["funded"]:
             from hellabandz.trading.research import make_version
-            card = {"sma_crossover": "trend", "zscore_reversion": "mean_reversion", "vol_target": "defensive",
-                    "regime_reversion": "regime"}[rec["family"]]
-            v = make_version(rec["role"], card, rec["params"], universe)
-            if not any(x.v.strategy_id == v.strategy_id for x in shadow):
-                shadow.append(RuntimeStrategy(v, "paper_clob"))
+            card = FAMILY_CARDS[rec["family"]]
+            v = make_version(rec["agent_id"], card, rec["params"], rec["universe"])
+            shadow.append(RuntimeStrategy(v, "paper_clob"))
     ledger = ApiLedger(api, pid, headers, run_id)
     strats = [RuntimeStrategy(StrategyVersion(sid, v.family, v.params, v.universe, v.version, v.card), "paper_clob")
               for sid, v, _ in sleeves]
     rt = CoordinatedRuntime(run_id, VenueMode.PAPER_CLOB, strats, {sid: cap for sid, _, cap in sleeves},
-                            paper_budget(INITIAL), instruments_for_dataset(meta), data_class(meta), INITIAL, ledger=ledger)
+                            paper_budget(INITIAL), instruments_for_dataset(meta), data_class(meta), INITIAL, ledger=ledger,
+                            keep_decisions=True, keep_telemetry=True)
+    if ledger.state.opened or ledger.state.seq:
+        raise ValueError("coordinated simulation requires a fresh, unopened portfolio")
     for o in list(ledger.state.orders.values()):  # a previous process's paper book is gone: release its orders
         if o.agent_id == EXEC_AGENT and o.venue == "paper_clob":
             ledger.process(CancelOrder(client_order_id=o.order_id, agent_id=EXEC_AGENT))
@@ -186,6 +201,11 @@ def run_coordinated(job: dict, dataset_dir: Path, api: str, headers: dict, progr
         rt.open()
     te0, te1 = meta["splits"]["test"]
     rt.warm(p, te0)
+    baseline = CoordinatedRuntime(run_id + "-baseline", VenueMode.PAPER_CLOB,
+        [RuntimeStrategy(core_version(universe), "paper_clob")], {"core": DEPLOYABLE},
+        paper_budget(INITIAL), instruments_for_dataset(meta), data_class(meta), INITIAL)
+    baseline.open()
+    baseline.warm(p, te0)
     for sh in shadow:
         sh.warm_universe({s: (ts, h.close, h.high, h.low) for s, (h, ts) in ((s, p.history(s, te0)) for s in universe)})
     groups = []
@@ -197,22 +217,88 @@ def run_coordinated(job: dict, dataset_dir: Path, api: str, headers: dict, progr
     steps = int(config.get("steps") or len(groups))
     speed = float(config.get("speed") or 0)
     groups = groups[:steps]
-    _say(ledger, run_id, "coordinator_start", {"mode": "paper_clob", "sleeves": [(s, v.version, c) for s, v, c in sleeves],
-                                               "shadow": [x.v.strategy_id for x in shadow], "steps": len(groups)})
+    if config.get("crash_at") is not None:
+        raise ValueError("scripted crashes are unsupported in coordinated replay")
+    if config.get("duration_s") and groups:
+        speed = len(groups) / float(config["duration_s"])
+    start = {"mode": "paper_clob", "context": context,
+             "sleeves": [(s, v.version, c) for s, v, c in sleeves],
+             "shadow": [x.v.strategy_id for x in shadow], "steps": len(groups)}
+    _say(ledger, run_id, "coordinator_start", start)
+    report = {"schema": "coordinated-simulation-1", "portfolio_id": pid, "run_id": run_id,
+              "context": context, "config": config, "status": "running", "points": [],
+              "decisions": [], "rule_readings": [], "steps": [], "benchmark": {"status": "pending"}}
+    save_report(MANIFESTS, pid, report)
+    previous = {}
+    from hellabandz.agents import llm
+    thinker = ThreadPoolExecutor(max_workers=1, thread_name_prefix="coordinated-commentary")
+    futures = []
+    def comment(agent, facts):
+        try:
+            raw, model = llm.chat_json("Comment on the supplied historical fixed-rule facts in one short sentence. "
+                "Return JSON {\"thought\":string}. You cannot change rules, place orders, or claim a proven edge.",
+                json.dumps(facts), timeout=10, max_retries=0)
+            if str(raw.get("thought", "")).strip():
+                _say(ledger, run_id, "thought", {"step": facts["step"], "ts": facts["ts"],
+                     "thought": str(raw["thought"])[:400], "llm": model, "facts": facts,
+                     "execution_effect": "none; commentary only"}, agent)
+        except Exception as exc:
+            _say(ledger, run_id, "thinking_unavailable", {"reason": type(exc).__name__,
+                "execution_effect": "none; fixed rules continue"}, agent)
+    if not llm.available():
+        _say(ledger, run_id, "thinking_unavailable", {"reason": "no AI model configured"})
     t_start = time.perf_counter()
     for i, g in enumerate(groups):
         if stop_requested():
             break
         rec = rt.step(g)
+        baseline.step(g)
         snap = rt.gateway.snapshot()
+        marks = {sym: v[1] for sym, v in ledger.state.last_bar.items()}
+        attribution = rt.book.report(marks)
+        point_agents = {a["agent_id"]: {"pnl": attribution.get(a["agent_id"], {}).get("pnl", 0),
+            "exposure": attribution.get(a["agent_id"], {}).get("market_value", 0)} for a in context["agents"]}
+        report["points"].append({"seq": ledger.state.seq, "ts": snap.ts, "equity": rec.equity,
+            "exposure": ledger.state.market_value(), "agents": point_agents})
+        report["steps"].append({"step": i + 1, "ts": snap.ts, "equity": rec.equity,
+            "cash": ledger.state.cash, "closes": marks, "sleeves": attribution,
+            "unallocated_cash": rt.book.unallocated})
+        shadow_intents = [x for s in shadow for x in s.on_snapshot(snap)]
+        intents = rt.last_intents
+        for agent in context["agents"]:
+            aid = agent["agent_id"]
+            readings = [x.model_dump(mode="json") for x in intents + shadow_intents if x.strategy_id == aid]
+            symbols = {x["instrument"]: {"target_bps": x["target_weight_bps"],
+                "previous_bps": previous.get((aid, x["instrument"])),
+                "reading": "; ".join(x["reasons"]) + " " + json.dumps(x["features"], sort_keys=True),
+                "features": x["features"], "score": x["score"], "weight_scope": x["weight_scope"]} for x in readings}
+            signal = {"step": i + 1, "ts": snap.ts, "agent": aid, "funded": agent["funded"],
+                      "opening": i == 0, "symbols": symbols, "intents": readings,
+                      "execution_effect": "coordinator input" if agent["funded"] else "shadow only; no orders"}
+            report["rule_readings"].append(signal)
+            if i == 0 or i == len(groups) - 1 or any(x["target_bps"] != x["previous_bps"] for x in symbols.values()):
+                _say(ledger, run_id, "signal", signal, aid)
+            previous.update({(aid, sym): v["target_bps"] for sym, v in symbols.items()})
+            if aid != "core" and i in (0, len(groups) // 2) and llm.available():
+                futures.append(thinker.submit(comment, aid, {"step": i + 1, "ts": snap.ts,
+                    "funded": agent["funded"], "family": agent["family"], "symbols": symbols,
+                    "sleeve": attribution.get(aid, {}), "promotion_reasons": agent["reasons"]}))
         for d in rec.decisions:
+            report["decisions"].append(d.model_dump(mode="json"))
             if d.order or d.transfers or d.cancel_order_id or any(r.outcome.value == "rejected" for r in d.intents):
                 _say(ledger, run_id, "coordinator_decision", d.model_dump(mode="json"))
         if i % 5 == 0 or i == len(groups) - 1:
-            intents = [x for s in rt.strategies for x in s.on_snapshot(snap)]
-            shadow_intents = [x for s in shadow for x in s.on_snapshot(snap)]
             _say(ledger, run_id, "coordinator_state", state_message(rt, reg, snap, intents, shadow_intents, ledger, meta,
                                                                     "paper_clob"))
+        # This baseline advances only alongside completed actual cycles, including
+        # a stopped/truncated run, using identical cash, fees, risk and paper venue.
+        report["benchmark"] = {"status": "available", "initial_cash": INITIAL,
+            "start_ts": te0, "end_ts": snap.ts + 1,
+            "assumptions": "Same completed bars, initial cash, deployable budget, coordinator limits, fees and synthetic paper CLOB. Equal-weight buy and hold; no crash overlay.",
+            "baseline": [{"ts": r.ts, "equity": r.equity} for r in baseline.records],
+            "strategy": {"ts": [r.ts for r in rt.records], "equity": [r.equity for r in rt.records]}}
+        if i % 25 == 0 or i == len(groups) - 1:
+            save_report(MANIFESTS, pid, report)
         progress("coordinating", i + 1, len(groups))
         if speed > 0:
             delay = (i + 1) / speed - (time.perf_counter() - t_start)
@@ -220,11 +306,27 @@ def run_coordinated(job: dict, dataset_dir: Path, api: str, headers: dict, progr
                 time.sleep(min(delay, 5))
     v = ledger.c.get("/v1/verify").json()
     res = rt.result()
+    bm = research_metrics(baseline.result())
+    sm = research_metrics(res)
+    report["benchmark"].update(baseline_metrics=bm, strategy_metrics=sm)
     summary = {"run_id": run_id, "portfolio_id": pid, "cycles": res.cycles, "final_equity": res.final_equity / MICROS,
                "net_return": res.final_equity / res.initial_cash - 1, "orders": len(res.orders), "fills": res.fills,
                "reconciliation_breaks": len(res.reconciliation_breaks), "verify": v,
                "sleeves": [(s, vv.version, c / MICROS) for s, vv, c in sleeves], "intent_outcomes": res.intent_outcomes,
                "elapsed_s": round(time.perf_counter() - t_start, 1),
                "finished_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+    summary.update(metrics=sm, baseline_metrics=bm, fees=res.fees, slippage=res.slippage,
+                   turnover=res.turnover, exposure_bps_mean=res.exposure_bps_mean,
+                   ledger_rejections=res.ledger_rejections, attribution=res.attribution,
+                   unallocated_cash=rt.book.unallocated, ledger_digest=res.ledger_digest,
+                   head_hash=res.head_hash, return_attribution=res.return_attribution,
+                   policy_version=context["policy_version"], code_version=context["code_version"],
+                   source_sha256=context["source_sha256"], dataset_sha256=meta["content_sha256"],
+                   stopped=stop_requested(), actual_end_ts=res.equity_ts[-1] + 1 if res.equity_ts else te0)
+    wait(futures, timeout=12)
+    thinker.shutdown(wait=False, cancel_futures=True)
+    report.update(status="stopped" if stop_requested() else "completed", summary=summary,
+                  final_attribution=res.attribution, telemetry=res.telemetry)
+    save_report(MANIFESTS, pid, report)
     _say(ledger, run_id, "coordinator_summary", summary)
     return summary

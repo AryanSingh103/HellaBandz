@@ -32,7 +32,7 @@ from hellabandz.contracts import (
 )
 from hellabandz.ingestion.dataset import BarTable
 from hellabandz.ledger import EngineConfig, PortfolioState, canonical, check_invariants, process, sha256_hex
-from hellabandz.strategies import BARS_PER_YEAR, HOLD_FAMILIES, Series, universe_weights
+from hellabandz.strategies import ALLOCATION_FAMILIES, COORDINATED_ONLY_FAMILIES, BARS_PER_YEAR, HOLD_FAMILIES, Series, universe_weights
 
 class DataProvider(Protocol):
     def bars(self, start_ts: int, end_ts: int) -> Iterator[Bar]: ...
@@ -155,6 +155,8 @@ def compute_metrics(equity: list[int], fills: list[dict], state: PortfolioState)
 def run_backtest(provider: DataProvider, slots: list[Slot], start_ts: int, end_ts: int,
                  cfg: EngineConfig = EngineConfig(), initial_cash: int = 10_000 * MICROS,
                  run_id: str = "bt", check_every_step: bool = False) -> BacktestResult:
+    if any(sl.spec.family in COORDINATED_ONLY_FAMILIES for sl in slots):
+        raise ValueError("allocation and fixed-unit families require CoordinatedRuntime sizing; legacy backtester uses slots")
     s = PortfolioState()
     process(s, OpenPortfolio(initial_cash=initial_cash), cfg)
     slots = sorted(slots, key=lambda x: x.spec.strategy_id)

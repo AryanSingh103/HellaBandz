@@ -27,10 +27,43 @@ async def datasets():
     return await asyncio.to_thread(lambda: [describe(k, v) for k, v in registered().items()])
 
 
+@router.get("/coordinated/research")
+async def coordinated_research(dataset_id: Ident):
+    from hellabandz.trading.instruments import COORDINATED_ASSET_CLASSES, instruments_for_dataset
+    from hellabandz.trading.registry import Registry
+    from hellabandz.trading.reporting import registry_path, research_context
+    try:
+        meta = await asyncio.to_thread(describe, dataset_id, resolve(dataset_id))
+        eligible = meta["execution_usable"] and meta.get("interval_s") == 3600 and all(
+            x.asset_class in COORDINATED_ASSET_CLASSES for x in instruments_for_dataset(meta).values())
+        if not eligible:
+            raise ValueError("coordinated replay requires usable hourly stock/ETF data")
+        return await asyncio.to_thread(research_context, Registry(registry_path(dataset_id)), meta)
+    except (ValueError, KeyError) as exc:
+        raise HTTPException(422, str(exc))
+
+
+@router.get("/coordinated/report")
+async def coordinated_report(portfolio_id: Ident):
+    from hellabandz.trading.reporting import load_report
+    try:
+        report = await asyncio.to_thread(load_report, MANIFESTS, portfolio_id)
+    except (ValueError, OSError) as exc:
+        raise HTTPException(409, "coordinated report cannot be verified") from exc
+    if report is None:
+        raise HTTPException(404, "coordinated report not yet available")
+    return report
+
+
 @router.get("/capabilities")
 async def capabilities():
+    from hellabandz.agents import llm
+    provider = llm.selected_provider()
+    backup = "OpenAI" if provider == "gemini" and llm.fallback_enabled() and llm.available("openai") else None
     return {"execution": "historical simulated, long-only, cash-funded", "initial_capital": 10000,
-            "research_provider": "OpenAI" if os.environ.get("OPENAI_API_KEY") else "labeled fixture/fallback",
+            "research_provider": ("Gemini (OpenAI backup)" if backup else {"gemini": "Gemini", "openai": "OpenAI"}.get(provider)) if llm.available() else "labeled fixture/fallback",
+            "research_model": llm.model_name(), "research_provider_selected": provider,
+            "research_backup_provider": backup,
             "speech_provider": "ElevenLabs" if os.environ.get("ELEVENLABS_API_KEY") else "browser fallback",
             "live_observation": False}
 
@@ -133,6 +166,8 @@ class JobIn(BaseModel):
     steps: int = Field(default=100, ge=1, le=10000)
     speed: float = Field(default=4, ge=0, le=100, allow_inf_nan=False)
     crash_at: float | None = Field(default=None, ge=0, lt=1, allow_inf_nan=False)
+    # optional wall-clock target for a session replay; overrides speed when set
+    duration_s: float | None = Field(default=None, ge=1, le=3600, allow_inf_nan=False)
 
 
 @router.post("/jobs", status_code=202)
@@ -151,17 +186,23 @@ async def launch_job(body: JobIn):
     if not info["execution_usable"]:
         raise HTTPException(422, info["unavailable_reason"])
     job_id = "J" + uuid.uuid4().hex
-    run_id = "T" + uuid.uuid4().hex[:20] if body.kind == "research" else body.run_id
+    run_id = ("T" + uuid.uuid4().hex[:20] if body.kind == "research" else
+              body.run_id or ("C" + uuid.uuid4().hex[:20] if body.kind == "coordinated" else None))
     if body.kind == "coordinated":
         # coordinated sessions take strategy versions from the coordinated registry; the frozen research run
         # only anchors the portfolio's research context and must use the same dataset
-        if not body.portfolio_id or not run_id:
-            raise HTTPException(422, "coordinated session requires a research run_id and a fresh portfolio_id")
-        runs = await gateway.q("SELECT manifest FROM tournaments WHERE run_id = %s", (run_id,))
-        if not runs or (runs[0]["manifest"].get("dataset") or {}).get("content_sha256") != info["content_sha256"]:
-            raise HTTPException(409, "research run and registered dataset must match")
-        if any(s not in ("AAPL", "MSFT", "NVDA", "QQQ", "SPY") for s in info["symbols"]):
-            raise HTTPException(422, "coordinated sessions support the US equity snapshots only")
+        if not body.portfolio_id:
+            raise HTTPException(422, "coordinated simulation requires a fresh portfolio_id")
+        if body.crash_at is not None:
+            raise HTTPException(422, "scripted crashes are unsupported in coordinated replay")
+        if body.run_id:
+            runs = await gateway.q("SELECT manifest FROM tournaments WHERE run_id = %s", (run_id,))
+            if not runs or (runs[0]["manifest"].get("dataset") or {}).get("content_sha256") != info["content_sha256"]:
+                raise HTTPException(409, "research run and registered dataset must match")
+        from hellabandz.trading.instruments import COORDINATED_ASSET_CLASSES, instruments_for_dataset
+        if info.get("interval_s") != 3600 or any(
+                i.asset_class not in COORDINATED_ASSET_CLASSES for i in instruments_for_dataset(info).values()):
+            raise HTTPException(422, "coordinated sessions require hourly stock/ETF snapshots")
     if body.kind == "session":
         if not body.portfolio_id or not run_id:
             raise HTTPException(422, "session requires a frozen run_id and a fresh portfolio_id")
@@ -199,7 +240,8 @@ async def launch_job(body: JobIn):
             if body.kind in ("session", "coordinated"):
                 await reserve_portfolio(conn, body.portfolio_id)
                 await conn.execute("INSERT INTO portfolio_context (portfolio_id, run_id, dataset_id, session_job_id) "
-                                   "VALUES (%s,%s,%s,%s)", (body.portfolio_id, run_id, body.dataset_id, job_id))
+                                   "VALUES (%s,%s,%s,%s)", (body.portfolio_id, body.run_id if body.kind == "coordinated" else run_id,
+                                                            body.dataset_id, job_id))
             await conn.execute("INSERT INTO jobs (job_id, request_id, kind, dataset_id, run_id, portfolio_id, config) "
                                "VALUES (%s,%s,%s,%s,%s,%s,%s)",
                                (job_id, body.request_id, body.kind, body.dataset_id, run_id, body.portfolio_id, Jsonb(config)))
@@ -230,12 +272,12 @@ async def jobs(portfolio_id: Ident | None = None, run_id: Ident | None = None, i
 @router.get("/coordinator")
 async def coordinator_view(portfolio_id: Ident = "main"):
     """Latest coordinator state, recent decisions and the recorded evaluation, for the Coordinator page."""
-    base = ("SELECT m.id, m.role, m.content, m.created_at FROM agent_messages m JOIN portfolio_context c USING(run_id) "
-            "WHERE c.portfolio_id = %s AND m.portfolio_id = %s AND m.role = %s ORDER BY m.id DESC LIMIT %s")
-    state = await gateway.q(base, (portfolio_id, portfolio_id, "coordinator_state", 1))
-    decisions = await gateway.q(base, (portfolio_id, portfolio_id, "coordinator_decision", 80))
-    summary = await gateway.q(base, (portfolio_id, portfolio_id, "coordinator_summary", 1))
-    start = await gateway.q(base, (portfolio_id, portfolio_id, "coordinator_start", 1))
+    base = ("SELECT m.id, m.role, m.content, m.created_at FROM agent_messages m "
+            "WHERE m.portfolio_id = %s AND m.role = %s ORDER BY m.id DESC LIMIT %s")
+    state = await gateway.q(base, (portfolio_id, "coordinator_state", 1))
+    decisions = await gateway.q(base, (portfolio_id, "coordinator_decision", 80))
+    summary = await gateway.q(base, (portfolio_id, "coordinator_summary", 1))
+    start = await gateway.q(base, (portfolio_id, "coordinator_start", 1))
     evaluation = None
     path = MANIFESTS / "coordinated_evaluation.json"
     if path.exists():
@@ -364,6 +406,23 @@ async def replay_event(seq: int, portfolio_id: Ident = "main"):
 
 @router.get("/analytics/history")
 async def analytics_history(portfolio_id: Ident = "main"):
+    from hellabandz.trading.reporting import load_report
+    coordinated_jobs = await gateway.q("SELECT status FROM jobs WHERE portfolio_id = %s AND kind = 'coordinated'",
+                                      (portfolio_id,))
+    if coordinated_jobs:
+        try:
+            report = await asyncio.to_thread(load_report, MANIFESTS, portfolio_id)
+        except (ValueError, OSError):
+            report = None
+        if report:
+            return {"points": report["points"], "sample_stride": 1,
+                    "source": "reconciled virtual strategy sleeves from coordinated execution",
+                    "definitions": {"agent_pnl": "virtual sleeve equity minus opening sleeve capital, including attributed fees",
+                                    "exposure": "virtual sleeve held quantity times the same applied marks"},
+                    "benchmark": report["benchmark"], "provenance": report["context"],
+                    "job_status": coordinated_jobs[0]["status"]}
+        return {"points": [], "definitions": {}, "benchmark": {"status": "pending",
+                "reason": "coordinated research or replay has not published its first completed cycle"}}
     rows = await gateway.q("SELECT event FROM ledger_events WHERE portfolio_id = %s ORDER BY seq", (portfolio_id,))
     def derive():
         s = PortfolioState()

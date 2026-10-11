@@ -10,11 +10,12 @@ import { OrdersView } from "./orders";
 import { ResearchView, RunView } from "./research";
 import { Ask } from "./voice";
 import { MarketplaceView } from "./marketplace";
+import { SimulationView } from "./simulation";
 import { Hero, Pillars, Sidebar, StrategyCard, useLiveEquity } from "./browse";
 import { GuideToggle, HintsProvider, HowItWorks, PageIntro } from "./help";
 import { AccessGate, SignOut } from "./access";
 
-const views: View[] = ["browse", "marketplace", "portfolio", "orders", "research", "audit", "analytics", "coordinator", "run"];
+const views: View[] = ["browse", "simulation", "marketplace","portfolio", "orders", "research", "audit", "analytics", "coordinator", "run"];
 const categories = ["All strategies", "Momentum", "Reversion", "Volatility", "Equities", "Crypto"];
 function readRoute(): Route {
   const q = new URLSearchParams(location.search), route = { ...initialRoute };
@@ -40,7 +41,7 @@ function Terminal() {
     history.pushState(null, "", `/${q.size ? "?" + q : ""}`); setRoute(r); setStrategy("");
   }
   const observing = ["browse", "portfolio", "orders", "audit"].includes(route.view);
-  const researching = ["browse", "research", "run"].includes(route.view);
+  const researching = ["browse", "research", "run", "simulation"].includes(route.view);
   const charting = ["browse", "portfolio"].includes(route.view);
   const health = useResource<{api:string}>(observing ? null : "/healthz", {}, 15000, revision);
   const portfolios = useResource<PortfolioChoice[]>("/v1/portfolios", {}, 30000, revision);
@@ -71,13 +72,12 @@ function Terminal() {
   return <HintsProvider>
     <header className="site-header"><div className="header-inner">
       <a className="wordmark" href="/" onClick={e => { e.preventDefault(); navigate({ view: "browse" }); }}aria-label="HellaBandz home"><span className="wm-hella">Hella</span><span className="wm-bandz">Band<span className="wm-z">z</span></span></a>
-      <nav aria-label="Main navigation">{views.map(v => <a key={v} href={`/?view=${v}&p=${encodeURIComponent(route.p)}`} aria-current={route.view === v ? "page" : undefined} onClick={e => { e.preventDefault(); navigate({ view: v, order: "" }); }}>{v === "browse" ? "Markets" : v}{v === "orders" && decisionsCount > 0 && <span className="nav-count">{decisionsCount}</span>}</a>)}
+      <nav aria-label="Main navigation">{views.filter(v => v !== "audit").map(v => <a key={v} href={`/?view=${v}&p=${encodeURIComponent(route.p)}`} aria-current={route.view === v ? "page" : undefined} onClick={e => { e.preventDefault(); navigate({ view: v, order: "" }); }}>{v === "browse" ? "Markets" : v}{v === "orders" && decisionsCount > 0 && <span className="nav-count">{decisionsCount}</span>}</a>)}
         <span className={`nav-live ${live ? "on" : ""}`}><i />Live</span></nav>
       <div className="header-search"><Search size={17} /><input aria-label="Search strategies" placeholder="Trade on any strategy" value={route.q} onChange={e => navigate({ q: e.target.value, view: "browse" })} /></div>
       <GuideToggle />
       <SignOut />
       <button className="ghost-pill" onClick={() => setAskOpen(!askOpen)}><Activity size={15} />Ask</button>
-      <button className="cta-pill" onClick={() => navigate({ view: "run" })}>Run research</button>
     </div><div className="category-inner"><nav aria-label="Strategy categories">{categories.map(c => <a key={c} href={`/?category=${encodeURIComponent(c)}`} className={route.category === c && route.view === "browse" ? "selected" : ""} onClick={e => { e.preventDefault(); navigate({ category: c, view: "browse" }); }}>{c === "All strategies" ? "Trending" : c}</a>)}</nav><span className="simulation"><span className={`status-dot ${connected ? "online" : ""}`} />Simulated · paper trading</span></div></header>
     <main>
       <div className="scopebar"><div className="row"><span className={`status-dot ${connected ? "online" : ""}`} /><span>{connected ? "API connected" : (observing ? runtime.loading : health.loading) ? "Connecting" : "API unavailable"}</span><span className="scope-divider">/</span><label className="inline">Portfolio<select aria-label="Portfolio" value={route.p} onChange={e => { setPortfolioInput(e.target.value); navigate({ p: e.target.value, run: "", order: "" }); }}>{!portfolios.data?.some(p => p.portfolio_id === route.p) && <option>{route.p}</option>}{portfolios.data?.map(p => <option key={p.portfolio_id}>{p.portfolio_id}</option>)}</select></label></div><div className="row"><span>Stream {stream.status}</span><span className="scope-divider">/</span><span>Worker {!observing ? "not observed" : connected ? runtime.data?.intentional_down ? "intentionally down" : runtime.data?.worker_alive ? "healthy" : "down" : "unknown"}</span><span className="scope-divider">/</span><span className="muted">{observing && connected ? `${runtime.data?.pending_commands} queued` : "Queue not observed"}</span><button className="icon" title="Refresh data" aria-label="Refresh data" onClick={() => refresh(n => n + 1)}><RefreshCw size={14} /></button></div></div>
@@ -102,6 +102,7 @@ function Terminal() {
       </div>}
       {route.view !== "browse" && <div className="view"><PageIntro view={route.view} manifest={manifest} />
       {route.view === "marketplace" && <MarketplaceView />}
+      {route.view === "simulation" && <SimulationView key={route.p} pid={route.p} manifest={context.data?.manifest || null} dataset={portfolioDataset} datasets={datasets.data || []} runs={runs.data || []} onSelect={p => { setPortfolioInput(p); navigate({ p, run: "", order: "" }); }} go={v => navigate({ view: v })} />}
       {route.view === "coordinator" && <CoordinatorView key={scope} pid={route.p} />}
       {route.view === "portfolio" && <PortfolioView key={scope} crash={crash} pid={route.p} port={port.data} runtime={connected ? runtime.data : undefined} dataset={portfolioDataset} refresh={() => refresh(n=>n+1)} onSelect={p => { setPortfolioInput(p); navigate({ p, run: "", order: "" }); }} />}
       {route.view === "orders" && <OrdersView key={scope} pid={route.p} port={port.data} dataset={portfolioDataset} orderId={route.order} selectOrder={order => navigate({ order })} refresh={() => refresh(n=>n+1)} />}

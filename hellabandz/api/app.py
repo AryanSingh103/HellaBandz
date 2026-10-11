@@ -228,11 +228,13 @@ class BarsIn(BaseModel):
 async def post_bars(body: BarsIn, portfolio_id: Ident = "main", wait: bool = True):
     dataset_id = body.dataset_id
     async with pool.connection() as conn:
-        cur = conn.cursor()
-        await cur.executemany(
-            "INSERT INTO market_bars (ts, dataset_id, symbol, open, high, low, close, volume, stress) "
-            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING",
-            [(b.ts, dataset_id, b.symbol, b.open, b.high, b.low, b.close, b.volume, b.stress) for b in body.bars])
+        # one commit for the whole batch of price records; the ledger commands below stay individually durable
+        async with conn.transaction():
+            cur = conn.cursor()
+            await cur.executemany(
+                "INSERT INTO market_bars (ts, dataset_id, symbol, open, high, low, close, volume, stress) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING",
+                [(b.ts, dataset_id, b.symbol, b.open, b.high, b.low, b.close, b.volume, b.stress) for b in body.bars])
     last = None
     for b in sorted(body.bars, key=lambda b: (b.ts, b.symbol)):
         cmd = ApplyBar(bar=b)
@@ -522,13 +524,18 @@ async def post_agent_message(m: AgentMessageIn):
 
 
 @app.get("/v1/agent-messages")
-async def agent_messages(run_id: Ident | None = None, limit: int = 200, portfolio_id: Ident | None = None):
+async def agent_messages(run_id: Ident | None = None, limit: int = 200, portfolio_id: Ident | None = None,
+                         after_id: int = 0):
+    # after_id lets a live view fetch only what is new instead of the whole channel on every poll
     if portfolio_id:
-        return await q("SELECT m.* FROM agent_messages m JOIN portfolio_context c USING(run_id) "
-                       "WHERE c.portfolio_id = %s AND (m.portfolio_id IS NULL OR m.portfolio_id = %s) "
-                       "ORDER BY id LIMIT %s", (portfolio_id, portfolio_id, limit))
+        return await q("SELECT m.* FROM agent_messages m WHERE "
+                       "(m.portfolio_id = %s OR (m.portfolio_id IS NULL AND EXISTS "
+                       "(SELECT 1 FROM portfolio_context c WHERE c.run_id = m.run_id AND c.portfolio_id = %s))) "
+                       "AND m.id > %s ORDER BY m.id LIMIT %s",
+                       (portfolio_id, portfolio_id, after_id, limit))
     if run_id:
-        return await q("SELECT * FROM agent_messages WHERE run_id = %s ORDER BY id LIMIT %s", (run_id, limit))
+        return await q("SELECT * FROM agent_messages WHERE run_id = %s AND id > %s ORDER BY id LIMIT %s",
+                       (run_id, after_id, limit))
     return await q("SELECT * FROM agent_messages ORDER BY id DESC LIMIT %s", (limit,))
 
 

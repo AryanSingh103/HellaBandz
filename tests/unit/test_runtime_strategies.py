@@ -13,7 +13,9 @@ from hellabandz.trading.strategies import RuntimeStrategy, make_version
 
 FIXTURE = Path(__file__).resolve().parents[2] / "data/fixtures/synthetic_1h"
 CASES = [("trend", {"fast": 20, "slow": 100}), ("mean_reversion", {"lookback": 30, "entry_z": 1.5, "exit_z": 0.0}),
-         ("defensive", {"vol_lookback": 50, "trend_lookback": 200, "target_vol": 0.12})]
+         ("defensive", {"vol_lookback": 50, "trend_lookback": 200, "target_vol": 0.12}),
+         ("breakout", {"lookback": 60}), ("rsi", {"lookback": 30, "entry_rsi": 25, "exit_rsi": 65}),
+         ("momentum", {"lookback": 200, "threshold": 0.01})]
 
 
 @pytest.fixture(scope="module")
@@ -23,11 +25,14 @@ def data():
 
 
 @pytest.mark.parametrize("role,params", CASES)
-def test_incremental_signal_matches_vectorized_bar_by_bar(data, role, params):
+@pytest.mark.parametrize("warm", [True, False])
+def test_incremental_signal_matches_vectorized_bar_by_bar(data, role, params, warm):
     p, m = data
     start = m["splits"]["test"][0]
     sym = "SPY"
     hist, hts = p.history(sym, start)
+    if not warm:
+        hist, hts = Series(np.array([]), np.array([]), np.array([])), np.array([], dtype=np.int64)
     s = RuntimeStrategy(make_version("s", role, params, [sym]), venue="bar_sim")
     s.warm(sym, hts, hist.close, hist.high, hist.low)
     g = MarketDataGateway(DataClass.SYNTHETIC, history_capacity=64)
@@ -80,13 +85,14 @@ def test_versions_are_stable_and_bounded():
     assert {"hypothesis", "entry", "exit", "parameter_bounds", "failure_conditions", "cost_assumptions"} <= set(d)
 
 
-def test_regime_basket_overlay_matches_research_function(data):
+@pytest.mark.parametrize("card", ["regime", "regime_units"])
+def test_regime_basket_overlay_matches_research_function(data, card):
     from hellabandz.strategies import universe_weights
     p, m = data
     start, end = m["splits"]["test"]
     syms = ["AAPL", "MSFT", "NVDA", "QQQ", "SPY"]
     params = {"regime_lookback": 120, "min_reversion": 0.02, "lookback": 60, "sell_z": 1.0, "rebuy_z": 0.0}
-    s = RuntimeStrategy(make_version("r", "regime", params, syms), venue="bar_sim")
+    s = RuntimeStrategy(make_version("r", card, params, syms), venue="bar_sim")
     hist = {sym: p.history(sym, start) for sym in syms}
     s.warm_universe({sym: (ts, h.close, h.high, h.low) for sym, (h, ts) in hist.items()})
     g = MarketDataGateway(DataClass.SYNTHETIC, history_capacity=64)

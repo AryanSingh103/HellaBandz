@@ -24,6 +24,18 @@ def isolated_test_auth(monkeypatch):
     monkeypatch.setenv("QS_AUTH_REQUIRED", "0")
 
 
+@pytest.fixture(autouse=True)
+def isolated_model_credentials(monkeypatch):
+    # Model tests opt in with dummy keys/mocks; never spend .env credentials.
+    from hellabandz.agents import llm
+    for key in ("GEMINI_API_KEY", "GOOGLE_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"):
+        # Explicit empty values also survive load_env() in subprocesses. Removing
+        # a key lets a child reload a developer's paid credentials from .env.
+        monkeypatch.setenv(key, "")
+    monkeypatch.setenv("QS_LLM_PROVIDER", "gemini")
+    monkeypatch.setattr(llm, "_gemini_retry_at", 0.)
+
+
 def _db_available() -> bool:
     try:
         with psycopg.connect(ADMIN_URL, connect_timeout=2):
@@ -146,8 +158,8 @@ def expected_from_command_log(st: Stack):
 
 
 def wait_until(pred, timeout: float = 30, every: float = 0.05):
-    deadline = time.time() + timeout
-    while time.time() < deadline:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
         if pred():
             return True
         time.sleep(every)

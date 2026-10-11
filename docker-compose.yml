@@ -38,6 +38,13 @@ services:
       QS_API_TOKEN: ${QS_API_TOKEN:-}
       QS_ALLOWED_ORIGINS: ${QS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001}
       QS_AUDIT_SIGNER: ${QS_AUDIT_SIGNER:-}
+      QS_LLM_PROVIDER: ${QS_LLM_PROVIDER:-gemini}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      QS_GEMINI_MODEL: ${QS_GEMINI_MODEL:-gemini-3.8-flash}
+      QS_OPENAI_FALLBACK: ${QS_OPENAI_FALLBACK:-1}
+      QS_GEMINI_TIMEOUT_S: ${QS_GEMINI_TIMEOUT_S:-8}
+      QS_GEMINI_COOLDOWN_S: ${QS_GEMINI_COOLDOWN_S:-60}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       QS_ANTHROPIC_MODEL: ${QS_ANTHROPIC_MODEL:-claude-sonnet-4-6}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
@@ -56,6 +63,7 @@ services:
     volumes:
       - ./data/snapshots:/app/data/snapshots:ro
       - ./data/manifests:/app/data/manifests
+      - ./data/registry:/app/data/registry:ro
 
   manager:
     build: .
@@ -67,6 +75,13 @@ services:
       QS_API: http://api:8000
       QS_API_TOKEN: ${QS_API_TOKEN:-}
       QS_TOURNAMENT_PROCS: 2
+      QS_OPENAI_FALLBACK: ${QS_OPENAI_FALLBACK:-1}
+      QS_GEMINI_TIMEOUT_S: ${QS_GEMINI_TIMEOUT_S:-8}
+      QS_GEMINI_COOLDOWN_S: ${QS_GEMINI_COOLDOWN_S:-60}
+      QS_LLM_PROVIDER: ${QS_LLM_PROVIDER:-gemini}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      QS_GEMINI_MODEL: ${QS_GEMINI_MODEL:-gemini-3.8-flash}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       QS_OPENAI_MODEL: ${QS_OPENAI_MODEL:-gpt-4.1-mini}
     volumes:

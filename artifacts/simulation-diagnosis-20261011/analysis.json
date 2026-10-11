@@ -1,0 +1,409 @@
+{
+  "source": "C:\\Users\\Krish\\Downloads\\simulation-sim-mv3k44dq.json",
+  "dataset": {
+    "source": "quantswarm.ingestion.synthetic (seed=42)",
+    "splits": {
+      "test": [
+        1767205800,
+        1790800201
+      ],
+      "train": [
+        1672756200,
+        1743607800
+      ],
+      "validation": [
+        1743607800,
+        1767205800
+      ]
+    },
+    "dataset_id": "synthetic-1h-seed42",
+    "interval_s": 3600,
+    "content_sha256": "40ea8d6c017964faaa2147d0bb39d908f912c3a1c54ef48b1f117d3a32d4e68c"
+  },
+  "pipeline_kind": "session",
+  "portfolio": {
+    "return_pct": -3.092326649999999,
+    "sharpe_hourly_252x7": -0.573976517915538,
+    "drawdown_pct": 5.133237956059969,
+    "first_equity": 10000.0,
+    "final_equity": 9690.767335,
+    "observations": 1368
+  },
+  "baseline": {
+    "return_pct": 2.590057450000005,
+    "sharpe_hourly_252x7": 0.2635529094254975,
+    "drawdown_pct": 13.217501876395687,
+    "first_equity": 10000.0,
+    "final_equity": 10259.005745,
+    "observations": 1368
+  },
+  "agents": {
+    "mean_reversion": {
+      "family": "zscore_reversion",
+      "params": {
+        "exit_z": 0,
+        "entry_z": 1.5,
+        "lookback": 120
+      },
+      "pnl": 230.160055,
+      "fills": 58,
+      "fees": 1.34,
+      "modeled_slippage": 33.909945,
+      "traded_notional": 67821.055305,
+      "consecutive_opposite_side_gaps_bars": {
+        "65": 1,
+        "375": 1,
+        "98": 2,
+        "108": 1,
+        "9": 3,
+        "17": 1,
+        "101": 1,
+        "344": 1,
+        "51": 1,
+        "15": 2,
+        "10": 1,
+        "76": 1,
+        "22": 1,
+        "14": 2,
+        "89": 1,
+        "4": 1,
+        "41": 1,
+        "115": 1,
+        "45": 1,
+        "83": 1,
+        "49": 1,
+        "86": 1,
+        "18": 1,
+        "365": 1,
+        "193": 1,
+        "66": 1,
+        "5": 1,
+        "6": 1,
+        "40": 1,
+        "81": 1,
+        "2": 1,
+        "3": 1,
+        "54": 1,
+        "255": 1,
+        "31": 1,
+        "16": 1,
+        "43": 1,
+        "48": 1,
+        "26": 1,
+        "30": 1,
+        "29": 1,
+        "12": 1,
+        "19": 1,
+        "359": 1,
+        "73": 1,
+        "88": 1
+      },
+      "validation": {
+        "sharpe": 1.197885,
+        "n_fills": 53,
+        "fees_usd": 2.59,
+        "turnover": 10.053922,
+        "net_return": 0.05748302,
+        "max_drawdown": 0.03090512,
+        "slippage_usd": 50.269765,
+        "final_equity_usd": 10574.830235
+      },
+      "training": {
+        "sharpe": 1.616252,
+        "n_fills": 273,
+        "fees_usd": 17.155,
+        "turnover": 64.607124,
+        "net_return": 0.34356192,
+        "max_drawdown": 0.06801243,
+        "slippage_usd": 323.035825,
+        "final_equity_usd": 13435.619175
+      }
+    },
+    "momentum": {
+      "family": "sma_crossover",
+      "params": {
+        "fast": 50,
+        "slow": 200
+      },
+      "pnl": -36.78906,
+      "fills": 34,
+      "fees": 0.23,
+      "modeled_slippage": 8.33906,
+      "traded_notional": 16678.13411,
+      "consecutive_opposite_side_gaps_bars": {
+        "137": 1,
+        "249": 1,
+        "84": 1,
+        "11": 1,
+        "72": 1,
+        "116": 1,
+        "142": 1,
+        "33": 1,
+        "255": 1,
+        "184": 1,
+        "4": 1,
+        "45": 1,
+        "38": 1,
+        "83": 1,
+        "58": 1,
+        "110": 1,
+        "65": 1,
+        "48": 1,
+        "172": 1,
+        "91": 1,
+        "12": 1,
+        "371": 1,
+        "47": 1,
+        "46": 1,
+        "25": 1,
+        "111": 1,
+        "233": 1,
+        "288": 1,
+        "339": 1,
+        "222": 1,
+        "9": 1
+      },
+      "validation": {
+        "sharpe": 2.089533,
+        "n_fills": 55,
+        "fees_usd": 1.505,
+        "turnover": 8.134156,
+        "net_return": 0.2384416,
+        "max_drawdown": 0.1211733,
+        "slippage_usd": 40.66905,
+        "final_equity_usd": 12384.41595
+      },
+      "training": {
+        "sharpe": -1.09102,
+        "n_fills": 79,
+        "fees_usd": 2.42,
+        "turnover": 13.862962,
+        "net_return": -0.15416244,
+        "max_drawdown": 0.15900078,
+        "slippage_usd": 69.314445,
+        "final_equity_usd": 8458.375555
+      }
+    },
+    "volatility": {
+      "family": "vol_target",
+      "params": {
+        "target_vol": 0.2,
+        "vol_lookback": 20,
+        "trend_lookback": 40
+      },
+      "pnl": -502.60366,
+      "fills": 497,
+      "fees": 3.8000000000000003,
+      "modeled_slippage": 142.91366,
+      "traded_notional": 285828.24619,
+      "consecutive_opposite_side_gaps_bars": {
+        "5": 31,
+        "1": 148,
+        "4": 29,
+        "6": 11,
+        "2": 57,
+        "14": 5,
+        "12": 8,
+        "26": 3,
+        "11": 12,
+        "44": 4,
+        "3": 42,
+        "7": 12,
+        "25": 3,
+        "9": 12,
+        "15": 9,
+        "16": 6,
+        "8": 7,
+        "10": 14,
+        "23": 3,
+        "53": 1,
+        "27": 2,
+        "17": 4,
+        "37": 3,
+        "59": 1,
+        "19": 3,
+        "58": 1,
+        "20": 2,
+        "45": 3,
+        "13": 6,
+        "54": 1,
+        "47": 1,
+        "28": 1,
+        "50": 2,
+        "41": 1,
+        "39": 1,
+        "30": 2,
+        "49": 2,
+        "22": 4,
+        "80": 1,
+        "29": 1,
+        "38": 1,
+        "18": 2,
+        "32": 1,
+        "43": 2,
+        "48": 1,
+        "35": 1,
+        "21": 1,
+        "69": 1,
+        "24": 1
+      },
+      "validation": {
+        "sharpe": 1.919711,
+        "n_fills": 512,
+        "fees_usd": 15.95,
+        "turnover": 90.155986,
+        "net_return": 0.17990595,
+        "max_drawdown": 0.06785034,
+        "slippage_usd": 450.780495,
+        "final_equity_usd": 11799.059505
+      },
+      "training": {
+        "sharpe": -1.485476,
+        "n_fills": 285,
+        "fees_usd": 8.95,
+        "turnover": 52.206612,
+        "net_return": -0.12895528,
+        "max_drawdown": 0.15365107,
+        "slippage_usd": 261.032805,
+        "final_equity_usd": 8710.447195
+      }
+    }
+  },
+  "rejections": {
+    "R2_AGENT_ALLOCATION": 42
+  },
+  "thinking_kinds": {
+    "rule_reading": 479,
+    "ai_remark": 24
+  },
+  "cross_agent_opposing_fill_groups": 5,
+  "cross_agent_opposing_fill_examples": [
+    {
+      "step": 135,
+      "symbol": "SPY",
+      "trades": [
+        {
+          "ledger_seq": 895,
+          "step": 135,
+          "market_time": "2026-01-27T19:30:00.000Z",
+          "type": "OrderFilled",
+          "agent": "mean_reversion",
+          "symbol": "SPY",
+          "side": "BUY",
+          "qty": 3,
+          "price": 418.599195,
+          "fee": 0.015,
+          "slippage": 0.627585,
+          "position_after": 3,
+          "order_id": "Tdccdeb26f5774092ba3d.mean_reversion.SPY.1769538600"
+        },
+        {
+          "ledger_seq": 897,
+          "step": 135,
+          "market_time": "2026-01-27T19:30:00.000Z",
+          "type": "OrderFilled",
+          "agent": "volatility",
+          "symbol": "SPY",
+          "side": "SELL",
+          "qty": 2,
+          "price": 418.180805,
+          "fee": 0.01,
+          "slippage": 0.41839,
+          "position_after": 0,
+          "order_id": "Tdccdeb26f5774092ba3d.volatility.SPY.1769538600"
+        }
+      ]
+    },
+    {
+      "step": 602,
+      "symbol": "QQQ",
+      "trades": [
+        {
+          "ledger_seq": 3847,
+          "step": 602,
+          "market_time": "2026-04-30T17:30:00.000Z",
+          "type": "OrderFilled",
+          "agent": "mean_reversion",
+          "symbol": "QQQ",
+          "side": "SELL",
+          "qty": 4,
+          "price": 293.503175,
+          "fee": 0.02,
+          "slippage": 0.5873,
+          "position_after": 0,
+          "order_id": "Tdccdeb26f5774092ba3d.mean_reversion.QQQ.1777566600"
+        },
+        {
+          "ledger_seq": 3849,
+          "step": 602,
+          "market_time": "2026-04-30T17:30:00.000Z",
+          "type": "OrderFilled",
+          "agent": "volatility",
+          "symbol": "QQQ",
+          "side": "BUY",
+          "qty": 2,
+          "price": 293.796825,
+          "fee": 0.01,
+          "slippage": 0.29365,
+          "position_after": 2,
+          "order_id": "Tdccdeb26f5774092ba3d.volatility.QQQ.1777566600"
+        }
+      ]
+    },
+    {
+      "step": 613,
+      "symbol": "SPY",
+      "trades": [
+        {
+          "ledger_seq": 3915,
+          "step": 613,
+          "market_time": "2026-05-04T14:30:00.000Z",
+          "type": "OrderFilled",
+          "agent": "mean_reversion",
+          "symbol": "SPY",
+          "side": "SELL",
+          "qty": 3,
+          "price": 425.537125,
+          "fee": 0.015,
+          "slippage": 0.638625,
+          "position_after": 0,
+          "order_id": "Tdccdeb26f5774092ba3d.mean_reversion.SPY.1777667400"
+        },
+        {
+          "ledger_seq": 3917,
+          "step": 613,
+          "market_time": "2026-05-04T14:30:00.000Z",
+          "type": "OrderFilled",
+          "agent": "volatility",
+          "symbol": "SPY",
+          "side": "BUY",
+          "qty": 2,
+          "price": 425.962875,
+          "fee": 0.01,
+          "slippage": 0.42575,
+          "position_after": 2,
+          "order_id": "Tdccdeb26f5774092ba3d.volatility.SPY.1777667400"
+        }
+      ]
+    }
+  ],
+  "mean_exposure_pct": 29.65041551135806,
+  "model_counts": {
+    "gpt-5.4-mini-2026-03-17": 24
+  },
+  "symbol_returns_pct": {
+    "AAPL": 5.963372181020143,
+    "MSFT": 6.507566384315222,
+    "NVDA": -1.1554621848739455,
+    "QQQ": -0.039746944453644684,
+    "SPY": 4.05196990232275
+  },
+  "pnl_reconciliation_residual_usd": 4.547473508864641e-13,
+  "relative_return_pp": -5.682384100000004,
+  "evidence_limitations": [
+    "Synthetic seed42 data, not live or real historical stock prices.",
+    "Legacy session and previously frozen research manifest, not coordinated registry.",
+    "Reported slippage is embedded in fill prices; adding it back is diagnostic, not a frictionless replay.",
+    "Opposing fills at the same step demonstrate unnetted opposing executions, not exchange self-trading."
+  ]
+}

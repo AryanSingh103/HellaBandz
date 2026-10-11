@@ -135,7 +135,7 @@ def test_session_waits_for_command_before_using_projection_and_can_stop():
     def respond(request):
         calls.append(request)
         if request.method == "POST":
-            assert request.url.params["wait"] == "false"
+            assert request.url.params["wait"] == "true"  # bounded server-side wait; polling covers a slow worker
             return httpx.Response(202, json={"command_seq": 7, "status": "queued"})
         return httpx.Response(200, json={"status": "done", "response": {"status": "accepted", "outcome": "APPROVE"}})
     session.c = httpx.Client(base_url="http://test", transport=httpx.MockTransport(respond))
@@ -153,7 +153,7 @@ def test_real_research_job_persists_manifest_baseline_and_session(stack, tmp_pat
     from hellabandz.ingestion.dataset import load_snapshot, write_snapshot
     table, _ = load_snapshot(ROOT / "data/fixtures/synthetic_1h")
     times = sorted(set(table.ts))
-    table = table.select(table.ts < times[120])
+    table = table.select(table.ts < times[240])
     snapshots = tmp_path / "snapshots"
     write_snapshot(table, snapshots / "short", {"dataset_id": "runtime-synthetic", "source": "synthetic test fixture", "interval_s": 3600})
     stack.start_api(QS_SNAPSHOTS=str(snapshots), QS_MANIFESTS=str(tmp_path), OPENAI_API_KEY="")
@@ -165,6 +165,15 @@ def test_real_research_job_persists_manifest_baseline_and_session(stack, tmp_pat
             return next(j for j in c.get("/v1/jobs").json() if j["job_id"] == ident)
         wait_until(lambda: job(job_id)["status"] in ("completed", "failed"), timeout=90)
         assert job(job_id)["status"] == "completed", job(job_id)
+        adaptive = job(job_id)["result"]["adaptive_research"]
+        assert adaptive["status"] == "complete", adaptive
+        assert 0 < adaptive["candidates_tested"] <= 24
+        assert len(adaptive["roles"]) == 3
+        from hellabandz.trading.registry import Registry
+        from hellabandz.trading.strategies import make_version
+        registry = Registry(ROOT / "data/registry/runtime-synthetic.json")
+        assert {e["family"] for e in registry.data["research_state"]["experiments"]} >= {
+            "relative_strength", "risk_adjusted_rotation"}
         run_id = job(job_id)["run_id"]
         frozen = c.get(f"/v1/tournaments/{run_id}/manifest").json()
         assert len(frozen["proposals"]) == len(AGENTS) and len(frozen["fitted"]) == len(AGENTS)
@@ -183,3 +192,42 @@ def test_real_research_job_persists_manifest_baseline_and_session(stack, tmp_pat
         assert analytics["benchmark"]["status"] == "available"
         assert analytics["benchmark"]["manifest_hash"] == sha256_hex(canonical(frozen))
         assert analytics["points"][-1]["equity"] == c.get("/v1/portfolio", params={"portfolio_id": "research-session"}).json()["equity"]
+        # Explicit synthetic integration fixture: exercise executable whole-sleeve
+        # registry loading independently of whether this short market earns promotion.
+        v = make_version("trend", "rotation", {"lookback_sessions": 20, "top_k": 3,
+                         "rebalance_sessions": 5, "threshold": -.10}, registry.data["research_state"]["universe"])
+        key = registry.propose("trend", v, "synthetic integration fixture only")
+        registry.record_evaluation(key, {}, {}, True, ["INTEGRATION_FIXTURE_NOT_RESEARCH_EVIDENCE"])
+        registry.promote("trend", key, .3)
+        coordinated = c.post("/v1/jobs", json={"request_id": "real-coordinated", "kind": "coordinated",
+                              "dataset_id": "runtime-synthetic",
+                              "portfolio_id": "allocation-session", "steps": 5, "speed": 0})
+        assert coordinated.status_code == 202, coordinated.text
+        coordinated_id = coordinated.json()["job_id"]
+        wait_until(lambda: job(coordinated_id)["status"] in ("completed", "failed"), timeout=90)
+        result = job(coordinated_id)
+        assert result["status"] == "completed", result
+        assert result["result"]["cycles"] == 5
+        assert result["result"]["reconciliation_breaks"] == 0
+        assert result["result"]["fills"] > 0
+        assert any(s[0] == "trend" and s[1] == v.version for s in result["result"]["sleeves"])
+        assert c.get("/v1/verify", params={"portfolio_id": "allocation-session"}).json()["match"]
+        messages = c.get("/v1/agent-messages", params={"portfolio_id": "allocation-session"}).json()
+        states = [m["content"] for m in messages if m["role"] == "coordinator_state"]
+        assert states and states[-1]["sleeves"]["trend"]["market_value"] > 0
+        report = c.get("/v1/coordinated/report", params={"portfolio_id": "allocation-session"}).json()
+        assert report["schema"] == "coordinated-simulation-1"
+        assert report["context"]["current"] and report["context"]["source_sha256"]
+        assert len(report["rule_readings"]) == 5 * len(report["context"]["agents"])
+        assert len(report["steps"]) == len(report["benchmark"]["baseline"]) == 5
+        assert report["benchmark"]["end_ts"] == report["steps"][-1]["ts"] + 1
+        analytics = c.get("/v1/analytics/history", params={"portfolio_id": "allocation-session"}).json()
+        assert analytics["points"] == report["points"]
+        assert "trend" in analytics["points"][-1]["agents"]
+        assert "execution" not in analytics["points"][-1]["agents"]
+        assert analytics["benchmark"]["strategy_metrics"]["cycles"] == 5
+        coordinator = c.get("/v1/coordinator", params={"portfolio_id": "allocation-session"}).json()
+        assert coordinator["start"]["mode"] == "paper_clob" and coordinator["state"]
+        crash = c.post("/v1/jobs", json={"request_id": "unsupported-coordinated-crash", "kind": "coordinated",
+            "dataset_id": "runtime-synthetic", "portfolio_id": "no-crash", "crash_at": .5})
+        assert crash.status_code == 422

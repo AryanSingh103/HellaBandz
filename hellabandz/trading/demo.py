@@ -71,7 +71,7 @@ def run(mode: VenueMode, cycles: int | None) -> dict:
 
 def background_research() -> subprocess.Popen:
     """One lower-priority parameter search, the kind the research job runs (at most one at a time)."""
-    code = ("import os; os.nice(10); os.environ['QS_TOURNAMENT_PROCS']='1'; os.environ['OPENAI_API_KEY']='';"
+    code = ("import os; os.nice(10); os.environ['QS_TOURNAMENT_PROCS']='1'; os.environ['QS_LLM_PROVIDER']='offline';"
             "from hellabandz.agents import tournament; from pathlib import Path; import tempfile;"
             "os.environ['QS_MANIFESTS']=tempfile.mkdtemp();"
             "import hellabandz.ingestion.registry as r; r.MANIFESTS=Path(os.environ['QS_MANIFESTS']);"

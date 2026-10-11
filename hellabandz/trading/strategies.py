@@ -20,18 +20,18 @@ from __future__ import annotations
 import bisect
 import math
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import numpy as np
 
 from hellabandz.contracts import StrategyFamily
 from hellabandz.ledger.state import canonical, sha256_hex
-from hellabandz.strategies import (BARS_PER_YEAR, FAMILIES, HOLD_FAMILIES, Series, _rolling_mean, _rolling_std,
+from hellabandz.strategies import (ALLOCATION_FAMILIES, BARS_PER_YEAR, BASKET_FAMILIES, FAMILIES, HOLD_FAMILIES, Series, _rolling_mean, _rolling_std,
                                    basket_index, reversion_speed, signal, validate_params)
 from hellabandz.trading.intents import Intent
 from hellabandz.trading.marketdata import InstrumentView, MarketSnapshot
 
-CODE_VERSION = "runtime-inc-1"  # bump when the incremental implementation changes behavior
+CODE_VERSION = "runtime-regime-units-4"
 REFRESH_EVERY = 512
 
 
@@ -97,6 +97,33 @@ CARDS: dict[str, StrategyCard] = {
         COST_NOTE, "always 1 (fully invested). Not comparable to other strategies.", 30),
 }
 
+for _role, _family, _hypothesis, _entry, _exit in (
+    ("breakout", StrategyFamily.BREAKOUT, "Persistent price discovery can continue after a prior-range breakout.",
+     "close above prior lookback highs", "close below prior half-lookback lows"),
+    ("rsi", StrategyFamily.RSI_REVERSION, "An oversold liquid equity can rebound as temporary selling subsides.",
+     "trailing RSI below entry_rsi", "trailing RSI above exit_rsi"),
+    ("momentum", StrategyFamily.TS_MOMENTUM, "Positive trailing returns can persist over intermediate horizons.",
+     "trailing lookback return above threshold", "trailing return falls below threshold"),
+):
+    CARDS[_role] = StrategyCard(_role, _family, _hypothesis, "hourly OHLC prices, available bars only",
+                                _entry, _exit, "regime changes, gaps, whipsaw and trading costs can erase the edge",
+                                COST_NOTE, "family-specific trailing signal; Not comparable to other strategies.", 30)
+
+for _role, _family in (("rotation", StrategyFamily.RELATIVE_STRENGTH),
+                        ("risk_rotation", StrategyFamily.RISK_ADJUSTED_ROTATION)):
+    CARDS[_role] = StrategyCard(
+        _role, _family, "Rank liquid sector ETFs by trailing relative strength; test persistence across sectors.",
+        "completed New York session close proxies from available hourly bars; registered eligible universe",
+        "daily or weekly top-k ranking; positive threshold; equal shares of the whole strategy sleeve",
+        "rank falls out of top-k or trailing return fails threshold; unfilled slots remain cash",
+        "momentum reversals, correlated sectors, missing data and costs; historical results do not establish an edge",
+        COST_NOTE, "trailing session return, divided by annualized session volatility for risk-adjusted ranking", 30)
+CARDS["regime_units"] = replace(CARDS["regime"], role="regime_units", family=StrategyFamily.REGIME_FIXED_UNITS,
+    hypothesis=CARDS["regime"].hypothesis + " Preserve the initial intended integer share target after reentry, "
+               "rather than shrinking appreciated holdings back to opening dollar capital.",
+    failure_conditions=CARDS["regime"].failure_conditions + "; reacquisition can be cash/risk limited after an adverse exit")
+FAMILY_CARDS = {card.family.value: role for role, card in CARDS.items()}
+
 
 @dataclass(frozen=True)
 class StrategyVersion:
@@ -115,6 +142,7 @@ class StrategyVersion:
         c = self.card
         return {"strategy_id": self.strategy_id, "version": self.version, "family": self.family.value,
                 "params": self.param_dict, "universe": list(self.universe), "code_version": CODE_VERSION,
+                "weight_scope": "sleeve" if self.family in ALLOCATION_FAMILIES else "slot",
                 "hypothesis": c.hypothesis, "data": c.data, "entry": c.entry, "exit": c.exit,
                 "parameter_bounds": FAMILIES[self.family][1], "failure_conditions": c.failure_conditions,
                 "cost_assumptions": c.cost_assumptions, "score_meaning": c.score_meaning}
@@ -220,8 +248,15 @@ class RuntimeStrategy:
         self.venue = venue
         self.p = version.param_dict
         self.state = {sym: _SymbolState() for sym in version.universe}
+        if self.allocation:
+            from hellabandz.trading.allocation import AllocationState
+            self.allocator = AllocationState(version)
 
     # ------------------------------------------------------------------ indicators
+
+    @property
+    def allocation(self) -> bool:
+        return self.v.family in ALLOCATION_FAMILIES
 
     @property
     def hold(self) -> bool:
@@ -229,10 +264,17 @@ class RuntimeStrategy:
 
     @property
     def basket(self) -> bool:
-        return self.v.family == StrategyFamily.REGIME_REVERSION
+        return self.v.family in BASKET_FAMILIES
+
+    @property
+    def fixed_units(self) -> bool:
+        return self.v.family == StrategyFamily.REGIME_FIXED_UNITS
 
     def warm_universe(self, histories: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]) -> None:
         """histories: sym -> (ts, close, high, low), strictly before the evaluated period."""
+        if self.allocation:
+            self.allocator.warm(histories)
+            return
         if not self.basket:
             for sym, (ts, c, h, lo) in histories.items():
                 if sym in self.state:
@@ -318,6 +360,14 @@ class RuntimeStrategy:
             return {"mean": RollingMean(n), "std": RollingStd(n)}
         if f == StrategyFamily.VOL_TARGET:
             return {"vol": RollingStd(int(p["vol_lookback"])), "trend": RollingMean(int(p["trend_lookback"]))}
+        if f == StrategyFamily.BREAKOUT:
+            n = int(p["lookback"])
+            return {"high": deque(maxlen=n), "low": deque(maxlen=max(2, n // 2))}
+        if f == StrategyFamily.TS_MOMENTUM:
+            return {"close": deque(maxlen=int(p["lookback"]) + 1)}
+        if f == StrategyFamily.RSI_REVERSION:
+            n = int(p["lookback"])
+            return {"gain": RollingMean(n), "loss": RollingMean(n), "count": 0}
         raise ValueError(f"{f} is not a runtime strategy family")
 
     def warm(self, sym: str, ts: np.ndarray, close: np.ndarray, high: np.ndarray, low: np.ndarray) -> None:
@@ -337,6 +387,17 @@ class RuntimeStrategy:
                 st.ind["vol"].push(float(x))
             for x in close[-st.ind["trend"].n:]:
                 st.ind["trend"].push(float(x))
+        elif self.v.family == StrategyFamily.BREAKOUT:
+            st.ind["high"].extend(float(x) for x in high[-st.ind["high"].maxlen:])
+            st.ind["low"].extend(float(x) for x in low[-st.ind["low"].maxlen:])
+        elif self.v.family == StrategyFamily.TS_MOMENTUM:
+            st.ind["close"].extend(float(x) for x in close[-st.ind["close"].maxlen:])
+        elif self.v.family == StrategyFamily.RSI_REVERSION:
+            d = np.r_[0.0, np.diff(close)]
+            for x in d[-int(self.p["lookback"]):]:
+                st.ind["gain"].push(float(max(x, 0)))
+                st.ind["loss"].push(float(max(-x, 0)))
+            st.ind["count"] = len(close)
         else:
             for ind in st.ind.values():
                 for x in close[-ind.n:]:
@@ -345,7 +406,7 @@ class RuntimeStrategy:
         st.last_close = float(close[-1])
         self._describe(st, float(close[-1]))
 
-    def _update(self, st: _SymbolState, c: float) -> None:
+    def _update(self, st: _SymbolState, c: float, high: float | None = None, low: float | None = None) -> None:
         f, p, ind = self.v.family, self.p, st.ind
         if f == StrategyFamily.SMA_CROSSOVER:
             ind["fast"].push(c)
@@ -361,6 +422,32 @@ class RuntimeStrategy:
                     st.held = True
                 elif st.held and z > p["exit_z"]:
                     st.held = False
+            st.weight_bps = 10_000 if st.held else 0
+        elif f == StrategyFamily.BREAKOUT:
+            if len(ind["high"]) == ind["high"].maxlen:
+                if not st.held and c > max(ind["high"]):
+                    st.held = True
+                elif st.held and c < min(ind["low"]):
+                    st.held = False
+            ind["high"].append(c if high is None else high)
+            ind["low"].append(c if low is None else low)
+            st.weight_bps = 10_000 if st.held else 0
+        elif f == StrategyFamily.TS_MOMENTUM:
+            ind["close"].append(c)
+            st.score = c / ind["close"][0] - 1 if len(ind["close"]) == ind["close"].maxlen else 0.0
+            st.weight_bps = 10_000 if len(ind["close"]) == ind["close"].maxlen and st.score > p["threshold"] else 0
+        elif f == StrategyFamily.RSI_REVERSION:
+            d = c - st.last_close if st.last_close > 0 else 0.0
+            ind["gain"].push(max(d, 0.0))
+            ind["loss"].push(max(-d, 0.0))
+            ind["count"] += 1
+            rsi = 100 - 100 / (1 + ind["gain"].value / ind["loss"].value) if ind["loss"].value > 0 else 100.0
+            if ind["count"] > int(p["lookback"]):
+                if not st.held and rsi < p["entry_rsi"]:
+                    st.held = True
+                elif st.held and rsi > p["exit_rsi"]:
+                    st.held = False
+            st.score = rsi
             st.weight_bps = 10_000 if st.held else 0
         else:
             ind["vol"].push(math.log(c / st.last_close) if st.last_close > 0 else 0.0)
@@ -387,6 +474,9 @@ class RuntimeStrategy:
             st.score = min(1.0, self.p["target_vol"] / vol) if vol > 0 else 0.0
             st.features = {"realized_vol": vol, "trend": ind["trend"].value}
             st.reasons = ["ABOVE_TREND" if c > ind["trend"].value else "BELOW_TREND"]
+        elif f in (StrategyFamily.BREAKOUT, StrategyFamily.RSI_REVERSION, StrategyFamily.TS_MOMENTUM):
+            st.features = {"target_bps": float(st.weight_bps)}
+            st.reasons = ["SIGNAL_LONG" if st.weight_bps else "SIGNAL_FLAT"]
         else:
             st.score, st.features, st.reasons = 0.0, {}, ["WARMING_UP"]
 
@@ -420,6 +510,19 @@ class RuntimeStrategy:
         return int(p.get("slow") or p.get("lookback") or p.get("vol_lookback") or 1)
 
     def on_snapshot(self, snap: MarketSnapshot, interval_s: int = 3600) -> list[Intent]:
+        if self.allocation:
+            self.allocator.update(snap)
+            a = self.allocator
+            return [Intent(
+                intent_id=f"{self.v.strategy_id}.{self.v.version}.{sym}.{snap.ts}", strategy_id=self.v.strategy_id,
+                strategy_version=self.v.version, instrument=sym, venue=self.venue, md_seq=snap.gateway_seq,
+                decision_ts=snap.ts, target_weight_bps=a.weights[sym], weight_scope="sleeve",
+                allocation_id=a.allocation_id, score=round(a.scores[sym], 8),
+                score_meaning=self.v.card.score_meaning[:200], holding_bars=max(1, int(self.p["rebalance_sessions"]) * 7),
+                max_slippage_bps=self.v.card.max_slippage_bps, expires_ts=snap.ts + interval_s,
+                features={"lookback_sessions": self.p["lookback_sessions"]},
+                reasons=["FROZEN_SESSION_ALLOCATION", f"SIGNAL_THROUGH_{a.latest_signal_date or 'WARMUP'}"])
+                    for sym in self.v.universe if sym in snap.instruments]
         out = []
         if self.basket:
             self._basket_on_snapshot(snap)
@@ -436,7 +539,7 @@ class RuntimeStrategy:
                 ts = view._ts  # read-only tuple; values are copied below
                 k = bisect.bisect_right(ts, st.last_ts)
                 for i in range(k, len(ts)):
-                    self._update(st, float(view._close[i]))
+                    self._update(st, float(view._close[i]), float(view._high[i]), float(view._low[i]))
                     st.last_ts = int(ts[i])
             out.append(Intent(
                 intent_id=f"{self.v.strategy_id}.{self.v.version}.{sym}.{snap.ts}",

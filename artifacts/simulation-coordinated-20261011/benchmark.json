@@ -1,0 +1,168 @@
+{
+  "run_id": "frozen-sip",
+  "portfolio_id": "full-sip-coordinated",
+  "cycles": 1315,
+  "final_equity": 11242.04,
+  "net_return": 0.12420399999999998,
+  "orders": 5,
+  "fills": 5,
+  "reconciliation_breaks": 0,
+  "verify": {
+    "match": true,
+    "chain_ok": true,
+    "events": 6592
+  },
+  "sleeves": [
+    [
+      "core",
+      "3b1862135b41b5fc",
+      9000.0
+    ]
+  ],
+  "intent_outcomes": {
+    "accepted": 6555,
+    "reduced": 0,
+    "netted": 0,
+    "deferred": 20,
+    "rejected": 0
+  },
+  "elapsed_s": 161.9,
+  "finished_at": "2026-10-11T09:05:28+00:00",
+  "metrics": {
+    "net_return": 0.12420399999999998,
+    "sharpe": 1.1941961031469084,
+    "sortino": 1.7662016579639628,
+    "max_drawdown": 0.10046725022397981,
+    "turnover_per_year": 0.9864744091254752,
+    "turnover": 0.735382,
+    "cost_fraction": 0.000412,
+    "cost_fraction_per_year": 0.0005526752851711026,
+    "fills": 5,
+    "cycles": 1315,
+    "ledger_digest": "a9d96894314b5f72bf2fb1f2d40f6981bd0bb3bf3024b6127b80fe8ce9f1ab1f",
+    "reconciliation_breaks": 0,
+    "ledger_rejections": 0
+  },
+  "baseline_metrics": {
+    "net_return": 0.12420399999999998,
+    "sharpe": 1.1941961031469084,
+    "sortino": 1.7662016579639628,
+    "max_drawdown": 0.10046725022397981,
+    "turnover_per_year": 0.9864744091254752,
+    "turnover": 0.735382,
+    "cost_fraction": 0.000412,
+    "cost_fraction_per_year": 0.0005526752851711026,
+    "fills": 5,
+    "cycles": 1315,
+    "ledger_digest": "a9d96894314b5f72bf2fb1f2d40f6981bd0bb3bf3024b6127b80fe8ce9f1ab1f",
+    "reconciliation_breaks": 0,
+    "ledger_rejections": 0
+  },
+  "fees": 110000,
+  "slippage": 4010000,
+  "turnover": 0.735382,
+  "exposure_bps_mean": 7410.171863117871,
+  "ledger_rejections": 0,
+  "attribution": {
+    "core": {
+      "capital": 9000000000,
+      "cash": 1646070000,
+      "market_value": 8595970000,
+      "equity": 10242040000,
+      "pnl": 1242040000,
+      "realized": 0,
+      "unrealized": 1242150000,
+      "fees": 110000,
+      "slippage": 4010000,
+      "traded_notional": 7353820000,
+      "fills": 5,
+      "positions": {
+        "AAPL": {
+          "qty": 6,
+          "basis": 1627800000
+        },
+        "MSFT": {
+          "qty": 3,
+          "basis": 1445670000
+        },
+        "NVDA": {
+          "qty": 9,
+          "basis": 1691730000
+        },
+        "QQQ": {
+          "qty": 2,
+          "basis": 1229940000
+        },
+        "SPY": {
+          "qty": 2,
+          "basis": 1358680000
+        }
+      }
+    }
+  },
+  "unallocated_cash": 1000000000,
+  "ledger_digest": "a9d96894314b5f72bf2fb1f2d40f6981bd0bb3bf3024b6127b80fe8ce9f1ab1f",
+  "head_hash": "af0cec0c274ef134926925cd65b57d1e5ac358af104f942bc581437295e99acb",
+  "return_attribution": {
+    "units": "integer USD micros",
+    "instruments": {
+      "AAPL": {
+        "mark_pnl": 371160000,
+        "execution_pnl_at_close": -900000,
+        "fees": 30000,
+        "modeled_slippage": 900000,
+        "traded_notional": 1627800000,
+        "net_pnl": 370230000
+      },
+      "MSFT": {
+        "mark_pnl": 93810000,
+        "execution_pnl_at_close": -780000,
+        "fees": 15000,
+        "modeled_slippage": 780000,
+        "traded_notional": 1445670000,
+        "net_pnl": 93015000
+      },
+      "NVDA": {
+        "mark_pnl": 363870000,
+        "execution_pnl_at_close": -990000,
+        "fees": 45000,
+        "modeled_slippage": 990000,
+        "traded_notional": 1691730000,
+        "net_pnl": 362835000
+      },
+      "QQQ": {
+        "mark_pnl": 250380000,
+        "execution_pnl_at_close": -640000,
+        "fees": 10000,
+        "modeled_slippage": 640000,
+        "traded_notional": 1229940000,
+        "net_pnl": 249730000
+      },
+      "SPY": {
+        "mark_pnl": 166940000,
+        "execution_pnl_at_close": -700000,
+        "fees": 10000,
+        "modeled_slippage": 700000,
+        "traded_notional": 1358680000,
+        "net_pnl": 166230000
+      }
+    },
+    "initial_cash": 10000000000,
+    "ending_cash": 2646070000,
+    "cash_interest_pnl": 0,
+    "net_pnl": 1242040000,
+    "gross_before_modeled_costs_pnl": 1246160000,
+    "reconciliation_residual": 0,
+    "cycle_residual": 0,
+    "methodology": "prior holdings times mark changes + fill quantity times signed close-minus-fill price - fees; modeled slippage already embedded in fill prices, never subtracted twice"
+  },
+  "policy_version": "adaptive-allocation-3",
+  "code_version": "runtime-regime-units-4",
+  "source_sha256": "e49e77cf71a6afec75609164c8b96941c7605837f42dfff78aa1d3c6f93daad1",
+  "dataset_sha256": "733b700631cb91676aedd3c014fe4ddd7bccf193e0e904f7818256eceaa7c5e1",
+  "stopped": false,
+  "actual_end_ts": 1790794801,
+  "total_elapsed_s": 524.229,
+  "peak_rss_mb": 487.9,
+  "transport": "local deterministic ledger; browser benchmark separately verifies API/Postgres/worker"
+}

@@ -155,10 +155,12 @@ def test_reasoning_models_get_no_temperature(monkeypatch):
 
     import openai
     monkeypatch.setattr(openai, "OpenAI", FakeOpenAI)
-    monkeypatch.setattr(llm, "MODEL", "gpt-5-mini")
+    monkeypatch.setenv("QS_LLM_PROVIDER", "openai")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-placeholder")
+    monkeypatch.setenv("QS_OPENAI_MODEL", "gpt-5-mini")
     llm.chat_json("s", "u")
     assert "temperature" not in sent
-    monkeypatch.setattr(llm, "MODEL", "gpt-4.1-mini")
+    monkeypatch.setenv("QS_OPENAI_MODEL", "gpt-4.1-mini")
     llm.chat_json("s", "u")
     assert sent["temperature"] == 0.4 and sent["response_format"] == {"type": "json_object"}
 

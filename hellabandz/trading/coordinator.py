@@ -34,6 +34,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+import math
 
 from hellabandz.ledger.engine import BPS
 from hellabandz.trading.attribution import AttributionBook, split
@@ -121,6 +122,8 @@ class ActiveStrategy:
     universe: tuple[str, ...]
     capital: int  # sleeve capital, micros
     hold: bool = False  # deploy the budget once at cost; never trim while the target stays long
+    weight_scope: str = "slot"
+    fixed_units: bool = False  # retain opening intended lots across exits; normal risk gates still apply
 
     def budget(self) -> int:
         return self.capital // len(self.universe)
@@ -135,6 +138,10 @@ class CoordinatorState:
     day: str = ""
     day_open_equity: int = 0
     traded_today: int = 0
+    allocations: dict[str, tuple[str, tuple]] = field(default_factory=dict)
+    allocation_qty: dict[tuple[str, str], int] = field(default_factory=dict)
+    hold_qty: dict[tuple[str, str], int] = field(default_factory=dict)
+    hold_targets_capped: set[tuple[str, str]] = field(default_factory=set)
 
 
 def _round_up(x: int, tick: int) -> int:
@@ -172,12 +179,38 @@ class Coordinator:
         by_sym: dict[str, dict[str, Intent]] = {}
         rejected: dict[str, list[IntentResult]] = {}
         seen = set()
+        invalid_allocations = set()
+        for sid, a in active.items():
+            vector = [it for it in intents if it.strategy_id == sid]
+            if a.weight_scope != "sleeve":
+                continue
+            signature = tuple(sorted((it.instrument, it.target_weight_bps) for it in vector))
+            tokens = {it.allocation_id for it in vector}
+            previous = st.allocations.get(sid)
+            if (len(vector) != len(a.universe) or {it.instrument for it in vector} != set(a.universe)
+                    or any(sum(other.intent_id == it.intent_id for other in intents) != 1 for it in vector)
+                    or sum(it.target_weight_bps for it in vector) > BPS or len(tokens) != 1 or None in tokens
+                    or any(it.weight_scope != "sleeve" or it.strategy_version != a.version
+                           or not math.isfinite(it.score)
+                           or self.instruments.get(it.instrument) is None
+                           or self.instruments[it.instrument].asset_class not in COORDINATED_ASSET_CLASSES
+                           or it.venue != self.venue or it.decision_ts != snap.ts or it.md_seq != snap.gateway_seq
+                           or it.expires_ts < snap.ts or not snap.fresh(it.instrument, b.max_data_age_s)
+                           or snap.instruments[it.instrument].last_close <= 0 for it in vector)
+                    or (previous and previous[0] in tokens and previous[1] != signature)):
+                invalid_allocations.add(sid)
         for it in sorted(intents, key=lambda i: (i.instrument, i.strategy_id, i.decision_ts, i.intent_id)):
             reason = None
             a = active.get(it.strategy_id)
             inst = self.instruments.get(it.instrument)
             key = (it.strategy_id, it.instrument)
-            if it.intent_id in seen:
+            if it.strategy_id in invalid_allocations:
+                reason = "INVALID_ALLOCATION_VECTOR"
+            elif a is not None and it.weight_scope != a.weight_scope:
+                reason = "WEIGHT_SCOPE_MISMATCH"
+            elif not math.isfinite(it.score):
+                reason = "NONFINITE_SCORE"
+            elif it.intent_id in seen:
                 reason = "DUPLICATE_INTENT"
             elif a is None:
                 reason = "UNKNOWN_STRATEGY"
@@ -208,6 +241,22 @@ class Coordinator:
                 continue
             st.last_intent_ts[key] = it.decision_ts
             by_sym.setdefault(it.instrument, {})[it.strategy_id] = it
+
+        # Freeze whole-sleeve quantities atomically for this decision, before any
+        # netting or portfolio limits. Retry reduced fills toward the same quantity.
+        for sid, a in active.items():
+            if a.weight_scope != "sleeve" or sid in invalid_allocations:
+                continue
+            vector = [by_sym.get(sym, {}).get(sid) for sym in a.universe]
+            if not vector or any(it is None for it in vector):
+                continue
+            token = vector[0].allocation_id
+            signature = tuple(sorted((it.instrument, it.target_weight_bps) for it in vector))
+            if st.allocations.get(sid, (None,))[0] != token:
+                for it in vector:
+                    price = snap.instruments[it.instrument].last_close
+                    st.allocation_qty[sid, it.instrument] = a.capital * it.target_weight_bps // BPS // price
+                st.allocations[sid] = (token, signature)
 
         decisions = []
         cycle_spend = 0  # cash this cycle's earlier buy orders will reserve
@@ -261,8 +310,22 @@ class Coordinator:
         # ---- 4. desired lots per strategy, with the rebalance band
         desired: dict[str, int] = {}
         for k, it in intents.items():
-            budget = active[k].budget()
+            budget = active[k].capital if active[k].weight_scope == "sleeve" else active[k].budget()
             have = book.qty(k, sym)
+            if active[k].weight_scope == "sleeve":
+                desired[k] = st.allocation_qty[k, sym]
+                if desired[k] == have:
+                    reasons[k].append("FROZEN_ALLOCATION_QUANTITY")
+                continue
+            if active[k].fixed_units:
+                # Anchor only on this run's first valid decision, never warm history.
+                # Intended lots survive partial fills and exits; current cash, risk,
+                # concentration and aggregate execution still bound every order.
+                opening_limit = _round_up(price * (BPS + it.max_slippage_bps) // BPS + 1, self.instruments[sym].tick)
+                anchor = st.hold_qty.setdefault((k, sym), budget // (opening_limit + b.fee_per_lot))
+                desired[k] = anchor * it.target_weight_bps // BPS
+                reasons[k].append("OPENING_INTEGER_SHARE_TARGET")
+                continue
             if active[k].hold:
                 # same rule as the research backtester's hold slots: top up toward the cost budget, never trim
                 room = budget * it.target_weight_bps // BPS - book.basis(k, sym)
@@ -303,6 +366,14 @@ class Coordinator:
                 n, a = netted.get(k, 0), approved.get(k, 0)
                 if order is not None and order.side == "SELL":
                     a = -a
+                anchor_key = (k, sym)
+                if (active[k].fixed_units and anchor_key not in st.hold_targets_capped
+                        and n + a > 0):
+                    # Preserve the first risk-approved target, not an unreachable
+                    # unconstrained request. Partial fills can retry up to it;
+                    # future rising equity cannot silently increase this anchor.
+                    st.hold_qty[anchor_key] = attributed[k] + n + a
+                    st.hold_targets_capped.add(anchor_key)
                 gap = desired[k] - attributed[k]
                 if gap == 0:
                     out, why = Outcome.ACCEPTED, ["AT_TARGET"]

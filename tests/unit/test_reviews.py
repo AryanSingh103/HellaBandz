@@ -90,7 +90,7 @@ def test_provider_only_sees_eligible_untrusted_text_and_is_labeled(monkeypatch):
     assert all(r["themes"] == ["quality"] for r in result["evidence"])
 
 
-def test_claude_messages_contract_and_auto_selection(monkeypatch):
+def test_claude_messages_contract_and_explicit_selection(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-placeholder")
     monkeypatch.setenv("QS_ANTHROPIC_MODEL", "test-claude-model")
     def post(url, *, headers, json, timeout):
@@ -105,6 +105,6 @@ def test_claude_messages_contract_and_auto_selection(monkeypatch):
                                      json={"model": "test-claude-model", "content": [{"type": "text", "text": codec.dumps(labels)}]})
     monkeypatch.setattr(reviews.httpx, "post", post)
     data = request()
-    data["provider"] = "auto"
+    data["provider"] = "claude"
     result = analyze(ReviewRequest.model_validate(data))
     assert result["provider"] == "claude" and result["model"] == "test-claude-model"

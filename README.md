@@ -18,6 +18,11 @@ and `kill -9`.
 > Research and ledger trading use simulated orders and funds. Market data is synthetic
 > (committed fixture) or historical (Alpaca / Binance scripts).
 
+Stock/ETF coordinated research now runs a bounded **proposal → optimize → critique → freeze → validate →
+paper promotion** loop. It compares net return, Sharpe, Sortino and drawdown against the passive basket,
+with cost and turnover limits, and keeps passive fallback when evidence is insufficient.
+See [adaptive research usage and limits](docs/ADAPTIVE_RESEARCH.md).
+
 ## The 10 questions (Lucera starter-guide outline)
 
 | | |

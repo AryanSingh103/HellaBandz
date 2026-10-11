@@ -161,6 +161,10 @@ def buy_hold(s: Series) -> np.ndarray:
     return _to_bps(np.ones(len(s)))
 
 
+def _allocation_only(s: Series, **params) -> np.ndarray:
+    raise ValueError("cross-sectional allocation requires the coordinated runtime and a timestamped universe")
+
+
 FAMILIES: dict[StrategyFamily, tuple[Callable[..., np.ndarray], dict[str, tuple[float, float]]]] = {
     # family -> (function, allowed parameter bounds)
     StrategyFamily.SMA_CROSSOVER: (sma_crossover, {"fast": (2, 200), "slow": (5, 600)}),
@@ -172,13 +176,22 @@ FAMILIES: dict[StrategyFamily, tuple[Callable[..., np.ndarray], dict[str, tuple[
     StrategyFamily.REGIME_REVERSION: (regime_reversion, {"regime_lookback": (30, 600), "min_reversion": (0.0, 0.3),
                                                          "lookback": (5, 400), "sell_z": (0.25, 4.0), "rebuy_z": (-2.0, 2.0)}),
     StrategyFamily.BUY_HOLD: (buy_hold, {}),
+    StrategyFamily.RELATIVE_STRENGTH: (_allocation_only, {"lookback_sessions": (20, 252), "top_k": (3, 6),
+                                                         "rebalance_sessions": (1, 5), "threshold": (-0.10, 0.20)}),
+    StrategyFamily.RISK_ADJUSTED_ROTATION: (_allocation_only, {"lookback_sessions": (20, 252), "top_k": (3, 6),
+                                                              "rebalance_sessions": (1, 5), "threshold": (-0.10, 0.20),
+                                                              "vol_sessions": (10, 126)}),
 }
+
+ALLOCATION_FAMILIES = frozenset({StrategyFamily.RELATIVE_STRENGTH, StrategyFamily.RISK_ADJUSTED_ROTATION})
+FAMILIES[StrategyFamily.REGIME_FIXED_UNITS] = FAMILIES[StrategyFamily.REGIME_REVERSION]
+COORDINATED_ONLY_FAMILIES = ALLOCATION_FAMILIES | {StrategyFamily.REGIME_FIXED_UNITS}
 
 # Basket families read one signal from the equal-weight index of their universe and apply it to every
 # member, so single-name noise does not drown a market-wide regime.
-BASKET_FAMILIES = frozenset({StrategyFamily.REGIME_REVERSION})
+BASKET_FAMILIES = frozenset({StrategyFamily.REGIME_REVERSION, StrategyFamily.REGIME_FIXED_UNITS})
 # Hold families deploy their slot once at cost and are never trimmed while the target stays long.
-HOLD_FAMILIES = frozenset({StrategyFamily.REGIME_REVERSION, StrategyFamily.BUY_HOLD})
+HOLD_FAMILIES = BASKET_FAMILIES | {StrategyFamily.BUY_HOLD}
 
 
 def validate_params(family: StrategyFamily, params: dict[str, float]) -> None:
@@ -193,8 +206,14 @@ def validate_params(family: StrategyFamily, params: dict[str, float]) -> None:
         raise ValueError("fast must be < slow")
     if family == StrategyFamily.RSI_REVERSION and params["entry_rsi"] >= params["exit_rsi"]:
         raise ValueError("entry_rsi must be < exit_rsi")
-    if family == StrategyFamily.REGIME_REVERSION and params["rebuy_z"] >= params["sell_z"]:
+    if family in BASKET_FAMILIES and params["rebuy_z"] >= params["sell_z"]:
         raise ValueError("rebuy_z must be < sell_z")
+    if family in ALLOCATION_FAMILIES:
+        for key in ("lookback_sessions", "top_k", "rebalance_sessions", "vol_sessions"):
+            if key in params and params[key] != int(params[key]):
+                raise ValueError(f"{key} must be an integer")
+        if params["rebalance_sessions"] not in (1, 5):
+            raise ValueError("rebalance_sessions must be 1 (daily) or 5 (calendar weekly)")
 
 
 def signal(family: StrategyFamily, params: dict[str, float], s: Series) -> np.ndarray:

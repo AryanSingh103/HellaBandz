@@ -154,32 +154,14 @@ these strategies. Fixture results say nothing about real markets (`docs/LIMITATI
 
 ## Research, promotion and evaluation
 
-`hellabandz/trading/research.py`, `registry.py` and `evaluate.py`.
+The adaptive research loop (`adaptive-equities-1`) is described in [ADAPTIVE_RESEARCH](ADAPTIVE_RESEARCH.md).
+Three researcher roles propose reviewed signal families, optimize through bounded feedback rounds,
+freeze challengers, and validate individual strategies and their combined allocation against the passive
+basket. Net return, Sharpe, Sortino and drawdown gates must all pass; turnover and execution costs are
+capped. Rejected or interrupted research leaves capital in the passive basket. Test results never feed
+optimization or promotion. No profitability is guaranteed.
 
-- **Roles:** trend (SMA crossover), mean reversion (z-score), and defensive (the regime-aware
-  basket overlay, or a volatility target), plus a passive core.
-- **Bounded grids:** each role searches at most 6 candidates, all inside the whitelisted bounds.
-- **Fit (train):** each candidate runs alone through the coordinated runtime on three training
-  blocks, next to the core. Walk-forward picks give out-of-sample evidence inside training.
-- **Validate:** the chosen challenger and the core run on the validation period through the paper CLOB.
-- **Funding:** a challenger is funded only if all three hold:
-  - Its total out-of-sample excess over the core, after costs, is positive.
-  - Both of its t-statistics (excess over the core, and alpha after regressing on the core) are
-    above 1. Weight scales from 0 at 1 to the 30% role cap at 2.
-  - Its turnover is below 60× capital a year.
-
-  The one-standard-error threshold was set from design seeds 1–5 only, where challengers funded on
-  weaker evidence lost to the core.
-- **Registry:** candidate, accepted, rejected, champion, retired. Writes are atomic. A rejected
-  candidate stays rejected. Rollback restores the previous champion. Every held-out evaluation is
-  counted, and reports say when a period is no longer untouched.
-- **Shadow:** unfunded challengers run in shadow during live sessions. Their intents are shown,
-  never executed.
-- **Critic** (`evaluate.critic`): reads results, names weaknesses, proposes experiments. Never trades.
-- **Search schedule:** at nice 10, with a time budget, and only when someone launches it. Never
-  in response to recent losses.
-
-### Results (reported as they came out)
+### Previous fixed-grid policy results (not benchmarks of the adaptive policy)
 
 | Out-of-sample test | Coordinated portfolio vs passive baseline (both through the paper CLOB) |
 |---|---|
@@ -206,7 +188,8 @@ uv run python -m hellabandz.trading.evaluate --dataset data/snapshots/alpaca-sip
 ## Live sessions, external venues, restart
 
 - **Live:** Run page → "Launch coordinated session" (job kind `coordinated`). The job researches
-  the dataset if its registry is empty, then runs the coordinated runtime against the real API,
+  the dataset if its completed registry has an older policy/code version or a different data hash,
+  then runs the coordinated runtime against the real API,
   worker and Postgres. `trading/live.py` `ApiLedger` mirrors the worker's hash-chained events and
   verifies the chain. Venue orders and fills use `POST /v1/venue/orders` and `/v1/venue/fills`.
   Decisions and periodic state are posted as agent messages. `GET /v1/coordinator` serves the

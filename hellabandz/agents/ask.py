@@ -1,6 +1,6 @@
 """Grounded Q&A over live run data (used by the voice/terminal "Ask" panel).
 
-Facts are assembled deterministically from database rows. If an OpenAI key is
+Facts are assembled deterministically from database rows. If a selected model key is
 configured the model only rephrases those facts (it is told to refuse anything
 not in them); otherwise a deterministic answer is returned. Read-only: this
 path cannot place or change orders.

@@ -94,6 +94,85 @@ def _dt(ts):
 P = {"AAPL": 100.0, "MSFT": 100.0, "QQQ": 100.0, "SPY": 100.0}
 
 
+@pytest.mark.parametrize("fixed_units,expected", [(False, 6), (True, 9)])
+def test_regime_reentry_preserves_initial_risk_approved_units_only_when_requested(fixed_units, expected):
+    h = Harness(capital={"a": 1000, "core": 8000}, universe={"a": ("SPY",), "core": ("AAPL",)},
+                budget=replace(paper_budget(10_000 * MICROS), cooldown_cycles=0))
+    h.active["a"] = replace(h.active["a"], hold=True, fixed_units=fixed_units)
+    snap = h.bar(P)
+    h.decide(snap, [h.intent(snap, "a", "SPY", 10_000)])
+    h.bar(P)
+    assert h.pos("SPY") == (9 if fixed_units else 10)
+    prices = {**P, "SPY": 150.0}
+    snap = h.bar(prices)
+    h.decide(snap, [h.intent(snap, "a", "SPY", 0)])
+    h.bar(prices)
+    assert h.pos("SPY") == 0
+    snap = h.bar(prices)
+    d = h.decide(snap, [h.intent(snap, "a", "SPY", 10_000)])["SPY"]
+    assert d.order.qty == expected
+    h.bar(prices)
+    assert h.pos("SPY") == expected
+    if fixed_units:
+        assert h.coord.state.hold_qty["a", "SPY"] == 9
+        snap = h.bar({**P, "SPY": 200.0})
+        d = h.decide(snap, [h.intent(snap, "a", "SPY", 10_000)])["SPY"]
+        assert d.order is None  # no hourly rebalancing or expansion with equity
+
+
+def test_fixed_unit_anchor_is_first_risk_approved_target_not_unconstrained_budget():
+    h = Harness(capital={"a": 1000}, universe={"a": ("SPY",)},
+                budget=replace(paper_budget(10_000 * MICROS), max_order_notional=250 * MICROS,
+                               cooldown_cycles=0))
+    h.active["a"] = replace(h.active["a"], hold=True, fixed_units=True)
+    snap = h.bar(P)
+    d = h.decide(snap, [h.intent(snap, "a", "SPY", 10_000)])["SPY"]
+    assert d.order.qty == 2
+    assert h.coord.state.hold_qty["a", "SPY"] == 2
+    h.bar(P)
+    snap = h.bar(P)
+    assert h.decide(snap, [h.intent(snap, "a", "SPY", 10_000)])["SPY"].order is None
+
+
+def test_fixed_unit_reentry_remains_cash_limited_after_adverse_price_move():
+    budget = replace(paper_budget(10_000 * MICROS), max_order_notional=10**12, max_committed=10**12,
+                     max_instrument_bps=10_000, max_gross_bps=10_000, group_caps=(), cooldown_cycles=0,
+                     max_daily_turnover_bps=100_000)
+    h = Harness(capital={"a": 1000, "core": 8000}, universe={"a": ("SPY",), "core": ("AAPL",)}, budget=budget)
+    h.active["a"] = replace(h.active["a"], hold=True, fixed_units=True)
+    snap = h.bar(P)
+    h.decide(snap, [h.intent(snap, "a", "SPY", 10_000)])
+    h.bar(P)
+    assert h.pos("SPY") == 9  # fees and adverse limit reserve prevent borrowing
+    snap = h.bar(P)
+    h.decide(snap, [h.intent(snap, "a", "SPY", 0)])
+    h.bar(P)
+    prices = {**P, "SPY": 1500.0}
+    snap = h.bar(prices)
+    d = h.decide(snap, [h.intent(snap, "a", "SPY", 10_000)])["SPY"]
+    assert d.order.qty == 6
+    assert "BUYING_POWER" in d.portfolio_reasons
+    h.bar(prices)
+    assert h.pos("SPY") <= 6
+    assert h.coord.state.hold_qty["a", "SPY"] == 9
+    assert h.ledger.state.cash >= 0
+
+
+def test_fixed_unit_partial_fills_retry_same_anchor_and_do_not_grow():
+    h = Harness(capital={"a": 1000}, universe={"a": ("SPY",)}, mode=VenueMode.PAPER_CLOB,
+                budget=replace(paper_budget(10_000 * MICROS), cooldown_cycles=0, min_trade_notional=0))
+    h.active["a"] = replace(h.active["a"], hold=True, fixed_units=True)
+    snap = h.bar(P, volume=0)
+    first = h.decide(snap, [h.intent(snap, "a", "SPY", 10_000)])["SPY"]
+    target = h.coord.state.hold_qty["a", "SPY"]
+    assert 0 < h.pos("SPY") < target == first.order.qty
+    snap = h.bar(P)
+    second = h.decide(snap, [h.intent(snap, "a", "SPY", 10_000)])["SPY"]
+    assert second.order.qty == target - second.current_qty
+    assert h.pos("SPY") == target
+    assert h.coord.state.hold_qty["a", "SPY"] == target
+
+
 def outcome(d, strategy):
     return next(r for r in d.intents if r.strategy_id == strategy)
 
@@ -147,6 +226,19 @@ def test_two_instruments_in_one_cycle_cannot_spend_the_same_cash():
     ds = h.decide(snap, [h.intent(snap, "a", "AAPL", 10_000), h.intent(snap, "b", "MSFT", 10_000)])
     spent = sum(d.order.qty * (d.order.limit_px + 5_000) for d in ds.values() if d.order)
     assert spent <= h.ledger.state.cash  # the second order saw the first one's reservation
+
+
+def test_remaining_allocation_is_preflighted_without_repeating_impossible_orders():
+    h = Harness(capital={"a": 9000}, universe={"a": ("AAPL",)}, mode=VenueMode.PAPER_CLOB,
+        budget=replace(paper_budget(10_000 * MICROS), max_committed=1000 * MICROS,
+                       max_instrument_bps=10_000, group_caps=(), cooldown_cycles=0))
+    for _ in range(15):
+        snap = h.bar(P)
+        h.decide(snap, [h.intent(snap, "a", "AAPL", 10_000)])
+    assert h.ledger.state.fees_paid > 0
+    assert not h.auth.report.ledger_rejections
+    assert not [e for e in h.ledger.events if e["type"] == "OrderRejected"]
+    assert len(h.auth.report.submitted) == 1
 
 
 def test_duplicate_stale_out_of_order_and_unknown_intents_are_rejected():

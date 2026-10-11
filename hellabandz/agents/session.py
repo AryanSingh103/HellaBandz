@@ -15,6 +15,8 @@ import json
 import logging
 import os
 import time
+from collections import deque
+from concurrent.futures import Future, ThreadPoolExecutor, wait as wait_futures
 from datetime import datetime
 from pathlib import Path
 
@@ -22,6 +24,7 @@ import httpx
 import numpy as np
 
 from hellabandz.agents import llm
+from hellabandz.agents.thinking import HOW, THINK_SYSTEM, reading
 from hellabandz.backtester import SnapshotProvider, rebalance_order, reentry_capital
 from pydantic import TypeAdapter
 from hellabandz.contracts import MICROS, Bar, Ident, StrategyFamily, StrategySpec
@@ -35,6 +38,30 @@ ROOT = Path(__file__).resolve().parents[2]
 
 class SessionStopped(Exception):
     """Stop future production while preserving already queued commands."""
+
+
+def _throttled_stop(check, every: float = 0.25):
+    """The stop check reads the database; ask at most every `every` seconds. A stop, once seen, stays seen."""
+    asked, stopped = [-1e9], [False]
+
+    def stop_requested() -> bool:
+        now = time.monotonic()
+        if not stopped[0] and now - asked[0] >= every:
+            asked[0], stopped[0] = now, bool(check())
+        return stopped[0]
+    return stop_requested
+
+
+def _throttled_progress(report, every: float = 0.25):
+    """Progress is a database write; report stage changes and the final step at once, the rest at most every `every` s."""
+    last = {"stage": None, "at": -1e9}
+
+    def progress(stage, value=None, total=None) -> None:
+        now = time.monotonic()
+        if stage != last["stage"] or now - last["at"] >= every or (value is not None and value == total):
+            last["stage"], last["at"] = stage, now
+            report(stage, value, total)
+    return progress
 
 
 class ApiState:
@@ -118,8 +145,9 @@ class Session:
         self.p = SnapshotProvider(table)
         self.units = unit_context(dataset)
         self.price_tick = 1 if dataset.get("unit_version") == "base-lot-v2" else 10000
-        self.stop_requested = stop_requested
-        self.progress = progress
+        self.stop_requested = _throttled_stop(stop_requested)
+        self.progress = _throttled_progress(progress)
+        self.report_progress = progress
         # the passive core (when the manifest has one) trades like any other slot but takes no crisis decisions
         entries = manifest["fitted"] + ([manifest["core"]] if manifest.get("core") else [])
         self.specs = {f["spec"]["agent_id"]: StrategySpec.model_validate(f["spec"]) for f in entries}
@@ -128,6 +156,15 @@ class Session:
         self.base_alloc = dict(self.alloc)
         self.initial_cash = manifest.get("policy", {}).get("initial_cash_micros", 10_000 * MICROS)
         self.stats = {"bars": 0, "orders": 0, "approved": 0, "reduced": 0, "rejected": 0, "duplicates": 0}
+        # display-only thinking records (see agents/thinking.py): last recorded rule target per (agent, symbol),
+        # each agent's latest order outcomes, and AI commentary running off the replay thread
+        self.targets: dict[tuple[str, str], int] = {}
+        self.recent: dict[str, deque] = {a: deque(maxlen=5) for a in self.specs}
+        self.thinkers = sorted(a for a, s in self.specs.items() if s.family != StrategyFamily.BUY_HOLD)
+        self.thinker = ThreadPoolExecutor(max_workers=4, thread_name_prefix="think")
+        self.poster = ThreadPoolExecutor(max_workers=1, thread_name_prefix="signal")  # one thread keeps readings in order
+        self.thoughts: dict[str, Future] = {}
+        self.thinking_reported = False
 
     def say(self, agent: str, role: str, content: dict) -> None:
         log.info("[%s] %s %s", agent, role, json.dumps(content, default=str)[:200])
@@ -140,16 +177,25 @@ class Session:
     def post(self, path: str, **kwargs) -> dict:
         if self.stop_requested():
             raise SessionStopped()
-        result = self.c.post(path, params={"wait": False}, **kwargs).json()
+        # The API holds the request until the worker has processed the command and gives up after a few seconds
+        # (still queued). Only then does the polling below take over, so a down worker never blocks a stop for long.
+        result = self.c.post(path, params={"wait": True}, **kwargs).json()
         seq = result.get("command_seq", result.get("last_command_seq"))
-        deadline = time.monotonic() + 300
+        started, pause, first = time.monotonic(), 0.004, True
         while seq and (result.get("status") == "queued" or result.get("processed") is False):
             if self.stop_requested():
                 raise SessionStopped()
-            if time.monotonic() > deadline:
+            waited = time.monotonic() - started
+            if waited > 300:
                 raise TimeoutError("execution command still queued; restart the selected portfolio worker")
-            self.progress("waiting_for_execution", None, None)
-            time.sleep(0.2)
+            if waited > 0.5:
+                self.progress("waiting_for_execution", None, None)
+            # the worker normally answers in about 10 ms, so one well-timed poll usually suffices; back off only
+            # while it is busy or down
+            time.sleep(0.008 if first else pause)
+            if not first:
+                pause = min(pause * 2, 0.2)
+            first = False
             command = self.c.get(f"/v1/commands/{seq}").json()
             if command["status"] == "done":
                 return {**result, **command["response"], "processed": True}
@@ -173,6 +219,64 @@ class Session:
         key = {"APPROVE": "approved", "REDUCE": "reduced", "REJECT": "rejected"}.get(r.get("outcome"), "rejected")
         self.stats[key] += 1
         return r
+
+    def observe(self, agent: str, spec: StrategySpec, histories: dict, weights: dict, closes: dict[str, int],
+                step: int, ts: datetime, funded: bool) -> None:
+        """Record the rule's reading when its target for a symbol flips or moves materially. Display only."""
+        opening = not any(k[0] == agent for k in self.targets)
+        changes = {}
+        for sym in sorted(spec.universe):
+            if sym not in closes:
+                continue
+            w, prev = int(weights[sym][-1]), self.targets.get((agent, sym))
+            if prev is None or (w == 0) != (prev == 0) or abs(w - prev) >= 1500:
+                self.targets[(agent, sym)] = w
+                changes[sym] = {"target_bps": w, "previous_bps": prev, "price": closes[sym] / MICROS,
+                                "reading": reading(spec.family.value, spec.params, histories[sym][0])}
+        if changes:
+            self.poster.submit(self.say, agent, "signal", {"step": step + 1, "ts": int(ts.timestamp()), "family": spec.family.value,
+                                       "funded": funded, "opening": opening, "symbols": changes})
+
+    def maybe_think(self, agent: str, spec: StrategySpec, histories: dict, weights: dict, closes: dict[str, int],
+                    state: ApiState, step: int, total: int, ts: datetime, funded: bool, stress: bool) -> None:
+        """Ask the agent's LLM for a short remark a few times per run, off the replay thread. It cannot trade."""
+        if not llm.available():
+            return
+        every = max(1, total // 12)
+        if step % every != (self.thinkers.index(agent) * every // len(self.thinkers)) % every:
+            return
+        running = self.thoughts.get(agent)
+        if running and not running.done():
+            return
+        symbols = {}
+        for sym in sorted(spec.universe):
+            if sym not in closes:
+                continue
+            pos, c = state.position(agent, sym), histories[sym][0].close
+            symbols[sym] = {"price": closes[sym] / MICROS, "rule_target_pct": int(weights[sym][-1]) / 100,
+                            "held": pos.qty, "unrealized_pnl_quote": round((pos.qty * closes[sym] - pos.basis) / MICROS, 2),
+                            "change_over_24_bars_pct": round((float(c[-1]) / float(c[-25]) - 1) * 100, 2) if len(c) > 25 else None,
+                            "reading": reading(spec.family.value, spec.params, histories[sym][0])}
+        facts = {"market_time": ts.isoformat(), "step": step + 1, "of_steps": total, "funded": funded,
+                 "budget_quote": round(self.alloc[agent] / MICROS, 2), "crash_stress_now": stress,
+                 "rule_settings": spec.params, "symbols": symbols, "recent_orders": list(self.recent[agent]),
+                 "quote_currency": self.units["quote_currency"]}
+        self.thoughts[agent] = self.thinker.submit(self.think, agent, spec.family.value, facts, int(ts.timestamp()))
+
+    def think(self, agent: str, family: str, facts: dict, ts: int) -> None:
+        try:
+            raw, meta = llm.chat_json(THINK_SYSTEM.format(agent=agent, family=family, how=HOW.get(family, "a fixed rule")),
+                                      json.dumps(facts, default=str), temperature=0.5, timeout=25, max_retries=0)
+            thought = str(raw.get("thought", "")).strip()[:400]
+            if thought:
+                stance = raw.get("stance") if raw.get("stance") in ("adding", "holding", "trimming", "waiting") else None
+                self.say(agent, "thought", {"step": facts["step"], "ts": ts, "thought": thought, "stance": stance,
+                                            "source": "llm", "llm": meta, "facts": facts})
+        except Exception as e:  # commentary is optional; the replay never depends on it
+            log.warning("thought unavailable for %s: %s", agent, type(e).__name__)
+            if not self.thinking_reported:
+                self.thinking_reported = True
+                self.say("system", "thinking_unavailable", {"step": facts["step"], "ts": ts, "reason": type(e).__name__})
 
     def crisis(self, ts: datetime, closes: dict[str, int], state: ApiState) -> None:
         for agent in sorted(self.specs):
@@ -200,7 +304,8 @@ class Session:
                 {k: r.get(k) for k in ("symbol", "side", "qty", "status", "outcome", "approved_qty", "rules")}
                 for r in results]})
 
-    def run(self, max_steps: int | None, speed: float, crash_at: float | None, retry_dupes: bool = True) -> dict:
+    def run(self, max_steps: int | None, speed: float, crash_at: float | None, retry_dupes: bool = True,
+            duration_s: float | None = None) -> dict:
         te = self.m["dataset"]["splits"]["test"]
         bars = list(self.p.bars(te[0], te[1]))
         groups: list[list[Bar]] = []
@@ -212,6 +317,8 @@ class Session:
         if max_steps:
             groups = groups[:max_steps]
         crash_start = int(len(groups) * crash_at) if crash_at is not None else None
+        if duration_s and groups:
+            speed = len(groups) / duration_s  # pace the whole replay to a wall-clock target; it can only slow it down
         r = self.c.get("/v1/portfolio")
         seen = max((v[0] for v in r.json()["state"].get("last_bar", {}).values()), default=0) if r.status_code == 200 else 0
         if groups and seen >= groups[0][0].ts.timestamp():
@@ -219,17 +326,17 @@ class Session:
             raise ValueError(f"portfolio {self.pid!r} has already replayed this period; select a fresh portfolio")
         self.say("system", "session_start", {"steps": len(groups), "crash_start_step": crash_start,
                                              "units": self.units,
-                                             "speed_steps_per_s": speed})
+                                             "speed_steps_per_s": speed, "target_duration_s": duration_s})
+        if not llm.available():
+            self.thinking_reported = True
+            self.say("system", "thinking_unavailable", {"step": 0, "ts": 0, "reason": "no AI model configured"})
         base_hist = {sym: self.p.history(sym, te[0]) for sym in self.p.symbols()}
-        live_ts: dict[str, list[int]] = {s: [] for s in self.p.symbols()}
-        live_close: dict[str, list[float]] = {s: [] for s in self.p.symbols()}
-        live_high: dict[str, list[float]] = {s: [] for s in self.p.symbols()}
-        live_low: dict[str, list[float]] = {s: [] for s in self.p.symbols()}
-        t_start = time.perf_counter()
-        completed_steps = 0
+        # The published path (source bars with the scripted crash overlay) is fixed before the replay starts, and
+        # every rule is causal: its target at a bar never depends on later bars. So each rule is evaluated once
+        # over the whole path and read back bar by bar, instead of being recomputed over its full history at
+        # every step. tests/unit/test_session_plan.py pins that the two give identical targets.
+        published: list[list[Bar]] = []
         for i, g in enumerate(groups):
-            if self.stop_requested():
-                break
             f = crash_factor(i, crash_start) if crash_start is not None else 1.0
             stress = crash_start is not None and crash_start <= i < crash_start + 4
             pub = []
@@ -240,16 +347,32 @@ class Session:
                                for x in (b.open, b.high, b.low, b.close))
                 pub.append(Bar(symbol=b.symbol, ts=b.ts, open=o, high=max(h, o, c), low=min(lo, o, c), close=c,
                                volume=b.volume * (3 if stress else 1), stress=stress))
+            published.append(pub)
+        path: dict[str, tuple[Series, np.ndarray]] = {}
+        for sym in self.p.symbols():
+            bh, bts = base_hist[sym]
+            live = [b for pub in published for b in pub if b.symbol == sym]
+            path[sym] = (Series(np.concatenate([bh.close, [b.close / MICROS for b in live]]),
+                                np.concatenate([bh.high, [b.high / MICROS for b in live]]),
+                                np.concatenate([bh.low, [b.low / MICROS for b in live]])),
+                         np.concatenate([bts, np.array([int(b.ts.timestamp()) for b in live], dtype=np.int64)]))
+        plan = {agent: universe_weights(spec.family, spec.params, {sym: path[sym] for sym in spec.universe})
+                for agent, spec in self.specs.items()}
+        seen_bars = {sym: len(base_hist[sym][1]) for sym in self.p.symbols()}  # bars of each symbol published so far
+        t_start = time.perf_counter()
+        completed_steps = 0
+        for i, g in enumerate(groups):
+            if self.stop_requested():
+                break
+            stress = crash_start is not None and crash_start <= i < crash_start + 4
+            pub = published[i]
             r = self.post("/v1/bars",
                             json={"dataset_id": f"session:{self.run_id}",
                                   "bars": [json.loads(b.model_dump_json()) for b in pub]})
             self.stats["bars"] += len(pub)
             closes = {b.symbol: b.close for b in pub}
             for b in pub:
-                live_ts[b.symbol].append(int(b.ts.timestamp()))
-                live_close[b.symbol].append(b.close / MICROS)
-                live_high[b.symbol].append(b.high / MICROS)
-                live_low[b.symbol].append(b.low / MICROS)
+                seen_bars[b.symbol] += 1
             port = self.c.get("/v1/portfolio").json()
             st, equity = ApiState(port["state"]), port["equity"]
             if crash_start is not None and i == crash_start:
@@ -260,16 +383,23 @@ class Session:
                 st, equity = ApiState(port["state"]), port["equity"]
             for agent in sorted(self.specs):
                 spec = self.specs[agent]
-                if self.alloc[agent] <= 0:
+                funded = self.alloc[agent] > 0
+                if not funded and spec.family == StrategyFamily.BUY_HOLD:
                     continue
-                histories = {}
+                # views of the path up to and including this step; nothing past it is visible below
+                histories, weights = {}, {}
                 for sym in spec.universe:
-                    bh, bts = base_hist[sym]
-                    histories[sym] = (Series(np.concatenate([bh.close, live_close[sym]]),
-                                             np.concatenate([bh.high, live_high[sym]]),
-                                             np.concatenate([bh.low, live_low[sym]])),
-                                      np.concatenate([bts, np.array(live_ts[sym], dtype=np.int64)]))
-                weights = universe_weights(spec.family, spec.params, histories)
+                    n = seen_bars[sym]
+                    series, sym_ts = path[sym]
+                    histories[sym] = (Series(series.close[:n], series.high[:n], series.low[:n]), sym_ts[:n])
+                    weights[sym] = plan[agent][sym][:n]
+                if spec.family != StrategyFamily.BUY_HOLD:
+                    # unfunded agents trade nothing, but what their rule would do is still shown
+                    self.observe(agent, spec, histories, weights, closes, i, g[0].ts, funded)
+                    if not funded:
+                        self.maybe_think(agent, spec, histories, weights, closes, st, i, len(groups), g[0].ts, funded, stress)
+                if not funded:
+                    continue
                 if any(int(weights[sym][-1]) for sym in spec.universe if sym in closes):
                     resized = reentry_capital(st, spec, self.base_alloc[agent], self.initial_cash, equity)
                     if resized is not None and resized != self.alloc[agent]:
@@ -287,12 +417,16 @@ class Session:
                     if act is None:
                         continue
                     res = self.submit(agent, sym, act[0], act[1], g[0].ts)
+                    self.recent[agent].append({"symbol": sym, "side": act[0], "qty": act[1], "outcome": res.get("outcome"),
+                                               "approved_qty": res.get("approved_qty"), "rules": res.get("rules")})
                     if retry_dupes and i % 25 == 0:  # simulate a flaky client retrying: must be a no-op
                         self.submit(agent, sym, act[0], act[1], g[0].ts)
                     if res.get("outcome") in ("REJECT", "REDUCE"):
                         self.say(agent, "order_" + res["outcome"].lower(),
                                  {"symbol": sym, "side": act[0], "qty": act[1], "approved_qty": res.get("approved_qty"),
                                   "rules": res.get("rules")})
+                if spec.family != StrategyFamily.BUY_HOLD:
+                    self.maybe_think(agent, spec, histories, weights, closes, st, i, len(groups), g[0].ts, funded, stress)
             if speed > 0:
                 delay = max(0.0, (i + 1) / speed - (time.perf_counter() - t_start))
                 while delay > 0 and not self.stop_requested():
@@ -300,6 +434,11 @@ class Session:
                     delay -= 0.2
             completed_steps = i + 1
             self.progress("replaying", completed_steps, len(groups))
+        self.report_progress("replaying", completed_steps, len(groups))
+        self.poster.shutdown(wait=True)
+        # let commentary that is already in flight land before the summary; never wait long for it
+        wait_futures([f for f in self.thoughts.values()], timeout=10)
+        self.thinker.shutdown(wait=False, cancel_futures=True)
         v = self.c.get("/v1/verify").json()
         port = self.c.get("/v1/portfolio").json()
         summary = {"run_id": self.run_id, "portfolio_id": self.pid, "steps": completed_steps,

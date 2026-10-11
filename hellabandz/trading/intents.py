@@ -13,6 +13,7 @@ the score is kept for explanation and for the strategy's own sizing.
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -32,7 +33,9 @@ class Intent(_Frozen):
     md_seq: int = Field(ge=0)  # gateway sequence of the snapshot the decision used
     decision_ts: int  # epoch seconds of the latest bar in that snapshot
     target_weight_bps: int = Field(ge=0, le=10_000)  # share of the strategy's budget for this instrument
-    score: float
+    weight_scope: Literal["slot", "sleeve"] = "slot"
+    allocation_id: str | None = Field(default=None, min_length=1, max_length=64)
+    score: float = Field(allow_inf_nan=False)
     score_meaning: str = Field(max_length=200)
     holding_bars: int = Field(ge=1)  # expected holding period
     max_slippage_bps: int = Field(ge=0, le=1_000)  # worst price the strategy accepts, relative to last close

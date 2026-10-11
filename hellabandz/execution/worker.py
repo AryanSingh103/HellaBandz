@@ -229,10 +229,11 @@ class Worker:
                                   "WHERE portfolio_id = %s AND order_id = %s",
                                   (e["reason"], self.pid, e["order_id"])))
 
-    def run_forever(self, idle_wait_s: float = 0.5) -> None:
+    def run_forever(self, idle_wait_s: float = 0.5, rest_after_s: float = 3.0, rest_s: float = 0.25) -> None:
         listen = psycopg.connect(database_url(), autocommit=True)
         listen.execute("LISTEN cmd_new")
         last_beat = 0.0
+        last_work = time.monotonic()
         while True:
             try:
                 n = len(self.process_batch())
@@ -244,7 +245,17 @@ class Worker:
                 self.conn.execute("INSERT INTO telemetry (service, metric, value, labels) VALUES "
                                   "('worker', 'heartbeat', %s, %s)", (self.state.seq, Jsonb({"portfolio_id": self.pid})))
                 last_beat = now
-            if n == 0:
+            if n:
+                last_work = time.monotonic()
+            else:
+                if time.monotonic() - last_work > rest_after_s:
+                    # cmd_new is one global channel, so a command for any portfolio wakes every worker. A worker that
+                    # has had no work of its own for a while rests between looks and discards the wake-ups it slept
+                    # through, so idle portfolios stay cheap while another one is busy. Costs an idle portfolio at
+                    # most rest_s of extra latency on its next command.
+                    time.sleep(rest_s)
+                    if sum(1 for _ in listen.notifies(timeout=0)):
+                        continue
                 for _ in listen.notifies(timeout=idle_wait_s, stop_after=1):
                     pass
 

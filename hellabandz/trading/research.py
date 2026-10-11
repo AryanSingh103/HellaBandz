@@ -1,42 +1,21 @@
-"""Coordinated research: choose strategy versions on past data, fund only what beats the passive core.
+"""Development proposal -> optimize -> critique -> freeze -> validate -> paper promotion.
 
-Chronology, per dataset (splits from the registered snapshot: train 60%, validation 20%, test 20%):
-
-1. Fit (train). Every candidate in a role's bounded grid runs alone, with the whole deployable
-   capital, through the coordinated runtime in historical_sim on three consecutive training blocks,
-   next to the passive core on the same blocks. Walk-forward: the candidate picked from blocks before
-   block k is judged on block k (k = 2, 3), which gives out-of-sample evidence inside training. The
-   role's challenger is the best candidate over all three blocks.
-2. Validate (validation). The challenger and the core run on the validation period through the
-   paper CLOB, the venue the portfolio will use. The out-of-sample evidence is the walk-forward
-   blocks plus validation. Acceptance criteria, all required:
-     - total out-of-sample excess return over the core > 0 (after fees, spread and slippage)
-     - strength > 1: both t-statistics from hellabandz.agents.tournament.evidence_of_edge (per-bar
-       excess over the core, and the intercept after regressing on the core, so it is not just holding
-       less of a falling market) must exceed one standard error. Weight grows linearly from 0 at one
-       standard error to full at two. (Design seeds 1-5 showed strategies funded below one standard
-       error losing to the core on their test periods; this threshold was set from those seeds only.)
-     - annualized turnover on validation <= MAX_TURNOVER_PER_YEAR x capital (a sanity cap; costs are
-       already inside the returns)
-   Accepted challengers are promoted with weight = 30% x that strength weight. Rejected ones stay rejected,
-   and the role holds no capital. Capital nobody earned stays in the passive core.
-3. The held-out test is not used by any of the above. hellabandz.trading.evaluate runs it once and
-   counts the view in the registry.
-
-The search is bounded (MAX_CANDIDATES per role, a time budget) and runs at low priority. It is not
-re-run in response to recent losses; it runs when someone launches research.
+Only the first training third reaches agents and optimization feedback. Frozen
+challengers see later training thirds and validation once. Test bars are excluded
+from the research provider. Execution uses reviewed frozen code, never an LLM.
 """
-
 from __future__ import annotations
 
+import argparse
+import json
 import math
 import os
 import time
-from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 
+from hellabandz.agents.research import train_summary
 from hellabandz.agents.tournament import evidence_of_edge
 from hellabandz.backtester import SnapshotProvider
 from hellabandz.contracts import MICROS
@@ -44,48 +23,54 @@ from hellabandz.ingestion.dataset import load_snapshot
 from hellabandz.strategies import BARS_PER_YEAR
 from hellabandz.trading.coordinator import paper_budget
 from hellabandz.trading.execution import VenueMode
-from hellabandz.trading.instruments import instruments_for_dataset
-from hellabandz.trading.marketdata import DataClass
+from hellabandz.trading.instruments import COORDINATED_ASSET_CLASSES, instruments_for_dataset
+from hellabandz.trading.proposals import (ROLE_CARDS, allocation_universe, defensive_challenger_proposals,
+                                         house_proposals, llm_proposals, mutations)
 from hellabandz.trading.registry import Registry
 from hellabandz.trading.runtime import CoordinatedRuntime, RuntimeResult
-from hellabandz.trading.strategies import RuntimeStrategy, StrategyVersion, make_version
+from hellabandz.trading.strategies import CODE_VERSION, FAMILY_CARDS, RuntimeStrategy, StrategyVersion, make_version
 
 INITIAL = 10_000 * MICROS
 DEPLOYABLE = 9_000 * MICROS
 ROLE_CAP = 0.30
-MAX_CANDIDATES = 6
+MAX_CANDIDATES = 8
 MAX_TURNOVER_PER_YEAR = 60.0
 BLOCKS = 3
-
-# role -> list of (card, params). Every value is inside the family's whitelisted bounds.
-GRIDS: dict[str, list[tuple[str, dict]]] = {
-    "trend": [("trend", {"fast": f, "slow": s}) for f, s in ((20, 100), (35, 200), (50, 300), (100, 500))],
-    "mean_reversion": [("mean_reversion", {"lookback": lb, "entry_z": e, "exit_z": x})
-                       for lb, e, x in ((30, 2.0, 0.0), (60, 2.0, 0.0), (60, 2.5, 0.5), (120, 2.5, 0.5))],
-    # regime-aware defensive overlay (grid from the recorded proposal in data/fixtures/proposals/mean_reversion.json)
-    "defensive": [("regime", {"regime_lookback": rl, "min_reversion": mr, "lookback": lb, "sell_z": sz, "rebuy_z": rz})
-                  for rl, mr, lb, sz, rz in ((200, 0.015, 60, 1.0, 0.0), (200, 0.025, 100, 1.5, 0.0),
-                                             (300, 0.015, 100, 1.0, -0.5), (300, 0.025, 60, 1.5, -0.5))]
-                 + [("defensive", {"vol_lookback": 100, "trend_lookback": 400, "target_vol": 0.15})],
-}
+POLICY_VERSION = "adaptive-allocation-3"
+RESEARCH_PROFILES = ("broad", "defensive_challenger")
+CRITERIA = {"net_return_excess_gt": 0.001, "sharpe_excess_gt": 0.05,
+            "sortino_excess_gt": 0.0, "drawdown_excess_lte": 0.0,
+            "max_turnover_per_year": MAX_TURNOVER_PER_YEAR, "max_cost_fraction_per_year": 0.02,
+            "cost_stress_multiplier": 2.0,
+            "evidence": "max(1.96, sqrt(2*log(development_trials))); heuristic, not confidence guarantee"}
 
 
-def data_class(meta: dict) -> DataClass:
+class ResearchStopped(RuntimeError):
+    pass
+
+
+def data_class(meta: dict):
+    from hellabandz.trading.marketdata import DataClass
     return DataClass.SYNTHETIC if "synthetic" in (meta.get("source", "") + meta.get("dataset_id", "")) else DataClass.HISTORICAL
 
 
 def simulate(provider: SnapshotProvider, meta: dict, sleeves: list[tuple[str, StrategyVersion, int]], mode: VenueMode,
-             start: int, end: int, run_id: str, keep_decisions: bool = False) -> RuntimeResult:
+             start: int, end: int, run_id: str, keep_decisions: bool = False, check=None,
+             keep_telemetry: bool = False) -> RuntimeResult:
+    if check:
+        check()
     venue = "paper_clob" if mode == VenueMode.PAPER_CLOB else "bar_sim"
     strats, capital = [], {}
     for sid, v, cap in sleeves:
         strats.append(RuntimeStrategy(StrategyVersion(sid, v.family, v.params, v.universe, v.version, v.card), venue))
         capital[sid] = cap
     rt = CoordinatedRuntime(run_id, mode, strats, capital, paper_budget(INITIAL), instruments_for_dataset(meta),
-                            data_class(meta), INITIAL, keep_decisions=keep_decisions)
+                            data_class(meta), INITIAL, keep_decisions=keep_decisions, keep_telemetry=keep_telemetry)
     rt.open()
     rt.warm(provider, start)
-    return rt.run(provider, start, end)
+    if check:
+        check()
+    return rt.run(provider, start, end, check=check)
 
 
 def ret(r: RuntimeResult) -> float:
@@ -101,112 +86,321 @@ def core_version(universe: list[str]) -> StrategyVersion:
     return make_version("core", "core", {}, universe)
 
 
-@dataclass
-class RoleOutcome:
-    role: str
-    challenger: StrategyVersion | None
-    accepted: bool
-    weight: float
-    reasons: list[str]
-    metrics: dict
+def research_metrics(r: RuntimeResult) -> dict:
+    e = np.asarray([r.initial_cash] + r.equity, dtype=np.float64)
+    rr = bar_rets(r)
+    sd = float(rr.std()) if len(rr) else 0.0
+    downside = math.sqrt(float(np.mean(np.minimum(rr, 0) ** 2))) if len(rr) else 0.0
+    years = max(len(rr) / BARS_PER_YEAR, 1e-9)
+    return {"net_return": ret(r), "sharpe": float(rr.mean() / sd * math.sqrt(BARS_PER_YEAR)) if sd > 0 else 0.0,
+            "sortino": float(rr.mean() / max(downside, 1e-12) * math.sqrt(BARS_PER_YEAR)) if len(rr) else 0.0,
+            "max_drawdown": float(((np.maximum.accumulate(e) - e) / np.maximum.accumulate(e)).max()),
+            "turnover_per_year": r.turnover / years, "turnover": r.turnover,
+            "cost_fraction": (r.fees + r.slippage) / r.initial_cash,
+            "cost_fraction_per_year": (r.fees + r.slippage) / r.initial_cash / years,
+            "fills": r.fills, "cycles": r.cycles, "ledger_digest": r.ledger_digest,
+            "reconciliation_breaks": len(r.reconciliation_breaks), "ledger_rejections": r.ledger_rejections}
 
 
-def research(dataset_dir: Path, registry: Registry | None = None, budget_s: float = 900.0, progress=lambda *a: None) -> dict:
+def metric_gates(candidate: dict, baseline: dict) -> list[str]:
+    """Fees/turnover are bounded, not claimed lower than buy/hold."""
+    numeric = ("net_return", "sharpe", "sortino", "max_drawdown", "turnover_per_year", "cost_fraction_per_year", "cost_fraction")
+    if any(not math.isfinite(candidate[k]) or not math.isfinite(baseline[k]) for k in numeric):
+        return ["NONFINITE_METRICS"]
+    reasons = []
+    if candidate["cycles"] < 30 or candidate["fills"] < 1:
+        reasons.append("INSUFFICIENT_OBSERVATIONS_OR_FILLS")
+    if candidate["net_return"] - baseline["net_return"] <= CRITERIA["net_return_excess_gt"]:
+        reasons.append("RETURN_NOT_ABOVE_BASELINE")
+    if candidate["sharpe"] - baseline["sharpe"] <= CRITERIA["sharpe_excess_gt"]:
+        reasons.append("SHARPE_NOT_ABOVE_BASELINE")
+    if candidate["sortino"] <= baseline["sortino"]:
+        reasons.append("SORTINO_NOT_ABOVE_BASELINE")
+    if candidate["max_drawdown"] > baseline["max_drawdown"] + 1e-12:
+        reasons.append("DRAWDOWN_WORSE_THAN_BASELINE")
+    if candidate["turnover_per_year"] > MAX_TURNOVER_PER_YEAR:
+        reasons.append("TURNOVER_TOO_HIGH")
+    if candidate["cost_fraction_per_year"] > CRITERIA["max_cost_fraction_per_year"]:
+        reasons.append("COST_BUDGET_EXCEEDED")
+    if candidate["net_return"] - candidate["cost_fraction"] <= baseline["net_return"] - baseline["cost_fraction"]:
+        reasons.append("NO_EXCESS_UNDER_DOUBLE_COSTS")
+    if candidate["reconciliation_breaks"] or candidate["ledger_rejections"]:
+        reasons.append("EXECUTION_INTEGRITY_FAILURE")
+    return reasons
+
+
+def development_score(metrics: dict, baseline: dict) -> float:
+    """Only development results enter ranking or critique."""
+    return (metrics["net_return"] - baseline["net_return"]
+            + 0.02 * (metrics["sharpe"] - baseline["sharpe"])
+            - max(0, metrics["max_drawdown"] - baseline["max_drawdown"])
+            - 0.001 * max(0, metrics["turnover_per_year"] - MAX_TURNOVER_PER_YEAR))
+
+
+def development_consistency(candidate, baseline) -> list[float]:
+    """Two chronological halves of the existing development path; no extra replay."""
+    def parts(result):
+        e = np.asarray([result.initial_cash] + result.equity, dtype=np.float64)
+        middle = len(result.equity) // 2
+        return [float(e[middle] / e[0] - 1), float(e[-1] / e[middle] - 1)]
+    return [x - y for x, y in zip(parts(candidate), parts(baseline))]
+
+
+def research_current(reg: Registry, meta: dict) -> bool:
+    rec = reg.data.get("research_state", {})
+    return (rec.get("status") == "complete" and rec.get("policy_version") == POLICY_VERSION
+            and rec.get("profile", "broad") == "broad"
+            and rec.get("code_version") == CODE_VERSION and rec.get("dataset_sha256") == meta["content_sha256"])
+
+
+def research(dataset_dir: Path, registry: Registry | None = None, budget_s: float = 900.0, progress=lambda *a: None,
+             *, rounds: int = 3, max_candidates: int = MAX_CANDIDATES, use_llm: bool = False,
+             stop_requested=lambda: False, profile: str = "broad") -> dict:
+    reg = registry or Registry()
+    with reg.research_lock():
+        return _research(dataset_dir, reg, budget_s, progress, rounds=rounds, max_candidates=max_candidates,
+                         use_llm=use_llm, stop_requested=stop_requested, profile=profile)
+
+
+def _research(dataset_dir: Path, registry: Registry, budget_s: float, progress,
+              *, rounds: int, max_candidates: int, use_llm: bool, stop_requested, profile: str = "broad") -> dict:
+    """Serial low-priority research; deadline checked inside every simulation cycle.
+
+    A stopped run leaves passive fallback, never a partly validated portfolio.
+    Explicit calls re-run research. Startup reuses completed current-policy results.
+    """
+    if not math.isfinite(budget_s) or budget_s <= 0 or not 1 <= rounds <= 5 or not 1 <= max_candidates <= 16:
+        raise ValueError("positive finite budget; rounds 1..5; candidates per role 1..16 required")
+    if profile not in RESEARCH_PROFILES:
+        raise ValueError(f"research profile must be one of {RESEARCH_PROFILES}")
+    if profile == "defensive_challenger":
+        if use_llm:
+            raise ValueError("defensive_challenger is a fixed reviewed grid; model proposals are not supported")
+        rounds, max_candidates = 1, 32
+    roles = ("defensive",) if profile == "defensive_challenger" else tuple(ROLE_CARDS)
+    started = time.monotonic()
+    deadline = started + budget_s
+
+    def check():
+        if time.monotonic() >= deadline:
+            raise ResearchStopped("TIME_BUDGET_EXHAUSTED")
+        if stop_requested():
+            raise ResearchStopped("STOP_REQUESTED")
+
     if hasattr(os, "nice"):
         try:
-            os.nice(10)  # never compete with the execution path for CPU
+            os.nice(max(0, 10 - os.nice(0)))
         except OSError:
             pass
     t, meta = load_snapshot(dataset_dir)
-    p = SnapshotProvider(t)
-    reg = registry or Registry()
-    universe = sorted(meta["symbols"])
+    if meta.get("interval_s") != 3600:
+        raise ValueError("research metrics currently require hourly stock/ETF bars")
+    if any(i.asset_class not in COORDINATED_ASSET_CLASSES for i in instruments_for_dataset(meta).values()):
+        raise ValueError("research supports stocks and ETFs only")
     sp = meta["splits"]
     tr0, tr1 = sp["train"]
+    va0, va1 = sp["validation"]
+    te0, te1 = sp["test"]
+    if not tr0 < tr1 <= va0 < va1 <= te0 < te1:
+        raise ValueError("train, validation and test must be chronological and disjoint")
+    development = t.select(t.ts < va1)  # test physically excluded
+    p = SnapshotProvider(development)
+    universe = sorted(meta["symbols"])
+    reg = registry or Registry()
+    for role in list(reg.champions()):
+        reg.demote(role, "new research must pass current dataset and whole-portfolio gates")
+    run_no = len(reg.data.get("research_runs", [])) + 1
+    out = {"run": run_no, "policy_version": POLICY_VERSION, "code_version": CODE_VERSION, "profile": profile,
+           "dataset_id": meta["dataset_id"], "dataset_sha256": meta["content_sha256"], "universe": universe,
+           "data_convention": {k: meta.get(k) for k in ("interval_s", "schema_version", "unit_version", "adjustment", "quote_currency", "source")},
+           "allocation_universe": allocation_universe(universe),
+           "allocation_universe_policy": "available sector ETFs when at least3 registered; otherwise registered fallback universe",
+           "historical_periods_previously_inspected": bool(meta.get("historical_periods_previously_inspected", False)),
+           "development_score_formula": "return_excess + .02*sharpe_excess - positive_drawdown_excess "
+                                        "- .001*positive_turnover_above60 + .25*minimum_two_half_return_excess",
+           "baseline": "equal-weight buy-and-hold basket, same capital/venue/fees", "status": "running",
+           "budget": {"seconds": budget_s, "rounds": rounds, "candidates_per_role": max_candidates, "workers": 1},
+           "splits": sp, "criteria": CRITERIA, "experiments": [], "proposals": [], "roles": [],
+           "validation_views": 0, "test_used_for_selection": False,
+           "limitations": ["Paper synthetic OHLCV depth, not exchange liquidity.",
+                           "Search-adjusted evidence is a heuristic, not proof of significance.",
+                           "Validation reuse and selection can overfit; unseen future data must confirm an edge."]}
+    reg.data["research_state"] = out
+    reg._save()
     edges = [tr0 + (tr1 - tr0) * k // BLOCKS for k in range(BLOCKS + 1)]
     blocks = list(zip(edges[:-1], edges[1:]))
     core = core_version(universe)
-    started = time.monotonic()
-    core_train = [simulate(p, meta, [("core", core, DEPLOYABLE)], VenueMode.HISTORICAL_SIM, a, b, "fit-core") for a, b in blocks]
-    core_rets = [bar_rets(c) for c in core_train]
-    outcomes: list[RoleOutcome] = []
-    for role, grid in GRIDS.items():
-        cands = []
-        for card, params in grid[:MAX_CANDIDATES]:
-            if time.monotonic() - started > budget_s:
-                break
-            v = make_version(role, card, params, universe)
-            reg.propose(role, v, source="coordinated-research grid")
-            runs = [simulate(p, meta, [(role, v, DEPLOYABLE)], VenueMode.HISTORICAL_SIM, a, b, f"fit-{role}") for a, b in blocks]
-            cands.append((v, [ret(r) - ret(c) for r, c in zip(runs, core_train)], [bar_rets(r) for r in runs]))
-            progress("fit", role, len(cands))
-        if not cands:
-            outcomes.append(RoleOutcome(role, None, False, 0.0, ["TIME_BUDGET_EXHAUSTED"], {}))
-            continue
 
-        def pick(k: int):  # best mean excess on blocks [0, k); ties by version
-            return max(cands, key=lambda c: (float(np.mean(c[1][:k])), c[0].version))
-        wf = [(pick(k), k) for k in range(1, BLOCKS)]  # picked before block k, judged on block k
-        wf_excess = [c[1][k] for c, k in wf]
-        wf_rets = [c[2][k] for c, k in wf]
-        v, train_ex, _ = pick(BLOCKS)
-        tested = len(cands)
-        va0, va1 = sp["validation"]
-        cv = simulate(p, meta, [("core", core, DEPLOYABLE)], VenueMode.PAPER_CLOB, va0, va1, "val-core")
-        sv = simulate(p, meta, [(role, v, DEPLOYABLE)], VenueMode.PAPER_CLOB, va0, va1, f"val-{role}")
-        years = max(sv.cycles / BARS_PER_YEAR, 1e-9)
-        edge = evidence_of_edge(np.concatenate(wf_rets + [bar_rets(sv)]),
-                                np.concatenate([core_rets[k] for _, k in wf] + [bar_rets(cv)]))
-        oos = sum(wf_excess) + ret(sv) - ret(cv)
-        strength = min(edge["excess_t"], edge["alpha_t"])
-        evidence_weight = min(max(strength - 1.0, 0.0), 1.0)
-        m = {"train_block_excess": [round(x, 6) for x in train_ex], "walk_forward_excess": [round(x, 6) for x in wf_excess],
-             "out_of_sample_excess": round(oos, 6), "validation_excess": round(ret(sv) - ret(cv), 6),
-             "validation_return": round(ret(sv), 6), "core_validation_return": round(ret(cv), 6),
-             "validation_turnover_per_year": round(sv.turnover / years, 2), "evidence": edge,
-             "candidates_tested": tested}
-        reasons = []
-        if oos <= 0:
-            reasons.append("NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE")
-        if evidence_weight <= 0:
-            reasons.append("EDGE_BELOW_ONE_STANDARD_ERROR")
-        if m["validation_turnover_per_year"] > MAX_TURNOVER_PER_YEAR:
-            reasons.append("TURNOVER_TOO_HIGH")
-        accepted = not reasons
-        key = f"{role}:{v.version}"
-        criteria = {"out_of_sample_excess_gt": 0, "min_t_statistic_gt": 1.0,
-                    "max_turnover_per_year": MAX_TURNOVER_PER_YEAR}
-        if reg.data["versions"][key]["status"] == "rejected":
-            accepted, reasons = False, reasons or ["PREVIOUSLY_REJECTED"]
+    def run(v, a, b, mode, label):
+        return simulate(p, meta, [(v.strategy_id, v, DEPLOYABLE)], mode, a, b, label, check=check)
+
+    try:
+        check()
+        summary = train_summary(SnapshotProvider(t.select(t.ts < edges[1])), edges[1], meta)
+        out["proposal_summary"] = summary
+        out["proposal_data_end_exclusive"] = edges[1]
+        cb = run(core, *blocks[0], VenueMode.HISTORICAL_SIM, "development-core")
+        cbm = research_metrics(cb)
+        pools = {}
+        for role in roles:
+            check()
+            pools[role] = (defensive_challenger_proposals(universe) if profile == "defensive_challenger"
+                           else house_proposals(role, universe, summary))
+            if use_llm:
+                extra, record = llm_proposals(role, universe, summary, min(10, max(0.1, deadline - time.monotonic())))
+                out["proposals"].append(record)
+                # Every house family is tested before additive model candidates. Limit
+                # model seeds so feedback rounds retain room in the global role budget.
+                pools[role] += extra[:2]
+        scored = {r: [] for r in roles}
+        seen = {r: set() for r in roles}
+        for round_no in range(rounds):
+            for role in roles:
+                candidates = pools[role] if round_no == 0 else []
+                if round_no:
+                    leaders = sorted(scored[role], key=lambda x: (-x[0], x[1].version.version))
+                    families = set()
+                    for _, proposal, m in leaders:
+                        if proposal.version.family in families:
+                            continue
+                        families.add(proposal.version.family)
+                        candidates.extend(mutations(proposal, m, cbm, round_no))
+                remaining = max_candidates - len(scored[role])
+                slots = min(remaining, max(1, math.ceil(remaining / (rounds - round_no))))
+                if round_no == 0:
+                    slots = min(remaining, max(slots, len(pools[role])))
+                for proposal in candidates:
+                    v = proposal.version
+                    if v.version in seen[role]:
+                        continue
+                    if slots <= 0:
+                        break
+                    check()
+                    seen[role].add(v.version)
+                    key = reg.propose(role, v, proposal.source)
+                    r = run(v, *blocks[0], VenueMode.HISTORICAL_SIM, f"development-{role}")
+                    m = research_metrics(r)
+                    consistency = development_consistency(r, cb)
+                    score = development_score(m, cbm) + .25 * min(consistency)
+                    scored[role].append((score, proposal, m))
+                    out["experiments"].append({"role": role, "key": key, "version": v.version,
+                                               "family": v.family.value, "params": v.param_dict,
+                                               "universe": list(v.universe), "development_half_excess": consistency,
+                                               "round": round_no, "parent": proposal.parent, "source": proposal.source,
+                                               "hypothesis": proposal.hypothesis, "feedback": proposal.feedback,
+                                               "split": "development", "metrics": m, "score": score})
+                    slots -= 1
+                    reg._save()
+                    progress("optimized", role, len(scored[role]))
+        frozen = {r: max(c, key=lambda x: (x[0], x[1].version.version))[1].version for r, c in scored.items() if c}
+        out["frozen_challengers"] = {r: v.describe() for r, v in frozen.items()}
+        out["distinct_configurations"] = len({e["version"] for e in out["experiments"]})
+        out["distinct_frozen_challengers"] = len({v.version for v in frozen.values()})
+        trials = len(out["experiments"])
+        threshold = max(1.96, math.sqrt(2 * math.log(max(trials, 1))))
+        out["evidence_threshold"] = threshold
+        validation_key = development.content_hash()
+        counts = reg.data.setdefault("validation_views", {})
+        counts[validation_key] = counts.get(validation_key, 0) + 1
+        out["validation_views"] = counts[validation_key]
+        out["validation_previously_inspected"] = bool(meta.get("historical_periods_previously_inspected")) or counts[validation_key] > 1 or any(
+            h["event"] in ("accepted", "rejected") for h in reg.data["history"])
+        reg._save()
+        core_wf = [run(core, a, b, VenueMode.HISTORICAL_SIM, "walkforward-core") for a, b in blocks[1:]]
+        cv = run(core, va0, va1, VenueMode.PAPER_CLOB, "validation-core")
+        cvm = research_metrics(cv)
+        out["validation_baseline"] = cvm
+        proposed_sleeves = []
+        funded_versions = set()
+        for role, v in frozen.items():
+            check()
+            wf = [run(v, a, b, VenueMode.HISTORICAL_SIM, f"walkforward-{role}") for a, b in blocks[1:]]
+            sv = run(v, va0, va1, VenueMode.PAPER_CLOB, f"validation-{role}")
+            m = research_metrics(sv)
+            ex = [ret(s) - ret(c) for s, c in zip(wf, core_wf)]
+            edge = evidence_of_edge(np.concatenate([bar_rets(s) for s in wf] + [bar_rets(sv)]),
+                                    np.concatenate([bar_rets(c) for c in core_wf] + [bar_rets(cv)]))
+            strength = min(edge["excess_t"], edge["alpha_t"])
+            reasons = metric_gates(m, cvm)
+            if sum(ex) <= 0 or sum(x > 0 for x in ex) < 1:
+                reasons.append("NO_WALK_FORWARD_EXCESS_OVER_CORE")
+            if not math.isfinite(strength) or strength <= threshold:
+                reasons.append("EDGE_BELOW_SEARCH_ADJUSTED_THRESHOLD")
+            key = f"{role}:{v.version}"
+            if reg.data["versions"][key]["status"] == "rejected":
+                reasons.append("PREVIOUSLY_REJECTED")
+            if not reasons and v.version in funded_versions:
+                reasons.append("DUPLICATE_FUNDED_VERSION")
+            weight = ROLE_CAP if not reasons else 0.0
+            m.update(validation_return=m["net_return"], core_validation_return=cvm["net_return"],
+                     validation_excess=m["net_return"] - cvm["net_return"], validation_turnover_per_year=m["turnover_per_year"],
+                     walk_forward_excess=ex, out_of_sample_excess=sum(ex) + ret(sv) - ret(cv),
+                     evidence=edge, strength_t=strength, candidates_tested=len(scored[role]))
+            out["roles"].append({"role": role, "version": v.version, "family": v.family.value,
+                                 "universe": list(v.universe),
+                                 "params": v.param_dict, "accepted": not reasons, "weight": weight,
+                                 "reasons": reasons, "metrics": m})
+            if weight:
+                proposed_sleeves.append((role, v, int(DEPLOYABLE * weight)))
+                funded_versions.add(v.version)
+            progress("validated", role, not reasons)
+        portfolio_reasons = []
+        if proposed_sleeves:
+            proposed_sleeves.append(("core", core, DEPLOYABLE - sum(c for _, _, c in proposed_sleeves)))
+            portfolio = simulate(p, meta, proposed_sleeves, VenueMode.PAPER_CLOB, va0, va1,
+                                 "validation-portfolio", check=check)
+            pm = research_metrics(portfolio)
+            portfolio_reasons = metric_gates(pm, cvm)
+            out["portfolio_validation"] = {"metrics": pm, "baseline": cvm, "reasons": portfolio_reasons,
+                                           "accepted": not portfolio_reasons}
         else:
-            reg.record_evaluation(key, m, criteria, accepted, reasons or ["MEETS_ALL_CRITERIA"])
-        m["strength_t"] = round(strength, 4)
-        weight = round(ROLE_CAP * evidence_weight, 4) if accepted else 0.0
-        if accepted:
-            reg.promote(role, key, weight)
-        else:
-            reg.demote(role, "challenger rejected; capital returns to the passive core")
-        outcomes.append(RoleOutcome(role, v, accepted, weight, reasons or ["MEETS_ALL_CRITERIA"], m))
-        progress("validated", role, accepted)
-    return {"dataset_id": meta["dataset_id"], "dataset_sha256": meta["content_sha256"], "universe": universe,
-            "roles": [{"role": o.role, "version": o.challenger and o.challenger.version, "family": o.challenger
-                       and o.challenger.family.value, "params": o.challenger and o.challenger.param_dict,
-                       "accepted": o.accepted, "weight": o.weight, "reasons": o.reasons, "metrics": o.metrics}
-                      for o in outcomes],
-            "seconds": round(time.monotonic() - started, 1)}
+            out["portfolio_validation"] = {"accepted": False, "reasons": ["NO_ELIGIBLE_ACTIVE_STRATEGIES"]}
+        check()
+        for role in out["roles"]:
+            if role["accepted"] and portfolio_reasons:
+                role.update(accepted=False, weight=0.0, reasons=["COMBINED_PORTFOLIO_GATE_FAILED", *portfolio_reasons])
+            key = f"{role['role']}:{role['version']}"
+            reg.record_evaluation(key, role["metrics"], {**CRITERIA, "evidence_threshold": threshold,
+                                                       "research_policy": POLICY_VERSION}, role["accepted"],
+                                  role["reasons"] or ["MEETS_INDIVIDUAL_AND_PORTFOLIO_CRITERIA"])
+            if role["accepted"]:
+                reg.promote(role["role"], key, role["weight"])
+        out["status"] = "complete"
+    except ResearchStopped as exc:
+        out["status"] = "stopped"
+        out["stop_reason"] = str(exc)
+        for role in list(reg.champions()):
+            reg.demote(role, "research stopped before completing promotion")
+        for role in out["roles"]:
+            role.update(accepted=False, weight=0.0, reasons=[str(exc)])
+    except Exception:
+        out["status"] = "failed"
+        reg.data["research_state"] = out
+        reg._save()
+        raise
+    out["seconds"] = round(time.monotonic() - started, 3)
+    out["candidates_tested"] = len(out["experiments"])
+    reg.data["research_state"] = out
+    reg.data.setdefault("research_runs", []).append(json.loads(json.dumps(out)))
+    reg._save()
+    return out
 
 
 def portfolio_sleeves(reg: Registry, universe: list[str]) -> list[tuple[str, StrategyVersion, int]]:
-    """Champions at their weights; the passive core holds the rest of the deployable capital."""
     sleeves = []
     used = 0
-    for role, c in reg.champions().items():
+    versions = set()
+    state = reg.data.get("research_state")
+    champions = reg.champions() if state is None or state.get("status") == "complete" else {}
+    for role, c in champions.items():
         cap = int(DEPLOYABLE * c["weight"])
-        if cap <= 0 or c["universe"] != universe:
+        if cap <= 0 or not set(c["universe"]).issubset(universe) or used + cap > DEPLOYABLE or c["version"] in versions:
             continue
-        card = {"sma_crossover": "trend", "zscore_reversion": "mean_reversion", "vol_target": "defensive",
-                "regime_reversion": "regime"}[c["family"]]
-        sleeves.append((role, make_version(role, card, c["params"], c["universe"]), cap))
+        v = make_version(role, FAMILY_CARDS[c["family"]], c["params"], c["universe"])
+        if v.version != c["version"]:
+            continue  # historical runtime code cannot silently become a current champion
+        sleeves.append((role, v, cap))
+        versions.add(c["version"])
         used += cap
     sleeves.append(("core", core_version(universe), DEPLOYABLE - used))
     return sleeves
@@ -214,3 +408,26 @@ def portfolio_sleeves(reg: Registry, universe: list[str]) -> list[tuple[str, Str
 
 def summary_line(x: float) -> str:
     return f"{x:+.2%}" if math.isfinite(x) else "n/a"
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--dataset", type=Path, default=Path("data/fixtures/synthetic_1h"))
+    ap.add_argument("--registry", type=Path, default=Path("data/registry/adaptive.json"))
+    ap.add_argument("--budget-s", type=float, default=600)
+    ap.add_argument("--rounds", type=int, default=3)
+    ap.add_argument("--max-candidates", type=int, default=MAX_CANDIDATES)
+    ap.add_argument("--llm-proposals", action="store_true")
+    ap.add_argument("--profile", choices=RESEARCH_PROFILES, default="broad")
+    ap.add_argument("--json", type=Path)
+    args = ap.parse_args()
+    report = research(args.dataset, Registry(args.registry), args.budget_s, rounds=args.rounds,
+                      max_candidates=args.max_candidates, use_llm=args.llm_proposals, profile=args.profile)
+    if args.json:
+        args.json.parent.mkdir(parents=True, exist_ok=True)
+        args.json.write_text(json.dumps(report, indent=2, allow_nan=False))
+    print(json.dumps({k: report[k] for k in ("status", "seconds", "candidates_tested", "roles")}, allow_nan=False))
+
+
+if __name__ == "__main__":
+    main()
