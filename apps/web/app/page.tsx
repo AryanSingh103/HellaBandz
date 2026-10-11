@@ -44,7 +44,7 @@ export default function Page() {
   const runtime = useResource<Runtime>("/v1/runtime", { portfolio_id: route.p }, 2000, revision);
   const stream = useEventStream(route.p);
   const equity = useLiveEquity(route.p, revision);
-  const jobs = useResource<Job[]>("/v1/jobs", {}, 6000, revision);
+  const jobs = useResource<Job[]>("/v1/jobs", { include_cleared: "true" }, 6000, revision);
   const crash = crashBand(jobs.data || undefined, route.p, equity.data || undefined);
   const manifest = (route.run ? runs.data?.find(t => t.run_id === route.run)?.manifest : context.data?.manifest) || null;
   const dataset = datasets.data?.find(d => d.content_sha256 === manifest?.dataset.content_sha256 || (!manifest && d.dataset_id === context.data?.dataset_id));

@@ -194,6 +194,8 @@ CREATE TABLE IF NOT EXISTS jobs (
 CREATE UNIQUE INDEX IF NOT EXISTS jobs_active_portfolio ON jobs (portfolio_id)
     WHERE kind = 'session' AND status IN ('queued', 'running');
 CREATE INDEX IF NOT EXISTS jobs_queue ON jobs (created_at) WHERE status = 'queued';
+-- Cleared jobs are hidden from the job list but kept, so request IDs stay unique and session settings stay readable.
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS cleared_at TIMESTAMPTZ;
 
 -- Local strategy-license exchange. Credits are separate from trading capital.
 CREATE TABLE IF NOT EXISTS review_analyses (
