@@ -30,7 +30,7 @@ export function moneyInput(value: string, positive = false) {
   const n = Number(value) * 1e6;
   return Number.isSafeInteger(Math.round(n)) && (positive ? Math.round(n) > 0 : n >= 0);
 }
-export const familyName = (s: string) => ({ sma_crossover: "Moving Average Crossover", breakout: "Price Breakout", zscore_reversion: "Z-Score Reversion", vol_target: "Volatility Target" }[s] || s);
+export const familyName = (s: string) => ({ sma_crossover: "Moving Average Crossover", breakout: "Price Breakout", zscore_reversion: "Z-Score Reversion", vol_target: "Volatility Target", rsi_reversion: "RSI Reversion", ts_momentum: "Trend Momentum" }[s] || s);
 export type Band = { start: number; end: number; label: string };
 /** Scheduled market-crash window of a browser-launched session, located on its equity points (one point per replay step). */
 export function crashBand(jobs: Job[] | undefined, pid: string, equity: { ts: string }[] | undefined): Band | undefined {

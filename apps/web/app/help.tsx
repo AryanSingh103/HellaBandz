@@ -66,6 +66,9 @@ export const GLOSSARY: Record<string, string> = {
   "momentum": "Bets that prices moving up keep moving up (trend-following).",
   "mean reversion": "Bets that prices that moved too far will snap back toward normal.",
   "volatility": "Owns less when the market is wild and more when it is calm.",
+  "breakout": "Buys when a price jumps above its recent high, sells if it falls back below its recent low.",
+  "rsi": "Buys after a stretch of heavy selling (low RSI) and sells once the price has bounced back.",
+  "trend": "Holds a stock only while it is up over the last few weeks, and steps aside when it isn't.",
   "frozen": "This research is finished and locked: strategies, settings and allocations can't change anymore.",
   "live": "A paper-trading session is streaming right now: prices arrive and agents trade through the risk engine.",
 };
