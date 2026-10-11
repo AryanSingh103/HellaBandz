@@ -4,6 +4,8 @@
   "portfolio": "sim-mv3lx4bs",
   "checks": [
     "Completed simulation visible",
+    "Final account value loaded correctly",
+    "Promotion context loaded",
     "History download available",
     "Auth-disabled sign-out hidden",
     "No browser exceptions"
