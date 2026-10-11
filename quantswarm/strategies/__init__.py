@@ -99,12 +99,39 @@ def vol_target(s: Series, vol_lookback: float, trend_lookback: float, target_vol
     return _to_bps(w)
 
 
+def rsi_reversion(s: Series, lookback: float, entry_rsi: float, exit_rsi: float) -> np.ndarray:
+    n = int(lookback)
+    d = np.zeros(len(s))
+    d[1:] = np.diff(s.close)
+    gain, loss = _rolling_mean(np.maximum(d, 0.0), n), _rolling_mean(np.maximum(-d, 0.0), n)
+    rsi = np.where(loss > 0, 100 - 100 / (1 + gain / np.where(loss > 0, loss, 1.0)), 100.0)
+    w = np.zeros(len(s))
+    held = False
+    for i in range(n, len(s)):
+        if not held and rsi[i] < entry_rsi:
+            held = True
+        elif held and rsi[i] > exit_rsi:
+            held = False
+        w[i] = 1.0 if held else 0.0
+    return _to_bps(w)
+
+
+def ts_momentum(s: Series, lookback: float, threshold: float) -> np.ndarray:
+    n = int(lookback)
+    w = np.zeros(len(s))
+    if n < len(s):
+        w[n:] = np.where(s.close[n:] / s.close[:-n] - 1 > threshold, 1.0, 0.0)
+    return _to_bps(w)
+
+
 FAMILIES: dict[StrategyFamily, tuple[Callable[..., np.ndarray], dict[str, tuple[float, float]]]] = {
     # family -> (function, allowed parameter bounds)
     StrategyFamily.SMA_CROSSOVER: (sma_crossover, {"fast": (2, 200), "slow": (5, 600)}),
     StrategyFamily.BREAKOUT: (breakout, {"lookback": (5, 400)}),
     StrategyFamily.ZSCORE_REVERSION: (zscore_reversion, {"lookback": (5, 400), "entry_z": (0.25, 4.0), "exit_z": (-2.0, 2.0)}),
     StrategyFamily.VOL_TARGET: (vol_target, {"vol_lookback": (5, 400), "trend_lookback": (5, 800), "target_vol": (0.02, 1.0)}),
+    StrategyFamily.RSI_REVERSION: (rsi_reversion, {"lookback": (2, 100), "entry_rsi": (5, 45), "exit_rsi": (40, 85)}),
+    StrategyFamily.TS_MOMENTUM: (ts_momentum, {"lookback": (5, 800), "threshold": (-0.05, 0.10)}),
 }
 
 
@@ -118,6 +145,8 @@ def validate_params(family: StrategyFamily, params: dict[str, float]) -> None:
             raise ValueError(f"{family}.{k}={v} outside [{lo}, {hi}]")
     if family == StrategyFamily.SMA_CROSSOVER and params["fast"] >= params["slow"]:
         raise ValueError("fast must be < slow")
+    if family == StrategyFamily.RSI_REVERSION and params["entry_rsi"] >= params["exit_rsi"]:
+        raise ValueError("entry_rsi must be < exit_rsi")
 
 
 def max_lookback(family: StrategyFamily, params: dict[str, float]) -> int:

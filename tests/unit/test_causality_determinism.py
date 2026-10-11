@@ -20,6 +20,8 @@ PARAMS = {
     StrategyFamily.BREAKOUT: {"lookback": 40},
     StrategyFamily.ZSCORE_REVERSION: {"lookback": 30, "entry_z": 1.5, "exit_z": 0.0},
     StrategyFamily.VOL_TARGET: {"vol_lookback": 30, "trend_lookback": 100, "target_vol": 0.15},
+    StrategyFamily.RSI_REVERSION: {"lookback": 14, "entry_rsi": 30, "exit_rsi": 55},
+    StrategyFamily.TS_MOMENTUM: {"lookback": 120, "threshold": 0.0},
 }
 
 
@@ -125,3 +127,13 @@ def test_event_chain_detects_tampering(data):
     fill["px"] -= 1
     with pytest.raises(AssertionError, match="hash mismatch"):
         replay(bad)
+
+
+def test_new_family_bounds_and_ordering():
+    from quantswarm.strategies import validate_params
+    validate_params(StrategyFamily.RSI_REVERSION, {"lookback": 14, "entry_rsi": 30, "exit_rsi": 55})
+    validate_params(StrategyFamily.TS_MOMENTUM, {"lookback": 120, "threshold": 0.02})
+    with pytest.raises(ValueError, match="entry_rsi must be < exit_rsi"):
+        validate_params(StrategyFamily.RSI_REVERSION, {"lookback": 14, "entry_rsi": 45, "exit_rsi": 45})
+    with pytest.raises(ValueError, match="outside"):
+        validate_params(StrategyFamily.TS_MOMENTUM, {"lookback": 120, "threshold": 0.5})
