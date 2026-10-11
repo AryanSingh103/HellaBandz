@@ -580,35 +580,6 @@ async def ask(body: AskIn):
         raise HTTPException(502, "answer provider failed; retry the read-only question")
 
 
-class SpeakIn(BaseModel):
-    text: str = Field(max_length=1200)
-
-
-@app.post("/v1/speak")
-async def speak(body: SpeakIn):
-    """ElevenLabs text-to-speech. Returns 501 without a key; the UI then falls back to browser speech."""
-    from fastapi.responses import Response
-
-    key = os.environ.get("ELEVENLABS_API_KEY")
-    if not key:
-        raise HTTPException(501, "ELEVENLABS_API_KEY not configured")
-    import httpx
-
-    voice = os.environ.get("ELEVENLABS_VOICE_ID", "onwK4e9ZLuTAKqWW03F9")
-    try:
-        async with httpx.AsyncClient(timeout=30) as c:
-            r = await c.post(f"https://api.elevenlabs.io/v1/text-to-speech/{voice}",
-                             headers={"xi-api-key": key, "accept": "audio/mpeg"},
-                             json={"text": body.text, "model_id": os.environ.get("ELEVENLABS_MODEL", "eleven_flash_v2_5")})
-    except httpx.TimeoutException:
-        raise HTTPException(504, "speech provider timed out; retry playback")
-    except httpx.HTTPError:
-        raise HTTPException(502, "speech provider unavailable; retry playback")
-    if r.status_code != 200:
-        raise HTTPException(502, f"elevenlabs error {r.status_code}")
-    return Response(content=r.content, media_type="audio/mpeg")
-
-
 # ----------------------------------------------------------------------------- streaming
 
 

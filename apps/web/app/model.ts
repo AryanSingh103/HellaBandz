@@ -35,9 +35,11 @@ export function moneyInput(value: string, positive = false) {
 export const familyName = (s: string) => ({ sma_crossover: "Moving Average Crossover", breakout: "Price Breakout", zscore_reversion: "Z-Score Reversion", vol_target: "Volatility Target", rsi_reversion: "RSI Reversion", ts_momentum: "Trend Momentum", regime_reversion: "Range-Regime Reversion Overlay", buy_hold: "Passive Core" }[s] || s);
 export type Band = { start: number; end: number; label: string };
 /** Scheduled market-crash window of a browser-launched session, located on its equity points (one point per replay step). */
-export function crashBand(jobs: Job[] | undefined, pid: string, equity: { ts: string }[] | undefined): Band | undefined {
+export function crashBand(jobs: Job[] | undefined, pid: string, equity: { ts: string }[] | undefined, session?: Context["session"]): Band | undefined {
   const job = jobs?.find(j => j.kind === "session" && j.portfolio_id === pid) as (Job & { config?: { steps?: number; crash_at?: number | null } }) | undefined;
-  const steps = job?.config?.steps, at = job?.config?.crash_at;
+  // Command-line sessions have no job row; their summary records the crash step instead.
+  const steps = job ? job.config?.steps : session?.steps;
+  const at = job ? job.config?.crash_at : session?.steps && session.crash_start_step != null ? session.crash_start_step / session.steps : undefined;
   if (!steps || at === undefined || at === null || !equity?.length) return undefined;
   const pts = [...equity].sort((a, b) => Date.parse(a.ts) - Date.parse(b.ts)), k = Math.floor(steps * at);
   if (!pts[k]) return undefined;
@@ -63,7 +65,8 @@ export type State = { opened: boolean; initial_cash: number; cash: number; equit
 export type Portfolio = { seq: number; digest: string; head_hash: string; state: State; equity: number; updated_at: string };
 export type Runtime = { worker_alive: boolean; worker_last_heartbeat: string | null; pending_commands: number; ready: boolean; ownership: string; manager_alive: boolean;
   intentional_down: boolean; status: string; recovery: unknown; managed?: { error?: string } };
-export type Context = { portfolio_id: string; run_id?: string; dataset_id?: string; provenance?: string; manifest: Manifest | null; manifest_hash?: string };
+export type Context = { portfolio_id: string; run_id?: string; dataset_id?: string; provenance?: string; manifest: Manifest | null; manifest_hash?: string;
+  session?: { steps?: number; crash_start_step?: number | null } };
 export type PortfolioChoice = { portfolio_id: string; run_id?: string; ownership: string };
 export type Job = { job_id: string; request_id: string; kind: string; run_id: string; portfolio_id: string | null; dataset_id: string; status: string; stage: string;
   progress: number; total: number | null; error: string | null; result: unknown; created_at: string; started_at: string; finished_at: string; stop_requested: boolean };

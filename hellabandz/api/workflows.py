@@ -64,7 +64,6 @@ async def capabilities():
             "research_provider": ("Gemini (OpenAI backup)" if backup else {"gemini": "Gemini", "openai": "OpenAI"}.get(provider)) if llm.available() else "labeled fixture/fallback",
             "research_model": llm.model_name(), "research_provider_selected": provider,
             "research_backup_provider": backup,
-            "speech_provider": "ElevenLabs" if os.environ.get("ELEVENLABS_API_KEY") else "browser fallback",
             "live_observation": False}
 
 
@@ -83,7 +82,19 @@ async def portfolios():
 async def context(portfolio_id: Ident = "main"):
     rows = await gateway.q("SELECT c.*, t.manifest, t.manifest_hash FROM portfolio_context c "
                            "LEFT JOIN tournaments t USING(run_id) WHERE portfolio_id = %s", (portfolio_id,))
-    return rows[0] if rows else {"portfolio_id": portfolio_id, "association": "unassociated", "manifest": None}
+    if not rows:
+        return {"portfolio_id": portfolio_id, "association": "unassociated", "manifest": None}
+    row = rows[0]
+    # A command-line session leaves no job row; its summary file records where the scripted crash began.
+    session = MANIFESTS / f"{row['run_id']}.{portfolio_id}.session.json" if row.get("run_id") else None
+    if session and session.is_file():
+        try:
+            summary = json.loads(session.read_text())
+            if summary.get("run_id") == row["run_id"]:
+                row["session"] = {"steps": summary.get("steps"), "crash_start_step": summary.get("crash_start_step")}
+        except (OSError, ValueError):
+            pass
+    return row
 
 
 class PortfolioIn(BaseModel):
@@ -317,6 +328,24 @@ async def download_manifest(run_id: Ident):
         raise HTTPException(404, "run not found")
     return Response(canonical(rows[0]["manifest"]), media_type="application/json",
                     headers={"Content-Disposition": f'attachment; filename="{run_id}.json"'})
+
+
+@router.get("/tournaments/{run_id}/baseline")
+async def tournament_baseline(run_id: Ident):
+    """Equal-weight buy-and-hold over the run's held-out period, if its derived artifact matches the frozen manifest."""
+    rows = await gateway.q("SELECT manifest_hash FROM tournaments WHERE run_id = %s", (run_id,))
+    if not rows:
+        raise HTTPException(404, "run not found")
+    path = MANIFESTS / f"{run_id}.analytics.json"
+    try:
+        artifact = json.loads(path.read_text())
+        if artifact["run_id"] != run_id or artifact["manifest_hash"] != rows[0]["manifest_hash"]:
+            raise ValueError("baseline provenance mismatch")
+    except FileNotFoundError:
+        return {"status": "unavailable", "reason": "no buy-and-hold baseline was recorded for this run"}
+    except (OSError, ValueError, KeyError, TypeError):
+        return {"status": "unavailable", "reason": "baseline artifact is unreadable or does not match the frozen manifest"}
+    return {key: artifact.get(key) for key in ("status", "start_ts", "end_ts", "baseline", "baseline_metrics", "assumptions")}
 
 
 @router.get("/history/{collection}")

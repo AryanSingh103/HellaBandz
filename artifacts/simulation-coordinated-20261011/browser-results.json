@@ -1,0 +1,286 @@
+{
+  "status": "PASS",
+  "payload": {
+    "kind": "coordinated",
+    "dataset_id": "alpaca-sip-1hour-2023-01-03-2026-09-30",
+    "steps": 100,
+    "speed": 0,
+    "crash_at": null,
+    "duration_s": null,
+    "request_id": "job-6a68abfe-15f6-4d18-b1b8-a604baa8857d",
+    "portfolio_id": "sim-mv3lx4bs"
+  },
+  "job": {
+    "job_id": "J1db6bdd7d8124ee3824d4cbe3eb75aff",
+    "request_id": "job-6a68abfe-15f6-4d18-b1b8-a604baa8857d",
+    "kind": "coordinated",
+    "dataset_id": "alpaca-sip-1hour-2023-01-03-2026-09-30",
+    "run_id": "Ccd70c94a2b994ece8cbe",
+    "portfolio_id": "sim-mv3lx4bs",
+    "config": {
+      "kind": "coordinated",
+      "speed": 0,
+      "steps": 100,
+      "run_id": null,
+      "crash_at": null,
+      "dataset_id": "alpaca-sip-1hour-2023-01-03-2026-09-30",
+      "duration_s": null,
+      "request_id": "job-6a68abfe-15f6-4d18-b1b8-a604baa8857d",
+      "portfolio_id": "sim-mv3lx4bs"
+    },
+    "status": "completed",
+    "stage": "completed",
+    "progress": 100,
+    "total": 100,
+    "stop_requested": false,
+    "result": {
+      "fees": 110000,
+      "fills": 5,
+      "cycles": 100,
+      "orders": 5,
+      "run_id": "Ccd70c94a2b994ece8cbe",
+      "verify": {
+        "error": null,
+        "match": true,
+        "events": 517,
+        "chain_ok": true,
+        "head_hash": "e8795baf4d40bce2c2dbe8cb57c3a4171d9f4b3f4d53400f4a6ed0373dda7cfc",
+        "stored_digest": "618275aae24a726fe7235f2ca447522e89cb85849525e8ddb442d755cd478900",
+        "replayed_digest": "618275aae24a726fe7235f2ca447522e89cb85849525e8ddb442d755cd478900"
+      },
+      "metrics": {
+        "fills": 5,
+        "cycles": 100,
+        "sharpe": -3.0541047368451304,
+        "sortino": -3.8822656984749115,
+        "turnover": 0.735382,
+        "net_return": -0.024838000000000027,
+        "max_drawdown": 0.04308466685426944,
+        "cost_fraction": 0.000412,
+        "ledger_digest": "618275aae24a726fe7235f2ca447522e89cb85849525e8ddb442d755cd478900",
+        "ledger_rejections": 0,
+        "turnover_per_year": 12.972138479999998,
+        "reconciliation_breaks": 0,
+        "cost_fraction_per_year": 0.0072676799999999995
+      },
+      "sleeves": [
+        [
+          "core",
+          "3b1862135b41b5fc",
+          9000
+        ]
+      ],
+      "stopped": false,
+      "slippage": 4010000,
+      "turnover": 0.735382,
+      "elapsed_s": 68.9,
+      "head_hash": "e8795baf4d40bce2c2dbe8cb57c3a4171d9f4b3f4d53400f4a6ed0373dda7cfc",
+      "net_return": -0.024838000000000027,
+      "attribution": {
+        "core": {
+          "pnl": -248380000,
+          "cash": 1646070000,
+          "fees": 110000,
+          "fills": 5,
+          "equity": 8751620000,
+          "capital": 9000000000,
+          "realized": 0,
+          "slippage": 4010000,
+          "positions": {
+            "QQQ": {
+              "qty": 2,
+              "basis": 1229940000
+            },
+            "SPY": {
+              "qty": 2,
+              "basis": 1358680000
+            },
+            "AAPL": {
+              "qty": 6,
+              "basis": 1627800000
+            },
+            "MSFT": {
+              "qty": 3,
+              "basis": 1445670000
+            },
+            "NVDA": {
+              "qty": 9,
+              "basis": 1691730000
+            }
+          },
+          "unrealized": -248270000,
+          "market_value": 7105550000,
+          "traded_notional": 7353820000
+        }
+      },
+      "finished_at": "2026-10-11T09:16:00+00:00",
+      "code_version": "runtime-regime-units-4",
+      "final_equity": 9751.62,
+      "portfolio_id": "sim-mv3lx4bs",
+      "actual_end_ts": 1769097601,
+      "ledger_digest": "618275aae24a726fe7235f2ca447522e89cb85849525e8ddb442d755cd478900",
+      "source_sha256": "d237077b12f30ad93ce57915d4663054c358d6b5cb61893efa2a8bcd1fdeb087",
+      "dataset_sha256": "733b700631cb91676aedd3c014fe4ddd7bccf193e0e904f7818256eceaa7c5e1",
+      "policy_version": "adaptive-allocation-3",
+      "intent_outcomes": {
+        "netted": 0,
+        "reduced": 0,
+        "accepted": 500,
+        "deferred": 0,
+        "rejected": 0
+      },
+      "baseline_metrics": {
+        "fills": 5,
+        "cycles": 100,
+        "sharpe": -3.0541047368451304,
+        "sortino": -3.8822656984749115,
+        "turnover": 0.735382,
+        "net_return": -0.024838000000000027,
+        "max_drawdown": 0.04308466685426944,
+        "cost_fraction": 0.000412,
+        "ledger_digest": "618275aae24a726fe7235f2ca447522e89cb85849525e8ddb442d755cd478900",
+        "ledger_rejections": 0,
+        "turnover_per_year": 12.972138479999998,
+        "reconciliation_breaks": 0,
+        "cost_fraction_per_year": 0.0072676799999999995
+      },
+      "unallocated_cash": 1000000000,
+      "exposure_bps_mean": 7319.02,
+      "ledger_rejections": 0,
+      "return_attribution": {
+        "units": "integer USD micros",
+        "net_pnl": -248380000,
+        "ending_cash": 2646070000,
+        "instruments": {
+          "QQQ": {
+            "fees": 10000,
+            "net_pnl": 7670000,
+            "mark_pnl": 8320000,
+            "traded_notional": 1229940000,
+            "modeled_slippage": 640000,
+            "execution_pnl_at_close": -640000
+          },
+          "SPY": {
+            "fees": 10000,
+            "net_pnl": 9990000,
+            "mark_pnl": 10700000,
+            "traded_notional": 1358680000,
+            "modeled_slippage": 700000,
+            "execution_pnl_at_close": -700000
+          },
+          "AAPL": {
+            "fees": 30000,
+            "net_pnl": -134370000,
+            "mark_pnl": -133440000,
+            "traded_notional": 1627800000,
+            "modeled_slippage": 900000,
+            "execution_pnl_at_close": -900000
+          },
+          "MSFT": {
+            "fees": 15000,
+            "net_pnl": -105705000,
+            "mark_pnl": -104910000,
+            "traded_notional": 1445670000,
+            "modeled_slippage": 780000,
+            "execution_pnl_at_close": -780000
+          },
+          "NVDA": {
+            "fees": 45000,
+            "net_pnl": -25965000,
+            "mark_pnl": -24930000,
+            "traded_notional": 1691730000,
+            "modeled_slippage": 990000,
+            "execution_pnl_at_close": -990000
+          }
+        },
+        "methodology": "prior holdings times mark changes + fill quantity times signed close-minus-fill price - fees; modeled slippage already embedded in fill prices, never subtracted twice",
+        "initial_cash": 10000000000,
+        "cycle_residual": 0,
+        "cash_interest_pnl": 0,
+        "reconciliation_residual": 0,
+        "gross_before_modeled_costs_pnl": -244260000
+      },
+      "reconciliation_breaks": 0
+    },
+    "error": null,
+    "created_at": "2026-10-11T09:14:38.504254+00:00",
+    "started_at": "2026-10-11T09:14:44.021115+00:00",
+    "finished_at": "2026-10-11T09:16:01.446286+00:00",
+    "updated_at": "2026-10-11T09:16:01.446286+00:00",
+    "cleared_at": null
+  },
+  "verification": {
+    "events": 517,
+    "chain_ok": true,
+    "error": null,
+    "replayed_digest": "618275aae24a726fe7235f2ca447522e89cb85849525e8ddb442d755cd478900",
+    "stored_digest": "618275aae24a726fe7235f2ca447522e89cb85849525e8ddb442d755cd478900",
+    "match": true,
+    "head_hash": "e8795baf4d40bce2c2dbe8cb57c3a4171d9f4b3f4d53400f4a6ed0373dda7cfc"
+  },
+  "export_keys": [
+    "about",
+    "simulation",
+    "provenance",
+    "metrics",
+    "agents",
+    "thinking",
+    "decisions",
+    "trades",
+    "steps",
+    "buy_and_hold_comparison",
+    "agent_profit_history",
+    "coordinated_report",
+    "raw_ledger_events",
+    "session_messages",
+    "final_account_state"
+  ],
+  "agent_count": 4,
+  "metrics": {
+    "starting_cash": 10000,
+    "account_value": 9751.62,
+    "return": -0.024838000000000027,
+    "fees": 0.11,
+    "slippage": 4.01,
+    "strategy": {
+      "net_return": -0.024838000000000027,
+      "sharpe": -3.0541047368451304,
+      "sortino": -3.8822656984749115,
+      "max_drawdown": 0.04308466685426944,
+      "turnover_per_year": 12.972138479999998,
+      "turnover": 0.735382,
+      "cost_fraction": 0.000412,
+      "cost_fraction_per_year": 0.0072676799999999995,
+      "fills": 5,
+      "cycles": 100,
+      "ledger_digest": "618275aae24a726fe7235f2ca447522e89cb85849525e8ddb442d755cd478900",
+      "reconciliation_breaks": 0,
+      "ledger_rejections": 0
+    },
+    "baseline": {
+      "net_return": -0.024838000000000027,
+      "sharpe": -3.0541047368451304,
+      "sortino": -3.8822656984749115,
+      "max_drawdown": 0.04308466685426944,
+      "turnover_per_year": 12.972138479999998,
+      "turnover": 0.735382,
+      "cost_fraction": 0.000412,
+      "cost_fraction_per_year": 0.0072676799999999995,
+      "fills": 5,
+      "cycles": 100,
+      "ledger_digest": "618275aae24a726fe7235f2ca447522e89cb85849525e8ddb442d755cd478900",
+      "reconciliation_breaks": 0,
+      "ledger_rejections": 0
+    },
+    "ledger_check": {
+      "events": 517,
+      "chain_ok": true,
+      "error": null,
+      "replayed_digest": "618275aae24a726fe7235f2ca447522e89cb85849525e8ddb442d755cd478900",
+      "stored_digest": "618275aae24a726fe7235f2ca447522e89cb85849525e8ddb442d755cd478900",
+      "match": true,
+      "head_hash": "e8795baf4d40bce2c2dbe8cb57c3a4171d9f4b3f4d53400f4a6ed0373dda7cfc"
+    }
+  },
+  "errors": []
+}

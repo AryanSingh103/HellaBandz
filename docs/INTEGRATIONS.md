@@ -1,11 +1,11 @@
 # Integrations runbook (P2)
 
 All integrations are optional. Without keys the system runs offline: recorded agent proposals,
-a deterministic supervisor and crisis policy, browser speech, the synthetic dataset, and offline
+a deterministic supervisor and crisis policy, the synthetic dataset, and offline
 manifest verification. Every live path is unit-tested against mocked services
 (`tests/unit/test_integrations.py`), so adding a key should work on first use.
 
-Operator access is required by default even offline. `make auth-init` generates the local key;
+Operator sign-in is off by default. `make auth-init` generates a local key; with `QS_AUTH_REQUIRED=1`,
 sign in with `QS_API_TOKEN` from ignored `.env`. Use the same hostname for the terminal and API
 because browser sessions are SameSite cookies. See [SECURITY](SECURITY.md).
 
@@ -16,7 +16,6 @@ restart the API after editing it: `docker compose up -d api`.
 | Integration | Key(s) | Verify | Then |
 |---|---|---|---|
 | Gemini primary / OpenAI backup | `GEMINI_API_KEY` (or `GOOGLE_API_KEY`), `QS_GEMINI_MODEL=gemini-3.8-flash`; optional `OPENAI_API_KEY` backup | `make check-integrations` → `OK Research LLM` with actual provider/model | Research, supervisor, crisis responses, commentary, Ask and review classification use the selected provider |
-| ElevenLabs | `ELEVENLABS_API_KEY`, optional `ELEVENLABS_VOICE_ID`, `ELEVENLABS_MODEL` | `OK ElevenLabs … bytes of audio` | Ask panel in the terminal speaks through `/v1/speak` |
 | Alpaca | `ALPACA_API_KEY_ID`, `ALPACA_API_SECRET_KEY` (free Basic plan) | `OK Alpaca sip: ok` (or `WARN` ⇒ use `--feed iex`) | see "Real-data tournament" below |
 | Solana Devnet | none (keypair auto-created in `data/solana/`, gitignored) | `TODO` until funded, then `OK` | `make solana-commit && make verify-solana` |
 | Tiger Cloud | `DATABASE_URL` (host) **and** `QS_DATABASE_URL` (containers), same service URL with `?sslmode=require` | `OK … Tiger Cloud: timescaledb …` | `docker compose up -d worker api` (skip `db`), then `make tournament session` |

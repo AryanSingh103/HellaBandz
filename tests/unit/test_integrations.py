@@ -1,7 +1,7 @@
 """External integrations exercised against mocked services (no keys or network needed).
 
-Covers the code paths that only run when OPENAI_API_KEY / ELEVENLABS_API_KEY /
-Alpaca keys / a funded Solana key are present, so they work on first use.
+Covers the code paths that only run when OPENAI_API_KEY / Alpaca
+keys / a funded Solana key are present, so they work on first use.
 """
 
 from __future__ import annotations
@@ -257,36 +257,6 @@ def test_alpaca_bad_credentials_message(monkeypatch):
     monkeypatch.setattr(mod.httpx, "Client", Client)
     with pytest.raises(SystemExit, match="--feed iex"):
         mod.fetch(["SPY"], "2025-01-06", "2025-01-07", "1Hour", "sip")
-
-
-# ----------------------------------------------------------------------------- ElevenLabs
-
-
-def test_speak_endpoint(monkeypatch):
-    monkeypatch.setenv("QS_AUTH_REQUIRED", "0")  # Provider-only test; secure API access is tested separately.
-    from fastapi.testclient import TestClient
-
-    from hellabandz.api import app as api_mod
-    client = TestClient(api_mod.app)  # no lifespan: endpoint does not touch the DB
-    monkeypatch.delenv("ELEVENLABS_API_KEY", raising=False)
-    assert client.post("/v1/speak", json={"text": "hi"}).status_code == 501
-
-    sent = {}
-
-    class AC:
-        def __init__(self, **kw): ...
-        async def __aenter__(self): return self
-        async def __aexit__(self, *a): return False
-        async def post(self, url, headers, json):
-            sent.update(url=url, headers=headers, json=json)
-            return type("R", (), {"status_code": 200, "content": b"ID3fake-mp3"})
-
-    import httpx
-    monkeypatch.setattr(httpx, "AsyncClient", AC)
-    monkeypatch.setenv("ELEVENLABS_API_KEY", "xi")
-    r = client.post("/v1/speak", json={"text": "Equity is ten thousand dollars."})
-    assert r.status_code == 200 and r.headers["content-type"] == "audio/mpeg" and r.content == b"ID3fake-mp3"
-    assert sent["headers"]["xi-api-key"] == "xi" and "/v1/text-to-speech/" in sent["url"]
 
 
 # ----------------------------------------------------------------------------- Solana

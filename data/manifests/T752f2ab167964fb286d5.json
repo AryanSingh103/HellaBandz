@@ -1,0 +1,1791 @@
+{
+ "allocations": {
+  "blended": {
+   "T752f2ab167964fb286d5.breakout": 0.23454669829494373,
+   "T752f2ab167964fb286d5.mean_reversion": 0.0,
+   "T752f2ab167964fb286d5.momentum": 0.22997438260646214,
+   "T752f2ab167964fb286d5.rsi": 0.0,
+   "T752f2ab167964fb286d5.trend": 0.0,
+   "T752f2ab167964fb286d5.volatility": 0.4554789190985941
+  },
+  "by_strategy": {
+   "T752f2ab167964fb286d5.breakout": {
+    "capital_micros": 376040000,
+    "weight": 0.037604
+   },
+   "T752f2ab167964fb286d5.core": {
+    "capital_micros": 7762540000,
+    "role": "passive core",
+    "weight": 0.776254
+   },
+   "T752f2ab167964fb286d5.mean_reversion": {
+    "capital_micros": 0,
+    "weight": 0.0
+   },
+   "T752f2ab167964fb286d5.momentum": {
+    "capital_micros": 178260000,
+    "weight": 0.017826
+   },
+   "T752f2ab167964fb286d5.rsi": {
+    "capital_micros": 0,
+    "weight": 0.0
+   },
+   "T752f2ab167964fb286d5.trend": {
+    "capital_micros": 0,
+    "weight": 0.0
+   },
+   "T752f2ab167964fb286d5.volatility": {
+    "capital_micros": 683160000,
+    "weight": 0.068316
+   }
+  },
+  "evidence_weights": {
+   "T752f2ab167964fb286d5.breakout": 0.163889,
+   "T752f2ab167964fb286d5.mean_reversion": 0.0,
+   "T752f2ab167964fb286d5.momentum": 0.079235,
+   "T752f2ab167964fb286d5.rsi": 0.0,
+   "T752f2ab167964fb286d5.trend": 0.0,
+   "T752f2ab167964fb286d5.volatility": 0.17079
+  },
+  "score_weights": {
+   "T752f2ab167964fb286d5.breakout": 0.2470933965898875,
+   "T752f2ab167964fb286d5.mean_reversion": 0.0,
+   "T752f2ab167964fb286d5.momentum": 0.24194876521292424,
+   "T752f2ab167964fb286d5.rsi": 0.0,
+   "T752f2ab167964fb286d5.trend": 0.0,
+   "T752f2ab167964fb286d5.volatility": 0.5109578381971882
+  }
+ },
+ "code_version": "unknown",
+ "core": {
+  "spec": {
+   "agent_id": "core",
+   "family": "buy_hold",
+   "params": {},
+   "strategy_id": "T752f2ab167964fb286d5.core",
+   "universe": [
+    "AAPL",
+    "MSFT",
+    "NVDA",
+    "QQQ",
+    "SPY"
+   ],
+   "version": "1"
+  },
+  "train": {
+   "fees_usd": 0.775,
+   "final_equity_usd": 26118.945055,
+   "max_drawdown": 0.22158058,
+   "n_fills": 5,
+   "net_return": 1.61189451,
+   "sharpe": 1.700141,
+   "slippage_usd": 4.099945,
+   "turnover": 0.820399
+  },
+  "validation": {
+   "fees_usd": 0.17,
+   "final_equity_usd": 12893.873645,
+   "max_drawdown": 0.11384707,
+   "n_fills": 5,
+   "net_return": 0.28938736,
+   "sharpe": 1.756211,
+   "slippage_usd": 4.056355,
+   "turnover": 0.811677
+  }
+ },
+ "created_at": "2026-10-11T02:29:40+00:00",
+ "dataset": {
+  "content_sha256": "733b700631cb91676aedd3c014fe4ddd7bccf193e0e904f7818256eceaa7c5e1",
+  "dataset_id": "alpaca-sip-1hour-2023-01-03-2026-09-30",
+  "interval_s": 3600,
+  "source": "Alpaca Market Data v2 stocks/bars feed=sip",
+  "splits": {
+   "test": [
+    1767193200,
+    1790794801
+   ],
+   "train": [
+    1672754400,
+    1743606000
+   ],
+   "validation": [
+    1743606000,
+    1767193200
+   ]
+  }
+ },
+ "engine_config": {
+  "expiry_bars": 5,
+  "fee_per_share": 5000,
+  "kill_drawdown_bps": 1500,
+  "limit_band_bps": 1000,
+  "max_gross_bps": 9000,
+  "max_order_bps": 2500,
+  "max_signal_age_s": 7200,
+  "participation_bps": 100,
+  "reserve_buffer_bps": 200,
+  "slippage_bps": 5,
+  "stress_slippage_bps": 50
+ },
+ "engine_config_digest": "924400e7c89f2bb197d7064b51fc82fdba70152cc418f0b237e52cfee0829307",
+ "fitted": [
+  {
+   "candidate_source": "llm",
+   "candidates_tested": 8,
+   "spec": {
+    "agent_id": "breakout",
+    "family": "breakout",
+    "params": {
+     "lookback": 240.0
+    },
+    "strategy_id": "T752f2ab167964fb286d5.breakout",
+    "universe": [
+     "NVDA"
+    ],
+    "version": "1"
+   },
+   "train": {
+    "fees_usd": 9.05,
+    "final_equity_usd": 22493.826095,
+    "max_drawdown": 0.08859735,
+    "n_fills": 35,
+    "net_return": 1.24938261,
+    "sharpe": 1.91271,
+    "slippage_usd": 50.793905,
+    "turnover": 10.158153
+   },
+   "train_excess": {
+    "excess_return": -0.3625119,
+    "information_ratio": -0.36293
+   },
+   "train_objective": 0.259384,
+   "walk_forward": {
+    "blocks": [
+     [
+      1696371600,
+      1719988800
+     ],
+     [
+      1719988800,
+      1743606000
+     ]
+    ],
+    "excess_returns": [
+     0.12308525,
+     -0.0006412
+    ],
+    "specs": [
+     {
+      "family": "breakout",
+      "params": {
+       "lookback": 240.0
+      }
+     },
+     {
+      "family": "breakout",
+      "params": {
+       "lookback": 240.0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "candidate_source": "llm",
+   "candidates_tested": 80,
+   "spec": {
+    "agent_id": "mean_reversion",
+    "family": "regime_reversion",
+    "params": {
+     "lookback": 20.0,
+     "min_reversion": 0.05,
+     "rebuy_z": 0.0,
+     "regime_lookback": 200.0,
+     "sell_z": 2.0
+    },
+    "strategy_id": "T752f2ab167964fb286d5.mean_reversion",
+    "universe": [
+     "NVDA"
+    ],
+    "version": "1"
+   },
+   "train": {
+    "fees_usd": 15.25,
+    "final_equity_usd": 66493.406635,
+    "max_drawdown": 0.30271437,
+    "n_fills": 14,
+    "net_return": 5.64934066,
+    "sharpe": 2.009347,
+    "slippage_usd": 35.833365,
+    "turnover": 7.167075
+   },
+   "train_excess": {
+    "excess_return": 4.03744615,
+    "information_ratio": 2.141248
+   },
+   "train_objective": 1.897655,
+   "walk_forward": {
+    "blocks": [
+     [
+      1696371600,
+      1719988800
+     ],
+     [
+      1719988800,
+      1743606000
+     ]
+    ],
+    "excess_returns": [
+     0.7362081,
+     -0.07120891
+    ],
+    "specs": [
+     {
+      "family": "regime_reversion",
+      "params": {
+       "lookback": 20.0,
+       "min_reversion": 0.02,
+       "rebuy_z": 0.5,
+       "regime_lookback": 200.0,
+       "sell_z": 2.0
+      }
+     },
+     {
+      "family": "regime_reversion",
+      "params": {
+       "lookback": 20.0,
+       "min_reversion": 0.05,
+       "rebuy_z": 0.0,
+       "regime_lookback": 200.0,
+       "sell_z": 2.5
+      }
+     }
+    ]
+   }
+  },
+  {
+   "candidate_source": "llm",
+   "candidates_tested": 25,
+   "spec": {
+    "agent_id": "momentum",
+    "family": "sma_crossover",
+    "params": {
+     "fast": 10.0,
+     "slow": 100.0
+    },
+    "strategy_id": "T752f2ab167964fb286d5.momentum",
+    "universe": [
+     "NVDA"
+    ],
+    "version": "1"
+   },
+   "train": {
+    "fees_usd": 48.54,
+    "final_equity_usd": 20877.68504,
+    "max_drawdown": 0.15443925,
+    "n_fills": 120,
+    "net_return": 1.0877685,
+    "sharpe": 1.61003,
+    "slippage_usd": 254.69496,
+    "turnover": 50.938433
+   },
+   "train_excess": {
+    "excess_return": -0.52412601,
+    "information_ratio": -0.510718
+   },
+   "train_objective": 0.408446,
+   "walk_forward": {
+    "blocks": [
+     [
+      1696371600,
+      1719988800
+     ],
+     [
+      1719988800,
+      1743606000
+     ]
+    ],
+    "excess_returns": [
+     0.16853802,
+     -0.14735559
+    ],
+    "specs": [
+     {
+      "family": "sma_crossover",
+      "params": {
+       "fast": 60.0,
+       "slow": 100.0
+      }
+     },
+     {
+      "family": "sma_crossover",
+      "params": {
+       "fast": 60.0,
+       "slow": 100.0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "candidate_source": "llm",
+   "candidates_tested": 75,
+   "spec": {
+    "agent_id": "rsi",
+    "family": "rsi_reversion",
+    "params": {
+     "entry_rsi": 25.0,
+     "exit_rsi": 75.0,
+     "lookback": 8.0
+    },
+    "strategy_id": "T752f2ab167964fb286d5.rsi",
+    "universe": [
+     "NVDA"
+    ],
+    "version": "1"
+   },
+   "train": {
+    "fees_usd": 146.71,
+    "final_equity_usd": 20811.065065,
+    "max_drawdown": 0.10946924,
+    "n_fills": 270,
+    "net_return": 1.08110651,
+    "sharpe": 1.788588,
+    "slippage_usd": 723.134935,
+    "turnover": 144.626403
+   },
+   "train_excess": {
+    "excess_return": -0.530788,
+    "information_ratio": -0.582999
+   },
+   "train_objective": 0.135787,
+   "walk_forward": {
+    "blocks": [
+     [
+      1696371600,
+      1719988800
+     ],
+     [
+      1719988800,
+      1743606000
+     ]
+    ],
+    "excess_returns": [
+     -0.18296139,
+     -0.01121706
+    ],
+    "specs": [
+     {
+      "family": "rsi_reversion",
+      "params": {
+       "entry_rsi": 25.0,
+       "exit_rsi": 75.0,
+       "lookback": 8.0
+      }
+     },
+     {
+      "family": "rsi_reversion",
+      "params": {
+       "entry_rsi": 25.0,
+       "exit_rsi": 75.0,
+       "lookback": 8.0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "candidate_source": "llm",
+   "candidates_tested": 24,
+   "spec": {
+    "agent_id": "trend",
+    "family": "ts_momentum",
+    "params": {
+     "lookback": 400.0,
+     "threshold": 0.0
+    },
+    "strategy_id": "T752f2ab167964fb286d5.trend",
+    "universe": [
+     "NVDA",
+     "QQQ"
+    ],
+    "version": "1"
+   },
+   "train": {
+    "fees_usd": 16.05,
+    "final_equity_usd": 17948.633955,
+    "max_drawdown": 0.10363316,
+    "n_fills": 124,
+    "net_return": 0.7948634,
+    "sharpe": 1.693115,
+    "slippage_usd": 158.706045,
+    "turnover": 31.740803
+   },
+   "train_excess": {
+    "excess_return": -0.81703111,
+    "information_ratio": -1.065259
+   },
+   "train_objective": -0.543372,
+   "walk_forward": {
+    "blocks": [
+     [
+      1696371600,
+      1719988800
+     ],
+     [
+      1719988800,
+      1743606000
+     ]
+    ],
+    "excess_returns": [
+     -0.10373525,
+     -0.12367248
+    ],
+    "specs": [
+     {
+      "family": "ts_momentum",
+      "params": {
+       "lookback": 100.0,
+       "threshold": 0.0
+      }
+     },
+     {
+      "family": "ts_momentum",
+      "params": {
+       "lookback": 100.0,
+       "threshold": 0.0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "candidate_source": "llm",
+   "candidates_tested": 54,
+   "spec": {
+    "agent_id": "volatility",
+    "family": "vol_target",
+    "params": {
+     "target_vol": 1.0,
+     "trend_lookback": 100.0,
+     "vol_lookback": 60.0
+    },
+    "strategy_id": "T752f2ab167964fb286d5.volatility",
+    "universe": [
+     "NVDA"
+    ],
+    "version": "1"
+   },
+   "train": {
+    "fees_usd": 83.58,
+    "final_equity_usd": 21801.564605,
+    "max_drawdown": 0.11695148,
+    "n_fills": 214,
+    "net_return": 1.18015646,
+    "sharpe": 1.691293,
+    "slippage_usd": 486.165395,
+    "turnover": 97.23246
+   },
+   "train_excess": {
+    "excess_return": -0.43173805,
+    "information_ratio": -0.428207
+   },
+   "train_objective": 0.29674,
+   "walk_forward": {
+    "blocks": [
+     [
+      1696371600,
+      1719988800
+     ],
+     [
+      1719988800,
+      1743606000
+     ]
+    ],
+    "excess_returns": [
+     0.14531553,
+     -0.06431044
+    ],
+    "specs": [
+     {
+      "family": "vol_target",
+      "params": {
+       "target_vol": 0.5,
+       "trend_lookback": 200.0,
+       "vol_lookback": 60.0
+      }
+     },
+     {
+      "family": "vol_target",
+      "params": {
+       "target_vol": 1.0,
+       "trend_lookback": 200.0,
+       "vol_lookback": 60.0
+      }
+     }
+    ]
+   }
+  }
+ ],
+ "held_out_test": {
+  "core_standalone": {
+   "fees_usd": 0.12,
+   "final_equity_usd": 11578.046795,
+   "max_drawdown": 0.10136695,
+   "n_fills": 7,
+   "net_return": 0.15780468,
+   "sharpe": 1.394372,
+   "slippage_usd": 4.133205,
+   "turnover": 0.827054
+  },
+  "equity_curve": {
+   "equity": [
+    10000000000,
+    9951637755,
+    9980387755,
+    9944577755,
+    10004397755,
+    9886275825,
+    9885475825,
+    9915005825,
+    9886895825,
+    9790768230,
+    9873351440,
+    9843126330,
+    9692159590,
+    9689739590,
+    9714419590,
+    9812683565,
+    9850373565,
+    9940733565,
+    9942133565,
+    9677973565,
+    9803113565,
+    9774761935,
+    9685697245,
+    9643593020,
+    9516297550,
+    9626387550,
+    9783305710,
+    9802015710,
+    9783025710,
+    9667465710,
+    9534757755,
+    9496617755,
+    9656120160,
+    9613440160,
+    9643870160,
+    9594140160,
+    9672670160,
+    9777087475,
+    9635417475,
+    9557883625,
+    9531291635,
+    9441351635,
+    9589391635,
+    9581971635,
+    9532121635,
+    9459031635,
+    9597811635,
+    9583673460,
+    9461970655,
+    9414768950,
+    9447240295,
+    9461299205,
+    9414829205,
+    9298204465,
+    9231174465,
+    9298241405,
+    9206271405,
+    9280091405,
+    9203781405,
+    9062251405,
+    9026261405,
+    9046601405,
+    9234891405,
+    9225301965,
+    9266572800,
+    9137745420,
+    9371484345,
+    9361378680,
+    9497648680,
+    9503148680,
+    9631648680,
+    9805724635,
+    9830964635,
+    9980674635,
+    9917474635,
+    9957084635,
+    10005364635,
+    10019154635,
+    10085764635,
+    10097974635,
+    10109334635,
+    10131034635,
+    9965774635,
+    10057626995,
+    10020192460,
+    10028982460,
+    10173001475,
+    10358481475,
+    10395111475,
+    10455291475,
+    10383521475,
+    10508491475,
+    10670181475,
+    10593701475,
+    10502591475,
+    10473831475,
+    10543871475,
+    10499231475,
+    10546301475,
+    10559931440,
+    10497481440,
+    10568641440,
+    10668241440,
+    10745281440,
+    10792924055,
+    10623004005,
+    10604714005,
+    10502593170,
+    10446335340,
+    10268115340,
+    10190425340,
+    10089035340,
+    10228705340,
+    10382115340,
+    10343554560,
+    10279694560,
+    10293564560,
+    10266700300,
+    10167351980,
+    10153041980,
+    9929091980,
+    9952901980,
+    10004741980,
+    10081271980,
+    10157171980,
+    10222561980,
+    10248871980,
+    10200381980,
+    10191291980,
+    10254485750,
+    10336275750,
+    10395615750,
+    10371035750,
+    10460005750,
+    10454555750,
+    10364275750,
+    10368095750,
+    10414365750,
+    10417365750,
+    10294035750,
+    10374015750,
+    10314868425,
+    10286118425,
+    10244798425,
+    10408058425,
+    10328548425,
+    10548668425,
+    10683384350,
+    10821818895,
+    10843278895,
+    10920118895,
+    10863253895,
+    10847188895,
+    10848938895,
+    10911823895,
+    10923538895,
+    10877148895,
+    10769253895,
+    10836723395,
+    10781308465,
+    10722627465,
+    10686797465,
+    10691767465,
+    10733017465,
+    10932118475,
+    11022325125,
+    10860736430,
+    10844034240,
+    10887586270,
+    10984055770,
+    10993876770,
+    10888953770,
+    10839842670,
+    10788935185,
+    10869602255,
+    10775973080,
+    10761458080,
+    10813318080,
+    10859408080,
+    10862073080,
+    10992709430,
+    11097557830,
+    11047557830,
+    10939463530,
+    11065830460,
+    11076444860,
+    11091849860,
+    11153069660
+   ],
+   "ts": [
+    1767193200,
+    1767366000,
+    1767625200,
+    1767711600,
+    1767798000,
+    1767884400,
+    1767970800,
+    1768230000,
+    1768316400,
+    1768402800,
+    1768489200,
+    1768575600,
+    1768921200,
+    1769007600,
+    1769094000,
+    1769180400,
+    1769439600,
+    1769526000,
+    1769612400,
+    1769698800,
+    1769785200,
+    1770044400,
+    1770130800,
+    1770217200,
+    1770303600,
+    1770390000,
+    1770649200,
+    1770735600,
+    1770822000,
+    1770908400,
+    1770994800,
+    1771340400,
+    1771426800,
+    1771513200,
+    1771599600,
+    1771858800,
+    1771945200,
+    1772031600,
+    1772118000,
+    1772204400,
+    1772463600,
+    1772550000,
+    1772636400,
+    1772722800,
+    1772809200,
+    1773064800,
+    1773151200,
+    1773237600,
+    1773324000,
+    1773410400,
+    1773669600,
+    1773756000,
+    1773842400,
+    1773928800,
+    1774015200,
+    1774274400,
+    1774360800,
+    1774447200,
+    1774533600,
+    1774620000,
+    1774879200,
+    1774965600,
+    1775052000,
+    1775138400,
+    1775484000,
+    1775570400,
+    1775656800,
+    1775743200,
+    1775829600,
+    1776088800,
+    1776175200,
+    1776261600,
+    1776348000,
+    1776434400,
+    1776693600,
+    1776780000,
+    1776866400,
+    1776952800,
+    1777039200,
+    1777298400,
+    1777384800,
+    1777471200,
+    1777557600,
+    1777644000,
+    1777903200,
+    1777989600,
+    1778076000,
+    1778162400,
+    1778248800,
+    1778508000,
+    1778594400,
+    1778680800,
+    1778767200,
+    1778853600,
+    1779112800,
+    1779199200,
+    1779285600,
+    1779372000,
+    1779458400,
+    1779804000,
+    1779890400,
+    1779976800,
+    1780063200,
+    1780322400,
+    1780408800,
+    1780495200,
+    1780581600,
+    1780668000,
+    1780927200,
+    1781013600,
+    1781100000,
+    1781186400,
+    1781272800,
+    1781532000,
+    1781618400,
+    1781704800,
+    1781791200,
+    1782136800,
+    1782223200,
+    1782309600,
+    1782396000,
+    1782482400,
+    1782741600,
+    1782828000,
+    1782914400,
+    1783000800,
+    1783346400,
+    1783432800,
+    1783519200,
+    1783605600,
+    1783692000,
+    1783951200,
+    1784037600,
+    1784124000,
+    1784210400,
+    1784296800,
+    1784556000,
+    1784642400,
+    1784728800,
+    1784815200,
+    1784901600,
+    1785160800,
+    1785247200,
+    1785333600,
+    1785420000,
+    1785506400,
+    1785765600,
+    1785852000,
+    1785938400,
+    1786024800,
+    1786111200,
+    1786370400,
+    1786456800,
+    1786543200,
+    1786629600,
+    1786716000,
+    1786975200,
+    1787061600,
+    1787148000,
+    1787234400,
+    1787320800,
+    1787580000,
+    1787666400,
+    1787752800,
+    1787839200,
+    1787925600,
+    1788184800,
+    1788271200,
+    1788357600,
+    1788444000,
+    1788530400,
+    1788876000,
+    1788962400,
+    1789048800,
+    1789135200,
+    1789394400,
+    1789480800,
+    1789567200,
+    1789653600,
+    1789740000,
+    1789999200,
+    1790085600,
+    1790172000,
+    1790258400,
+    1790344800,
+    1790604000,
+    1790690400,
+    1790776800
+   ]
+  },
+  "excess_return_vs_core": -0.05161149,
+  "per_strategy_standalone": {
+   "T752f2ab167964fb286d5.breakout": {
+    "fees_usd": 0.88,
+    "final_equity_usd": 8259.49815,
+    "max_drawdown": 0.17405018,
+    "n_fills": 10,
+    "net_return": -0.17405018,
+    "sharpe": -2.397857,
+    "slippage_usd": 16.20185,
+    "turnover": 3.240456
+   },
+   "T752f2ab167964fb286d5.mean_reversion": {
+    "fees_usd": 3.095,
+    "final_equity_usd": 11753.84245,
+    "max_drawdown": 0.17745011,
+    "n_fills": 36,
+    "net_return": 0.17538424,
+    "sharpe": 0.829739,
+    "slippage_usd": 58.37255,
+    "turnover": 11.674956
+   },
+   "T752f2ab167964fb286d5.momentum": {
+    "fees_usd": 2.23,
+    "final_equity_usd": 8458.36875,
+    "max_drawdown": 0.16639062,
+    "n_fills": 26,
+    "net_return": -0.15416313,
+    "sharpe": -1.909617,
+    "slippage_usd": 41.22125,
+    "turnover": 8.244325
+   },
+   "T752f2ab167964fb286d5.rsi": {
+    "fees_usd": 13.3,
+    "final_equity_usd": 10675.3006,
+    "max_drawdown": 0.09332795,
+    "n_fills": 150,
+    "net_return": 0.06753006,
+    "sharpe": 0.514483,
+    "slippage_usd": 265.3544,
+    "turnover": 53.070828
+   },
+   "T752f2ab167964fb286d5.trend": {
+    "fees_usd": 6.04,
+    "final_equity_usd": 8739.859595,
+    "max_drawdown": 0.16138504,
+    "n_fills": 133,
+    "net_return": -0.12601404,
+    "sharpe": -0.994675,
+    "slippage_usd": 153.650405,
+    "turnover": 30.730136
+   },
+   "T752f2ab167964fb286d5.volatility": {
+    "fees_usd": 10.09,
+    "final_equity_usd": 9116.776245,
+    "max_drawdown": 0.15269323,
+    "n_fills": 127,
+    "net_return": -0.08832238,
+    "sharpe": -0.466549,
+    "slippage_usd": 197.643755,
+    "turnover": 39.528785
+   }
+  },
+  "portfolio": {
+   "config_digest": "924400e7c89f2bb197d7064b51fc82fdba70152cc418f0b237e52cfee0829307",
+   "end_ts": 1790794801,
+   "events": 6861,
+   "metrics": {
+    "fees_usd": 1.17,
+    "final_equity_usd": 11061.93186,
+    "max_drawdown": 0.10928548,
+    "n_fills": 85,
+    "net_return": 0.10619319,
+    "sharpe": 1.016062,
+    "slippage_usd": 24.58814,
+    "turnover": 4.918021
+   },
+   "rejections": 26,
+   "run_id": "T752f2ab167964fb286d5.test",
+   "start_ts": 1767193200,
+   "state_digest": "b13ab297f386ff6198cefacef46908f906c09d84f4370ea8831e340d12913110",
+   "trades_digest": "046de335016a5be3f00d1622f409be61ae6426c470be2d586856f5985feca254"
+  }
+ },
+ "policy": {
+  "cap_per_strategy": 0.4,
+  "deployable": 0.9,
+  "initial_cash_micros": 10000000000,
+  "max_dd": 0.25,
+  "min_fills": 10,
+  "selection": "excess return over the passive equal-weight core, out of sample; weight scaled by the weaker of the excess and beta-adjusted alpha t-statistics (full at 1); capital no strategy earns stays in the core",
+  "supervisor_band": 0.2,
+  "walk_forward_blocks": 3
+ },
+ "proposals": [
+  {
+   "agent_id": "breakout",
+   "attempts": 1,
+   "house_proposal": {
+    "agent_id": "breakout",
+    "evidence": [
+     "positive lag7 autocorrelation in QQQ and NVDA",
+     "frac_above_sma200 > 0.5 for growth names"
+    ],
+    "family": "breakout",
+    "param_grid": {
+     "lookback": [
+      35.0,
+      70.0,
+      140.0,
+      280.0
+     ]
+    },
+    "proposal_id": "T752f2ab167964fb286d5.house.breakout",
+    "rationale": "Growth names trend in bursts: closes above the prior multi-week high tend to keep running, and the trailing-low exit gives back little when a breakout fails.",
+    "schema_version": "1",
+    "universe": [
+     "MSFT",
+     "NVDA",
+     "QQQ"
+    ]
+   },
+   "llm": {
+    "completion_tokens": 425,
+    "latency_s": 6.725,
+    "model": "gpt-5.5-2026-04-23",
+    "prompt_tokens": 885
+   },
+   "proposal": {
+    "agent_id": "breakout",
+    "evidence": [
+     "NVDA total_return 6.5293 vs next best QQQ 0.8077",
+     "NVDA frac_above_sma200 0.6934 indicates persistent uptrend",
+     "Basket variance_ratio_20 0.969 and variance_ratio_40 0.9398 suggest broad range-bound behavior",
+     "NVDA max_drawdown 0.3092, so breakout exit may help control downside"
+    ],
+    "family": "breakout",
+    "param_grid": {
+     "lookback": [
+      20.0,
+      55.0,
+      120.0,
+      240.0
+     ]
+    },
+    "proposal_id": "T752f2ab167964fb286d5.breakout",
+    "rationale": "Concentrate on the only asset with exceptional training trend strength; broad basket diagnostics show range-bound behavior, so avoid diluting with lower-return mean-reverting symbols. Grid spans short to intermediate/long hourly breakout horizons for optimizer selection while retaining the mandated trailing-low exit.",
+    "schema_version": "1",
+    "universe": [
+     "NVDA"
+    ]
+   },
+   "source": "llm"
+  },
+  {
+   "agent_id": "mean_reversion",
+   "attempts": 1,
+   "house_proposal": {
+    "agent_id": "mean_reversion",
+    "evidence": [
+     "index variance ratio below 1 at 20-40 bar horizons",
+     "trailing reversion speed above the random-walk level for a large share of training bars"
+    ],
+    "family": "regime_reversion",
+    "param_grid": {
+     "lookback": [
+      60.0,
+      100.0
+     ],
+     "min_reversion": [
+      0.015,
+      0.025
+     ],
+     "rebuy_z": [
+      -0.5,
+      0.0
+     ],
+     "regime_lookback": [
+      200.0,
+      300.0
+     ],
+     "sell_z": [
+      1.0,
+      1.5
+     ]
+    },
+    "proposal_id": "T752f2ab167964fb286d5.house.mean_reversion",
+    "rationale": "Stay invested in the whole basket and trade only the range-bound stretches: when the trailing mean-reversion speed of the equal-weight index is above what a random walk produces, sell once the index is stretched above its rolling mean and buy back when it returns. Reading the regime from the index rather than from single names keeps idiosyncratic noise out of the signal.",
+    "schema_version": "1",
+    "universe": [
+     "AAPL",
+     "MSFT",
+     "NVDA",
+     "QQQ",
+     "SPY"
+    ]
+   },
+   "llm": {
+    "completion_tokens": 823,
+    "latency_s": 9.717,
+    "model": "gpt-5.5-2026-04-23",
+    "prompt_tokens": 1040
+   },
+   "proposal": {
+    "agent_id": "mean_reversion",
+    "evidence": [
+     "NVDA total_return 6.5293 far exceeds other symbols and passive basket constituents",
+     "NVDA lag1_autocorr -0.0074 and lag7_autocorr -0.0183 indicate short-horizon reversal tendency",
+     "Basket variance_ratio_20 0.969 and variance_ratio_40 0.9398 show sub-random-walk/range-bound stretches",
+     "Basket reversion_speed_median 0.0196 with 24.42% of bars above 0.03 supports regime gating"
+    ],
+    "family": "regime_reversion",
+    "param_grid": {
+     "lookback": [
+      20.0,
+      50.0,
+      100.0
+     ],
+     "min_reversion": [
+      0.02,
+      0.03,
+      0.05
+     ],
+     "rebuy_z": [
+      0.0,
+      0.5
+     ],
+     "regime_lookback": [
+      100.0,
+      200.0,
+      300.0
+     ],
+     "sell_z": [
+      1.5,
+      2.0,
+      2.5
+     ]
+    },
+    "proposal_id": "T752f2ab167964fb286d5.mean_reversion",
+    "rationale": "Use NVDA as the return engine while applying a conservative overbought step-aside only during detected mean-reverting regimes. This keeps default long exposure to the strongest training asset, needed to beat the all-symbol passive benchmark, while allowing z-score exits in range-bound stretches.",
+    "schema_version": "1",
+    "universe": [
+     "NVDA"
+    ]
+   },
+   "source": "llm"
+  },
+  {
+   "agent_id": "momentum",
+   "attempts": 1,
+   "house_proposal": {
+    "agent_id": "momentum",
+    "evidence": [
+     "frac_above_sma200 > 0.5 for SPY/QQQ",
+     "positive lag7 autocorrelation in QQQ and NVDA"
+    ],
+    "family": "sma_crossover",
+    "param_grid": {
+     "fast": [
+      10.0,
+      20.0,
+      35.0,
+      50.0
+     ],
+     "slow": [
+      80.0,
+      120.0,
+      200.0,
+      300.0
+     ]
+    },
+    "proposal_id": "T752f2ab167964fb286d5.house.momentum",
+    "rationale": "Index ETFs and NVDA show positive lag-7 autocorrelation and spend most of the training window above their 200-bar average, so a slow moving-average crossover should capture multi-week trends while staying flat in downtrends.",
+    "schema_version": "1",
+    "universe": [
+     "NVDA",
+     "QQQ",
+     "SPY"
+    ]
+   },
+   "llm": {
+    "completion_tokens": 689,
+    "latency_s": 10.778,
+    "model": "gpt-5.5-2026-04-23",
+    "prompt_tokens": 881
+   },
+   "proposal": {
+    "agent_id": "momentum",
+    "evidence": [
+     "NVDA total_return 6.5293 vs other symbols 0.5187-0.8077",
+     "NVDA frac_above_sma200 0.6934, highest single-stock trend persistence",
+     "NVDA volatility 0.497 and max_drawdown 0.3092 support using a long/flat filter",
+     "Basket variance_ratio_20 0.969 and variance_ratio_40 0.9398 indicate range-bound stretches"
+    ],
+    "family": "sma_crossover",
+    "param_grid": {
+     "fast": [
+      10.0,
+      30.0,
+      60.0
+     ],
+     "slow": [
+      100.0,
+      200.0,
+      300.0
+     ]
+    },
+    "proposal_id": "T752f2ab167964fb286d5.momentum",
+    "rationale": "Concentrate on the only asset with enough training trend strength to plausibly exceed the equal-weight passive basket. Use moderate hourly SMA trend filters to stay exposed during persistent advances while allowing exits in large pullbacks; avoid the broader basket because aggregate diagnostics indicate range-bound behavior.",
+    "schema_version": "1",
+    "universe": [
+     "NVDA"
+    ]
+   },
+   "source": "llm"
+  },
+  {
+   "agent_id": "rsi",
+   "attempts": 1,
+   "house_proposal": {
+    "agent_id": "rsi",
+    "evidence": [
+     "negative lag1 autocorrelation in AAPL and MSFT",
+     "SPY drawdowns recover within days"
+    ],
+    "family": "rsi_reversion",
+    "param_grid": {
+     "entry_rsi": [
+      20.0,
+      25.0,
+      30.0
+     ],
+     "exit_rsi": [
+      50.0,
+      60.0,
+      70.0
+     ],
+     "lookback": [
+      7.0,
+      14.0,
+      21.0
+     ]
+    },
+    "proposal_id": "T752f2ab167964fb286d5.house.rsi",
+    "rationale": "Short-horizon returns in large caps mean-revert, so buying after a run of losses pushes RSI deep into oversold territory and exiting once it normalizes should harvest the bounce.",
+    "schema_version": "1",
+    "universe": [
+     "AAPL",
+     "MSFT",
+     "SPY"
+    ]
+   },
+   "llm": {
+    "completion_tokens": 667,
+    "latency_s": 8.732,
+    "model": "gpt-5.5-2026-04-23",
+    "prompt_tokens": 913
+   },
+   "proposal": {
+    "agent_id": "rsi",
+    "evidence": [
+     "NVDA total_return 6.5293 vs next best QQQ 0.8077",
+     "NVDA lag1_autocorr -0.0074 and lag7_autocorr -0.0183",
+     "NVDA frac_above_sma200 0.6934 indicates persistent uptrend",
+     "Basket variance_ratio_20 0.969 and variance_ratio_40 0.9398 indicate mean-reverting stretches"
+    ],
+    "family": "rsi_reversion",
+    "param_grid": {
+     "entry_rsi": [
+      20.0,
+      25.0,
+      30.0,
+      35.0
+     ],
+     "exit_rsi": [
+      55.0,
+      65.0,
+      75.0
+     ],
+     "lookback": [
+      2.0,
+      3.0,
+      5.0,
+      8.0
+     ]
+    },
+    "proposal_id": "T752f2ab167964fb286d5.rsi",
+    "rationale": "Concentrate on NVDA because the passive benchmark\u2019s return was dominated by it, and only a high-upside symbol offers a realistic chance to beat equal-weight buy-and-hold. Its negative short-horizon autocorrelation supports oversold-bounce timing, while strong trend participation suggests buying RSI dips rather than broad diversification.",
+    "schema_version": "1",
+    "universe": [
+     "NVDA"
+    ]
+   },
+   "source": "llm"
+  },
+  {
+   "agent_id": "trend",
+   "attempts": 1,
+   "house_proposal": {
+    "agent_id": "trend",
+    "evidence": [
+     "frac_above_sma200 > 0.5 for SPY/QQQ",
+     "positive training-period drift in index ETFs"
+    ],
+    "family": "ts_momentum",
+    "param_grid": {
+     "lookback": [
+      70.0,
+      140.0,
+      280.0,
+      560.0
+     ],
+     "threshold": [
+      0.0,
+      0.02,
+      0.05
+     ]
+    },
+    "proposal_id": "T752f2ab167964fb286d5.house.trend",
+    "rationale": "Indexes spent most of the training window in sustained uptrends; holding only while the trailing multi-week return is positive keeps exposure in trends and steps aside in prolonged declines.",
+    "schema_version": "1",
+    "universe": [
+     "AAPL",
+     "QQQ",
+     "SPY"
+    ]
+   },
+   "llm": {
+    "completion_tokens": 670,
+    "latency_s": 8.731,
+    "model": "gpt-5.5-2026-04-23",
+    "prompt_tokens": 890
+   },
+   "proposal": {
+    "agent_id": "trend",
+    "evidence": [
+     "NVDA total_return 6.5293, far above all other symbols",
+     "NVDA frac_above_sma200 0.6934 indicates persistent uptrend",
+     "QQQ total_return 0.8077 with lowest max_drawdown among high-return names at 0.148",
+     "QQQ frac_above_sma200 0.7196 is highest",
+     "Basket variance_ratio_20 0.969 and variance_ratio_40 0.9398 suggest avoiding short lookbacks"
+    ],
+    "family": "ts_momentum",
+    "param_grid": {
+     "lookback": [
+      100.0,
+      200.0,
+      400.0,
+      800.0
+     ],
+     "threshold": [
+      0.0,
+      0.02,
+      0.05
+     ]
+    },
+    "proposal_id": "T752f2ab167964fb286d5.trend",
+    "rationale": "Concentrate in the strongest trend candidates while using medium/long lookbacks to avoid the basket\u2019s short-horizon mean reversion. NVDA offers the dominant upside needed to exceed the passive all-symbol basket; QQQ adds steadier broad tech trend exposure with lower drawdown.",
+    "schema_version": "1",
+    "universe": [
+     "NVDA",
+     "QQQ"
+    ]
+   },
+   "source": "llm"
+  },
+  {
+   "agent_id": "volatility",
+   "attempts": 1,
+   "house_proposal": {
+    "agent_id": "volatility",
+    "evidence": [
+     "drawdowns cluster in high-volatility regimes",
+     "index annualized vol near 0.18"
+    ],
+    "family": "vol_target",
+    "param_grid": {
+     "target_vol": [
+      0.08,
+      0.12,
+      0.18
+     ],
+     "trend_lookback": [
+      100.0,
+      200.0,
+      400.0
+     ],
+     "vol_lookback": [
+      20.0,
+      50.0,
+      100.0
+     ]
+    },
+    "proposal_id": "T752f2ab167964fb286d5.house.volatility",
+    "rationale": "Scale index exposure inversely to realized volatility and only hold when price is above its trend average. This cuts exposure in turbulent regimes, which is where the training window's drawdowns came from.",
+    "schema_version": "1",
+    "universe": [
+     "QQQ",
+     "SPY"
+    ]
+   },
+   "llm": {
+    "completion_tokens": 729,
+    "latency_s": 9.237,
+    "model": "gpt-5.5-2026-04-23",
+    "prompt_tokens": 904
+   },
+   "proposal": {
+    "agent_id": "volatility",
+    "evidence": [
+     "NVDA total_return 6.5293 far exceeds all other symbols",
+     "NVDA frac_above_sma200 0.6934 indicates persistent uptrend",
+     "NVDA annualized_vol 0.497 and max_drawdown 0.3092 justify vol scaling",
+     "Basket variance_ratio_20 0.969 and variance_ratio_40 0.9398 suggest range-bound stretches where trend filter may help"
+    ],
+    "family": "vol_target",
+    "param_grid": {
+     "target_vol": [
+      0.5,
+      0.75,
+      1.0
+     ],
+     "trend_lookback": [
+      100.0,
+      200.0,
+      400.0
+     ],
+     "vol_lookback": [
+      20.0,
+      60.0,
+      120.0
+     ]
+    },
+    "proposal_id": "T752f2ab167964fb286d5.volatility",
+    "rationale": "Concentrate on the only asset with exceptional training trend strength and return. Use volatility targeting plus a medium/long trend filter to participate in NVDA upside while cutting exposure in drawdowns or range-bound periods. Include high target-vol candidates because beating the equal-weight passive basket likely requires concentrated upside capture.",
+    "schema_version": "1",
+    "universe": [
+     "NVDA"
+    ]
+   },
+   "source": "llm"
+  }
+ ],
+ "ranked": [
+  {
+   "agent_id": "breakout",
+   "excess": {
+    "evidence_weight": 0.163889,
+    "out_of_sample_alpha_t": 1.216546,
+    "out_of_sample_beta": 0.591385,
+    "out_of_sample_excess_return": 0.07606869,
+    "out_of_sample_excess_t": 0.163889,
+    "out_of_sample_information_ratio": 0.109773,
+    "train_information_ratio": -0.36293,
+    "validation_excess_return": -0.04637536,
+    "validation_information_ratio": -0.241889
+   },
+   "family": "breakout",
+   "fold_returns": [
+    0.12308525,
+    -0.0006412,
+    -0.04637536
+   ],
+   "gates": [],
+   "params": {
+    "lookback": 240.0
+   },
+   "score": 0.032708,
+   "stability": 0.3333333333333333,
+   "strategy_id": "T752f2ab167964fb286d5.breakout",
+   "train": {
+    "fees_usd": 9.05,
+    "final_equity_usd": 22493.826095,
+    "max_drawdown": 0.08859735,
+    "n_fills": 35,
+    "net_return": 1.24938261,
+    "sharpe": 1.91271,
+    "slippage_usd": 50.793905,
+    "turnover": 10.158153
+   },
+   "validation": {
+    "fees_usd": 1.21,
+    "final_equity_usd": 12430.11996,
+    "max_drawdown": 0.10610712,
+    "n_fills": 14,
+    "net_return": 0.243012,
+    "sharpe": 1.522372,
+    "slippage_usd": 19.73004,
+    "turnover": 3.945885
+   },
+   "validation_trades_digest": "1e1a7b64011984e56844a798a79cc365623a86c7e75ec6b1e7cdf44161f502a8"
+  },
+  {
+   "agent_id": "mean_reversion",
+   "excess": {
+    "evidence_weight": 0.0,
+    "out_of_sample_alpha_t": -0.093373,
+    "out_of_sample_beta": 1.979945,
+    "out_of_sample_excess_return": 0.91822164,
+    "out_of_sample_excess_t": 1.601355,
+    "out_of_sample_information_ratio": 1.072581,
+    "train_information_ratio": 2.141248,
+    "validation_excess_return": 0.25322245,
+    "validation_information_ratio": 1.316989
+   },
+   "family": "regime_reversion",
+   "fold_returns": [
+    0.7362081,
+    -0.07120891,
+    0.25322245
+   ],
+   "gates": [
+    "out-of-sample excess is explained by lower market exposure, not skill"
+   ],
+   "params": {
+    "lookback": 20.0,
+    "min_reversion": 0.05,
+    "rebuy_z": 0.0,
+    "regime_lookback": 200.0,
+    "sell_z": 2.0
+   },
+   "score": 0.0,
+   "stability": 0.6666666666666666,
+   "strategy_id": "T752f2ab167964fb286d5.mean_reversion",
+   "train": {
+    "fees_usd": 15.25,
+    "final_equity_usd": 66493.406635,
+    "max_drawdown": 0.30271437,
+    "n_fills": 14,
+    "net_return": 5.64934066,
+    "sharpe": 2.009347,
+    "slippage_usd": 35.833365,
+    "turnover": 7.167075
+   },
+   "validation": {
+    "fees_usd": 3.55,
+    "final_equity_usd": 15426.098095,
+    "max_drawdown": 0.16954952,
+    "n_fills": 24,
+    "net_return": 0.54260981,
+    "sharpe": 1.68083,
+    "slippage_usd": 57.021905,
+    "turnover": 11.404784
+   },
+   "validation_trades_digest": "e4cfdeaa34e6c4e2eed06eb70ce1ac992728d3d80b2add5f589b46345259a9c1"
+  },
+  {
+   "agent_id": "momentum",
+   "excess": {
+    "evidence_weight": 0.079235,
+    "out_of_sample_alpha_t": 0.87218,
+    "out_of_sample_beta": 0.674689,
+    "out_of_sample_excess_return": 0.11484232,
+    "out_of_sample_excess_t": 0.079235,
+    "out_of_sample_information_ratio": 0.053071,
+    "train_information_ratio": -0.510718,
+    "validation_excess_return": 0.09365989,
+    "validation_information_ratio": 0.482606
+   },
+   "family": "sma_crossover",
+   "fold_returns": [
+    0.16853802,
+    -0.14735559,
+    0.09365989
+   ],
+   "gates": [],
+   "params": {
+    "fast": 10.0,
+    "slow": 100.0
+   },
+   "score": 0.032027,
+   "stability": 0.6666666666666666,
+   "strategy_id": "T752f2ab167964fb286d5.momentum",
+   "train": {
+    "fees_usd": 48.54,
+    "final_equity_usd": 20877.68504,
+    "max_drawdown": 0.15443925,
+    "n_fills": 120,
+    "net_return": 1.0877685,
+    "sharpe": 1.61003,
+    "slippage_usd": 254.69496,
+    "turnover": 50.938433
+   },
+   "validation": {
+    "fees_usd": 4.52,
+    "final_equity_usd": 13830.47246,
+    "max_drawdown": 0.09479728,
+    "n_fills": 41,
+    "net_return": 0.38304725,
+    "sharpe": 1.999326,
+    "slippage_usd": 71.92754,
+    "turnover": 14.385764
+   },
+   "validation_trades_digest": "067ac479805e9e50857d783eb8d7caf795883838df0507cff1344284afab6b87"
+  },
+  {
+   "agent_id": "rsi",
+   "excess": {
+    "evidence_weight": 0.0,
+    "out_of_sample_alpha_t": 0.487673,
+    "out_of_sample_beta": 0.554667,
+    "out_of_sample_excess_return": -0.25261667,
+    "out_of_sample_excess_t": -0.570546,
+    "out_of_sample_information_ratio": -0.382149,
+    "train_information_ratio": -0.582999,
+    "validation_excess_return": -0.05843822,
+    "validation_information_ratio": -0.29746
+   },
+   "family": "rsi_reversion",
+   "fold_returns": [
+    -0.18296139,
+    -0.01121706,
+    -0.05843822
+   ],
+   "gates": [
+    "no out-of-sample excess return over the passive core"
+   ],
+   "params": {
+    "entry_rsi": 25.0,
+    "exit_rsi": 75.0,
+    "lookback": 8.0
+   },
+   "score": 0.0,
+   "stability": 0.0,
+   "strategy_id": "T752f2ab167964fb286d5.rsi",
+   "train": {
+    "fees_usd": 146.71,
+    "final_equity_usd": 20811.065065,
+    "max_drawdown": 0.10946924,
+    "n_fills": 270,
+    "net_return": 1.08110651,
+    "sharpe": 1.788588,
+    "slippage_usd": 723.134935,
+    "turnover": 144.626403
+   },
+   "validation": {
+    "fees_usd": 16.495,
+    "final_equity_usd": 12309.49136,
+    "max_drawdown": 0.07921525,
+    "n_fills": 141,
+    "net_return": 0.23094914,
+    "sharpe": 1.381254,
+    "slippage_usd": 260.35364,
+    "turnover": 52.071041
+   },
+   "validation_trades_digest": "2d788341daa29bbeac8b6f2f4a661740132350fad354a40c96d17326664f545d"
+  },
+  {
+   "agent_id": "trend",
+   "excess": {
+    "evidence_weight": 0.0,
+    "out_of_sample_alpha_t": -0.072758,
+    "out_of_sample_beta": 0.608736,
+    "out_of_sample_excess_return": -0.31736942,
+    "out_of_sample_excess_t": -1.26028,
+    "out_of_sample_information_ratio": -0.844131,
+    "train_information_ratio": -1.065259,
+    "validation_excess_return": -0.08996169,
+    "validation_information_ratio": -0.613549
+   },
+   "family": "ts_momentum",
+   "fold_returns": [
+    -0.10373525,
+    -0.12367248,
+    -0.08996169
+   ],
+   "gates": [
+    "no out-of-sample excess return over the passive core"
+   ],
+   "params": {
+    "lookback": 400.0,
+    "threshold": 0.0
+   },
+   "score": 0.0,
+   "stability": 0.0,
+   "strategy_id": "T752f2ab167964fb286d5.trend",
+   "train": {
+    "fees_usd": 16.05,
+    "final_equity_usd": 17948.633955,
+    "max_drawdown": 0.10363316,
+    "n_fills": 124,
+    "net_return": 0.7948634,
+    "sharpe": 1.693115,
+    "slippage_usd": 158.706045,
+    "turnover": 31.740803
+   },
+   "validation": {
+    "fees_usd": 2.89,
+    "final_equity_usd": 11994.256675,
+    "max_drawdown": 0.1000828,
+    "n_fills": 42,
+    "net_return": 0.19942567,
+    "sharpe": 1.491281,
+    "slippage_usd": 52.163325,
+    "turnover": 10.432809
+   },
+   "validation_trades_digest": "219d7da2dc728766d14dba83a60d99cdabc9edb9b675f6b242b3a36a458a47df"
+  },
+  {
+   "agent_id": "volatility",
+   "excess": {
+    "evidence_weight": 0.17079,
+    "out_of_sample_alpha_t": 0.981133,
+    "out_of_sample_beta": 0.676157,
+    "out_of_sample_excess_return": 0.09946474,
+    "out_of_sample_excess_t": 0.17079,
+    "out_of_sample_information_ratio": 0.114394,
+    "train_information_ratio": -0.428207,
+    "validation_excess_return": 0.01845965,
+    "validation_information_ratio": 0.126235
+   },
+   "family": "vol_target",
+   "fold_returns": [
+    0.14531553,
+    -0.06431044,
+    0.01845965
+   ],
+   "gates": [],
+   "params": {
+    "target_vol": 1.0,
+    "trend_lookback": 100.0,
+    "vol_lookback": 60.0
+   },
+   "score": 0.067636,
+   "stability": 0.6666666666666666,
+   "strategy_id": "T752f2ab167964fb286d5.volatility",
+   "train": {
+    "fees_usd": 83.58,
+    "final_equity_usd": 21801.564605,
+    "max_drawdown": 0.11695148,
+    "n_fills": 214,
+    "net_return": 1.18015646,
+    "sharpe": 1.691293,
+    "slippage_usd": 486.165395,
+    "turnover": 97.23246
+   },
+   "validation": {
+    "fees_usd": 11.585,
+    "final_equity_usd": 13078.4701,
+    "max_drawdown": 0.11312348,
+    "n_fills": 97,
+    "net_return": 0.30784701,
+    "sharpe": 1.647238,
+    "slippage_usd": 180.9249,
+    "turnover": 36.185277
+   },
+   "validation_trades_digest": "c7748ee77b29ed3524128a87e508399bfcadcd13a16db9610cd76530a5bda1ee"
+  }
+ ],
+ "run_id": "T752f2ab167964fb286d5",
+ "supervisor": {
+  "llm": {
+   "completion_tokens": 1812,
+   "latency_s": 19.83,
+   "model": "gpt-5.5-2026-04-23",
+   "prompt_tokens": 2468
+  },
+  "rationale": "Allocate only to strategies with positive scores, since the score is the relevant measure of excess return versus the passive equal-weight core. Volatility receives the largest allocation because it has the highest score and stable positive out-of-sample evidence, but it is capped at 40%. Breakout and momentum have similar smaller positive scores and receive near score-proportional allocations. Mean reversion, RSI, and trend receive zero because their scores are zero and/or gates indicate the excess return evidence is not skill-based or is negative. The strategy weights sum to about 84%, leaving room for the required 10% cash reserve and roughly 6% in the passive core rather than forcing capital into lower-evidence active sleeves.",
+  "source": "llm",
+  "weights": {
+   "T752f2ab167964fb286d5.breakout": 0.222,
+   "T752f2ab167964fb286d5.mean_reversion": 0.0,
+   "T752f2ab167964fb286d5.momentum": 0.218,
+   "T752f2ab167964fb286d5.rsi": 0.0,
+   "T752f2ab167964fb286d5.trend": 0.0,
+   "T752f2ab167964fb286d5.volatility": 0.4
+  }
+ }
+}

@@ -1,0 +1,37 @@
+{
+  "run_id": "T752f2ab167964fb286d5",
+  "portfolio_id": "hb-demo-2229",
+  "steps": 400,
+  "stopped": false,
+  "crash_start_step": 160,
+  "bars": 2000,
+  "orders": 194,
+  "approved": 26,
+  "reduced": 0,
+  "rejected": 168,
+  "duplicates": 14,
+  "final_equity_usd": 9313.27522,
+  "final_equity_quote": 9313.27522,
+  "units": {
+    "quote_currency": "USD",
+    "unit_version": "whole-share-v1",
+    "lots_per_base_unit": 1,
+    "base_units_per_lot": "1",
+    "quantity_label": "shares",
+    "price_unit": "micro quote units per execution lot",
+    "money_unit": "micro quote units; USDT is not assumed equivalent to USD"
+  },
+  "legacy_usd_fields": "quote amounts; use units.quote_currency",
+  "ledger_digest": "4c32ef1700bcb041f17d9f4ea5a5609b7977723a3070ea3106655c84801e20c6",
+  "head_hash": "24a5209ab788874c9a974d8ff78221819c91b2da457f8b22efa5d62927949789",
+  "verify": {
+    "events": 2227,
+    "chain_ok": true,
+    "error": null,
+    "replayed_digest": "4c32ef1700bcb041f17d9f4ea5a5609b7977723a3070ea3106655c84801e20c6",
+    "stored_digest": "4c32ef1700bcb041f17d9f4ea5a5609b7977723a3070ea3106655c84801e20c6",
+    "match": true,
+    "head_hash": "24a5209ab788874c9a974d8ff78221819c91b2da457f8b22efa5d62927949789"
+  },
+  "elapsed_s": 158.87
+}

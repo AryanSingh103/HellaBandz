@@ -7,19 +7,20 @@ They do not establish profitable strategies, truthful AI reasoning or real execu
 ## Operator access
 
 `make setup`, `make up` and `make backend` generate an operator key in ignored `.env`
-without printing it. Open the terminal and sign in with `QS_API_TOKEN` from that file.
+without printing it. Sign-in is off by default (`QS_AUTH_REQUIRED=0`) so local demos open
+straight into the terminal. Set `QS_AUTH_REQUIRED=1` to require `QS_API_TOKEN` from that file.
 Never put it in `NEXT_PUBLIC_*`, a URL, a commit or a screenshot. Python agent and benchmark
 clients attach the bearer key only to HellaBandz's API; external providers receive their
 own provider credentials.
 
-All API routes and WebSocket streams require a valid bearer key or an expiring browser
+With `QS_AUTH_REQUIRED=1`, all API routes and WebSocket streams require a valid bearer key or an expiring browser
 session, except minimal `/healthz` and the sign-in/status routes. Browser sessions last
 eight hours, use HttpOnly/SameSite=Strict cookies, expire on API restart, and can be revoked
 with Sign out. HTTPS sessions additionally use Secure cookies. Five failed sign-ins in a
 minute temporarily block further attempts from that address. Browser writes and streams
 reject origins outside `QS_ALLOWED_ORIGINS`; wildcard origins are refused. Required auth
-with a missing/short key refuses startup. `QS_AUTH_REQUIRED=0` is an explicit offline/test
-opt-out, not a deployment setting. Local Compose ports bind to 127.0.0.1.
+with a missing/short key refuses startup. The `QS_AUTH_REQUIRED=0` default is for local demos
+only, not a deployment setting. Local Compose ports bind to 127.0.0.1.
 
 The key grants full access to the shared operator workspace. Demo marketplace identities
 and agent IDs remain shared labels. Per-user registration and resource ownership are not

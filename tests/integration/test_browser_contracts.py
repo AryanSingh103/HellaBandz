@@ -37,6 +37,23 @@ def test_manifest_hash_run_identity_and_immutable_retries(stack):
     assert c.get("/v1/tournaments").json()[0]["manifest"] == manifest
 
 
+def test_baseline_is_served_only_when_it_matches_the_frozen_manifest(stack, tmp_path):
+    stack.start_api(QS_MANIFESTS=str(tmp_path))
+    c = httpx.Client(base_url=stack.base, timeout=30)
+    manifest = {"run_id": "T-base", "dataset": {"content_sha256": "abc"}}
+    digest = sha256_hex(canonical(manifest))
+    assert c.post("/v1/tournaments", json={"run_id": "T-base", "manifest": manifest, "manifest_hash": digest}).status_code == 200
+    assert c.get("/v1/tournaments/T-missing/baseline").status_code == 404
+    assert c.get("/v1/tournaments/T-base/baseline").json()["status"] == "unavailable"
+    artifact = {"status": "available", "run_id": "T-base", "manifest_hash": digest, "start_ts": 1, "end_ts": 2,
+                "baseline": [{"ts": 1, "equity": 10}], "baseline_metrics": {"net_return": 0.1}, "assumptions": "a"}
+    (tmp_path / "T-base.analytics.json").write_text(json.dumps({**artifact, "manifest_hash": "stale"}))
+    assert c.get("/v1/tournaments/T-base/baseline").json()["status"] == "unavailable"
+    (tmp_path / "T-base.analytics.json").write_text(json.dumps(artifact))
+    r = c.get("/v1/tournaments/T-base/baseline").json()
+    assert r["status"] == "available" and r["baseline_metrics"]["net_return"] == 0.1 and "manifest_hash" not in r
+
+
 def test_invalid_money_and_identifiers_never_insert_commands(stack):
     c = client(stack)
     for value in ["abc", "-1", "NaN", "Infinity", "1e1000", "-0.0000001"]:
