@@ -8,8 +8,9 @@ import { PortfolioView, AuditView, AnalyticsView } from "./portfolio";
 import { OrdersView } from "./orders";
 import { ResearchView, RunView } from "./research";
 import { Ask } from "./voice";
+import { MarketplaceView } from "./marketplace";
 
-const views: View[] = ["browse", "portfolio", "orders", "research", "audit", "analytics", "run"];
+const views: View[] = ["browse", "marketplace", "portfolio", "orders", "research", "audit", "analytics", "run"];
 const categories = ["All strategies", "Momentum", "Reversion", "Volatility", "Equities", "Crypto"];
 function readRoute(): Route {
   const q = new URLSearchParams(location.search), route = { ...initialRoute };
@@ -86,6 +87,7 @@ export default function Page() {
         })}</div>}
         {manifest && <div className="research-summary"><div><span className="eyebrow">Frozen held-out evaluation</span><h2>Portfolio performance</h2></div><Metric label="Net return" value={pct(manifest.held_out_test.portfolio.metrics.net_return)} /><Metric label="Max drawdown" value={pct(manifest.held_out_test.portfolio.metrics.max_drawdown)} /><Metric label="Initial virtual capital" value={money(manifest.policy.initial_cash_micros, currency)} /><button onClick={() => navigate({ view: "research" })}>Research record <ArrowUpRight size={16} /></button></div>}
       </>}
+      {route.view === "marketplace" && <MarketplaceView />}
       {route.view === "portfolio" && <PortfolioView key={scope} pid={route.p} port={port.data} runtime={connected ? runtime.data : undefined} dataset={portfolioDataset} refresh={() => refresh(n=>n+1)} onSelect={p => { setPortfolioInput(p); navigate({ p, run: "", order: "" }); }} />}
       {route.view === "orders" && <OrdersView key={scope} pid={route.p} port={port.data} dataset={portfolioDataset} orderId={route.order} selectOrder={order => navigate({ order })} refresh={() => refresh(n=>n+1)} />}
       {route.view === "research" && <ResearchView key={scope} pid={route.p} manifest={manifest} explicit={!!route.run} runs={runs.data || []} selected={route.run} select={run => navigate({ run })} />}

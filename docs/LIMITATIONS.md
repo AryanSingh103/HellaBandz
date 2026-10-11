@@ -45,6 +45,16 @@ What follows separates **demonstrated** behavior (tests and benchmarks in this r
 
 ## AI components
 
+- The [strategy marketplace](MARKETPLACE.md) trades demo licenses with virtual credits and
+  shared, unauthenticated identities. It has no real payments, enforceable IP licensing,
+  private strategy access or automatic deployment. Its transaction receipts are separate
+  from the trading ledger and do not carry the ledger's hash-chain audit guarantee.
+- Nike Review Radar is unbacktested review research. Imported timestamps and sources are
+  user supplied; synthetic examples do not establish predictive performance. The sources
+  supplied for the Nike story do not document Claude predicting a crash from reviews.
+  Production use needs authenticated identities, verified point-in-time evidence, NKE
+  backtests, provider quotas, audit retention and payment/licensing design.
+
 - LLM outputs are nondeterministic. Reproducibility starts at the recorded proposals in the manifest, and
   re-running the research step will give different proposals.
 - Without `OPENAI_API_KEY`, agents use recorded fixture proposals and a deterministic supervisor/crisis policy;

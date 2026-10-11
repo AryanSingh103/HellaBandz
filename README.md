@@ -31,6 +31,12 @@ and `kill -9`.
 
 ## Quickstart
 
+The terminal also includes a [strategy marketplace and Nike Review Radar](docs/MARKETPLACE.md):
+compare frozen returns, Sharpe and maximum drawdown; buy and resell strategy licenses
+using persistent demo-credit wallets. The Nike lab accepts dated customer reviews and
+supports an optional Claude/OpenAI text classifier or an offline rating baseline.
+It is labeled unbacktested, with source context separated from review evidence.
+
 Requirements: Docker (Desktop or Colima, running), [uv](https://docs.astral.sh/uv/), Node 20+, GNU make.
 On Windows install make with `scoop install make` or `choco install make`; the targets work from PowerShell or Git Bash.
 
