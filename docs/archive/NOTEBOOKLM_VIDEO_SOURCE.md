@@ -1,3 +1,5 @@
+> Historical planning/presentation material, archived October 11, 2026. Details and counts below may be outdated. Use [README](../../README.md) and [submission status](../SUBMISSION.md) for the current scope.
+
 # HellaBandz: Source Document for a Video Explanation
 
 > **How to use this file with NotebookLM**

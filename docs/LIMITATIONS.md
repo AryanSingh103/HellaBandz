@@ -53,19 +53,18 @@ What follows separates **demonstrated** behavior (tests and benchmarks in this r
   ledger records the processed order. A lower `seq` that commits late can be processed after a higher one;
   replay uses the recorded order, so determinism holds, but "fairness" between simultaneous clients is not
   defined beyond that.
-- **Two explicit access modes.** Private Supabase accounts and resource ownership are the default.
-  The local judge demo uses `QS_AUTH_MODE=operator`, with a bearer key or expiring browser session
-  protecting its shared workspace. See [SECURITY](SECURITY.md) for both boundaries and the Devnet audit threat model.
+- **Shared operator workspace.** A bearer key or expiring browser session protects access.
+  Per-user registration and resource ownership are not implemented. See [SECURITY](SECURITY.md)
+  for access boundaries and the Devnet audit threat model.
 - **Periodic external audit.** Solana seals cover 16 durable record sets, including agent traces and
   strategy sales. Only records at the latest verified seal are finalized; newer changes are provisional.
-  New account ownership, encrypted Kalshi connections and demo-order attempts are outside this
-  16-table proof version. The journal adds write/storage overhead, and verification scans retained history. Next: archive proofs,
+  The journal adds write/storage overhead, and verification scans retained history. Next: archive proofs,
   restricted DB roles and external receipt monitoring. Devnet/RPC availability is not a production SLA.
 
 ## AI components
 
 - The [strategy marketplace](MARKETPLACE.md) trades demo licenses with virtual credits and
-  account-owned wallets in account mode or shared demo identities in local operator mode. It has no real payments, enforceable IP licensing,
+  shared demo identities and wallets. It has no real payments, enforceable IP licensing,
   private strategy access or automatic deployment. Its transaction receipts are separate
   from the trading ledger; completed receipts and balances are included in periodic external audit seals.
 - Nike Review Radar is unbacktested review research. Imported timestamps and sources are

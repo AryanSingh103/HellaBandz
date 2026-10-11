@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { authFetch } from "./auth-client";
 import { Mic, Send, Volume2, Square, RotateCcw } from "lucide-react";
 import { errorText, post, request, url } from "./model";
-import { JsonView, Notice } from "./ui";
+import { Notice } from "./ui";
 
 type Recognition = { lang:string; onresult:((e:{results:{[index:number]:{[index:number]:{transcript:string}}}})=>void)|null; onerror:((e:{error:string})=>void)|null; onend:(()=>void)|null; start:()=>void; abort:()=>void };
 type VoiceWindow = Window & { SpeechRecognition?: new()=>Recognition; webkitSpeechRecognition?:new()=>Recognition };

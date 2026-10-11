@@ -76,3 +76,14 @@ export type Replay = { event: Event; before: State; after: State; through_seq: n
 export type Point = { seq: number; ts: number; equity: number; exposure: number; agents: Record<string, { pnl: number; exposure: number }> };
 export type Analytics = { points: Point[]; definitions: Record<string, string>; benchmark: { status: string; reason?: string; assumptions?: string; start_ts?: number; end_ts?: number;
   baseline?: { ts: number; equity: number }[]; strategy?: { ts: number[]; equity: number[] }; baseline_metrics?: Metrics; strategy_metrics?: Metrics } };
+
+/** Shared ordering for measured strategy performance; missing results sort last. */
+export function comparePerformance(a: Metrics | null | undefined, b: Metrics | null | undefined, field: "net_return" | "sharpe" | "max_drawdown") {
+  const av = a?.[field], bv = b?.[field];
+  if (av == null || !Number.isFinite(av)) return bv == null || !Number.isFinite(bv) ? 0 : 1;
+  if (bv == null || !Number.isFinite(bv)) return -1;
+  return field === "max_drawdown" ? av - bv : bv - av;
+}
+export function matchesSearch(query: string, ...fields: string[]) {
+  return fields.join(" ").toLowerCase().includes(query.trim().toLowerCase());
+}

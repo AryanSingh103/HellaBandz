@@ -1,8 +1,7 @@
 """Deterministic event-time backtester.
 
-Interfaces follow the Lucera starter guide: DataProvider, Strategy,
-ExecutionModel, Portfolio, ResultStore. The backtester has no accounting or
-fill logic of its own: it feeds ApplyBar/SubmitOrder commands into the same
+A DataProvider supplies frozen bars and causal history. The backtester has no
+accounting or fill logic of its own: it feeds ApplyBar/SubmitOrder commands into the same
 `ledger.process` state machine the execution worker uses.
 
 Event ordering (I-11): bars sorted by (ts, symbol); all bars at a timestamp
@@ -13,11 +12,9 @@ Orders decided on bar t can only fill on a later bar.
 
 from __future__ import annotations
 
-import json
 import math
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Iterator, Protocol
 
 import numpy as np
@@ -35,11 +32,7 @@ from hellabandz.contracts import (
 )
 from hellabandz.ingestion.dataset import BarTable
 from hellabandz.ledger import EngineConfig, PortfolioState, canonical, check_invariants, process, sha256_hex
-from hellabandz.strategies import BARS_PER_YEAR, HOLD_FAMILIES, Series, signal, universe_weights
-
-ExecutionModel = EngineConfig  # fill/slippage/fee model is part of the engine config
-Portfolio = PortfolioState
-
+from hellabandz.strategies import BARS_PER_YEAR, HOLD_FAMILIES, Series, universe_weights
 
 class DataProvider(Protocol):
     def bars(self, start_ts: int, end_ts: int) -> Iterator[Bar]: ...
@@ -69,18 +62,6 @@ class SnapshotProvider:
         idx = idx[self.t.ts[idx] < end_ts]
         f = lambda a: a[idx].astype(np.float64) / MICROS  # noqa: E731
         return Series(f(self.t.close), f(self.t.high), f(self.t.low)), self.t.ts[idx]
-
-
-class Strategy(Protocol):
-    def weights(self, symbol: str, s: Series) -> np.ndarray: ...
-
-
-@dataclass(frozen=True)
-class SpecStrategy:
-    spec: StrategySpec
-
-    def weights(self, symbol: str, s: Series) -> np.ndarray:
-        return signal(self.spec.family, self.spec.params, s)
 
 
 @dataclass(frozen=True)
@@ -151,17 +132,6 @@ class BacktestResult:
                 "config_digest": self.config_digest}
 
 
-class ResultStore:
-    def __init__(self, root: Path):
-        self.root = root
-
-    def save(self, r: BacktestResult) -> Path:
-        self.root.mkdir(parents=True, exist_ok=True)
-        p = self.root / f"{r.run_id}.json"
-        p.write_text(json.dumps({**r.summary(), "equity_ts": r.equity_ts, "equity": r.equity, "fills": r.fills}))
-        return p
-
-
 def compute_metrics(equity: list[int], fills: list[dict], state: PortfolioState) -> Metrics:
     eq = np.array(equity, dtype=np.float64)
     init = state.initial_cash
@@ -182,7 +152,7 @@ def compute_metrics(equity: list[int], fills: list[dict], state: PortfolioState)
     )
 
 
-def run_backtest(provider: SnapshotProvider, slots: list[Slot], start_ts: int, end_ts: int,
+def run_backtest(provider: DataProvider, slots: list[Slot], start_ts: int, end_ts: int,
                  cfg: EngineConfig = EngineConfig(), initial_cash: int = 10_000 * MICROS,
                  run_id: str = "bt", check_every_step: bool = False) -> BacktestResult:
     s = PortfolioState()

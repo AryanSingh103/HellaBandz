@@ -69,7 +69,7 @@ digest. Retry decisions are included so a restart cannot turn a duplicate into a
 Full-history verification remains available independently of checkpoints.
 
 FastAPI and Pydantic provide interfaces and validation; psycopg connects to PostgreSQL/TimescaleDB.
-LangGraph orchestrates research; NumPy and PyArrow support strategies and frozen datasets; Next.js/React
+A Python thread pool runs six researchers before a fixed pipeline; NumPy and PyArrow support strategies and frozen datasets; Next.js/React
 provide the terminal. pytest and Hypothesis test the core, real-DB concurrency and forced termination.
 Docker fixes CPU/memory limits for durable throughput and cold-start measurements. The README's
 "What we built vs. what we used" table and `docs/DATA_SOURCES.md` provide the full dependency/data disclosure.

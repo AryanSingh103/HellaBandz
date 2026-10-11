@@ -13,7 +13,7 @@ services:
     command: ["postgres", "-c", "shared_buffers=256MB", "-c", "max_connections=200"]
     healthcheck:
       # over TCP: on a fresh volume the image runs a socket-only bootstrap server first, which must not count as healthy
-      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U quantswarm -d quantswarm"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U quantswarm -d postgres"]
       interval: 2s
       retries: 30
     volumes: [pgdata:/var/lib/postgresql/data]
@@ -45,14 +45,6 @@ services:
       ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID:-onwK4e9ZLuTAKqWW03F9}
       QS_OPENAI_MODEL: ${QS_OPENAI_MODEL:-gpt-4.1-mini}
       SOLANA_RPC: ${SOLANA_RPC:-https://api.devnet.solana.com}
-      SUPABASE_URL: ${SUPABASE_URL:-}
-      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
-      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
-      QS_AUTH_DISABLED: ${QS_AUTH_DISABLED:-false}
-      QS_AUTH_MODE: ${QS_AUTH_MODE:-accounts}
-      QS_INTERNAL_SIGNING_KEY: ${QS_INTERNAL_SIGNING_KEY:-}
-      QS_CREDENTIAL_ENCRYPTION_KEY: ${QS_CREDENTIAL_ENCRYPTION_KEY:-}
-      QS_KALSHI_DEMO_ORDERS_ENABLED: ${QS_KALSHI_DEMO_ORDERS_ENABLED:-false}
     ports: ["127.0.0.1:8000:8000"]
     depends_on: { db: { condition: service_healthy } }
     healthcheck:
@@ -74,10 +66,7 @@ services:
       DATABASE_URL: ${QS_DATABASE_URL:-postgresql://quantswarm:quantswarm@db:5432/quantswarm}
       QS_API: http://api:8000
       QS_API_TOKEN: ${QS_API_TOKEN:-}
-      QS_AUTH_MODE: ${QS_AUTH_MODE:-accounts}
       QS_TOURNAMENT_PROCS: 2
-      QS_AUTH_DISABLED: ${QS_AUTH_DISABLED:-false}
-      QS_INTERNAL_SIGNING_KEY: ${QS_INTERNAL_SIGNING_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       QS_OPENAI_MODEL: ${QS_OPENAI_MODEL:-gpt-4.1-mini}
     volumes:
@@ -94,9 +83,6 @@ services:
       context: apps/web
       args:
         NEXT_PUBLIC_API: ${NEXT_PUBLIC_API:-http://localhost:8000}
-        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
-        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:-}
-        NEXT_PUBLIC_QS_AUTH_DISABLED: ${NEXT_PUBLIC_QS_AUTH_DISABLED:-false}
     ports: ["127.0.0.1:3000:3000"]
     depends_on: { api: { condition: service_healthy } }
     cpus: 1
@@ -104,10 +90,13 @@ services:
 
   bench:
     # load client for benchmarks/run_benchmarks.py db (runs inside the compose network)
-    build: .
+    build:
+      context: .
+      args:
+        QS_INSTALL_BENCH: "1"
     profiles: ["bench"]
     environment:
-      DATABASE_URL: postgresql://quantswarm:quantswarm@db:5432/quantswarm
+      DATABASE_URL: ${QS_DATABASE_URL:-postgresql://quantswarm:quantswarm@db:5432/quantswarm}
       QS_API_TOKEN: ${QS_API_TOKEN:-}
     cpus: 1
     mem_limit: 512m

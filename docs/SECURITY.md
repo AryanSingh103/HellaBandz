@@ -1,23 +1,10 @@
 # Access and audit integrity
 
-This paper-trading application supports private accounts and an explicit local operator mode. API access control and public
+This paper-trading application uses a shared operator workspace. API access control and public
 Devnet commitments protect access and sealed record integrity within the boundaries below.
 They do not establish profitable strategies, truthful AI reasoning or real execution.
 
-## Account access
-
-`QS_AUTH_MODE=accounts` is the default. Supabase verifies registered user sessions;
-resource ownership stays in TimescaleDB. Existing unowned demo resources cannot be
-claimed by guessing their IDs. Managed jobs use signed credentials scoped to their
-owner, portfolio, run and allowed endpoints. See [Accounts and Kalshi](ACCOUNTS_AND_KALSHI.md).
-Global `/v1/audit/*` endpoints require the separate operator bearer key; account
-sessions cannot read or queue database-wide proofs. The account UI shows its own ledger audit.
-
-## Local operator access
-
-Set `QS_AUTH_MODE=operator` explicitly for the shared local judge demo. This keeps
-the cookie/bearer gate enabled while skipping account ownership checks. Do not use
-this shared workspace mode for a multi-user deployment.
+## Operator access
 
 `make setup`, `make up` and `make backend` generate an operator key in ignored `.env`
 without printing it. Open the terminal and sign in with `QS_API_TOKEN` from that file.
@@ -25,7 +12,7 @@ Never put it in `NEXT_PUBLIC_*`, a URL, a commit or a screenshot. Python agent a
 clients attach the bearer key only to HellaBandz's API; external providers receive their
 own provider credentials.
 
-In operator mode, all API routes and WebSocket streams require a valid bearer key or an expiring browser
+All API routes and WebSocket streams require a valid bearer key or an expiring browser
 session, except minimal `/healthz` and the sign-in/status routes. Browser sessions last
 eight hours, use HttpOnly/SameSite=Strict cookies, expire on API restart, and can be revoked
 with Sign out. HTTPS sessions additionally use Secure cookies. Five failed sign-ins in a
@@ -35,8 +22,8 @@ with a missing/short key refuses startup. `QS_AUTH_REQUIRED=0` is an explicit of
 opt-out, not a deployment setting. Local Compose ports bind to 127.0.0.1.
 
 The key grants full access to the shared operator workspace. Demo marketplace identities
-and agent IDs remain shared labels in this mode. Account mode supplies registration and
-resource ownership; neither mode processes real marketplace payments or legal licensing.
+and agent IDs remain shared labels. Per-user registration and resource ownership are not
+implemented. Marketplace transfers use virtual credits without real payments or legal licensing.
 Remote use requires HTTPS, restricted DB roles and secret management.
 
 ## Full trace commitments
@@ -51,8 +38,8 @@ The auditor seals 16 record sets: commands, ledger events, portfolio state, orde
 equity points, agent messages, tournaments, portfolio context, jobs, review analyses,
 strategy accounts, assets, holdings, listings and completed strategy trades. Telemetry,
 process liveness, rebuildable recovery checkpoints and the market-data cache are excluded.
-The new account_resources, kalshi_connections and kalshi_demo_order_attempts tables are
-also outside this version of the 16-table proof. Existing on-chain receipts remain unchanged.
+Existing on-chain receipts remain unchanged. Unused tables from earlier account integration
+experiments are retained in existing databases to preserve records; the app no longer reads or writes them.
 Executed bars are recorded in commands; research manifests carry frozen dataset hashes.
 Coverage spans the database, including retained benchmark portfolios. A sealed record count
 is not a count of live trades or AI decisions; benchmark and system-check records remain

@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import psycopg
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Header, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -48,7 +48,6 @@ from hellabandz.ledger import replay
 from hellabandz.config import load_env  # noqa: E402
 
 load_env()
-from hellabandz.api.auth import authorize, claim, current_user, disabled, identity, owned, verify_token, operator_mode
 log = logging.getLogger("api")
 WAIT_TIMEOUT_S = float(os.environ.get("QS_API_WAIT_TIMEOUT", "5"))
 
@@ -100,12 +99,7 @@ pool: AsyncConnectionPool
 async def lifespan(app: FastAPI):
     global pool
     from hellabandz.api.operator_auth import validate_configuration, origins
-    if os.getenv("QS_AUTH_MODE", "accounts") not in ("accounts", "operator"):
-        raise RuntimeError("QS_AUTH_MODE must be accounts or operator")
-    if operator_mode():
-        validate_configuration()
-    elif "*" in origins():
-        raise RuntimeError("QS_ALLOWED_ORIGINS must list explicit trusted UI origins")
+    validate_configuration()
     with psycopg.connect(database_url(), autocommit=True) as c:
         apply_schema(c)
     pool = AsyncConnectionPool(database_url(), min_size=2, max_size=int(os.environ.get("QS_API_POOL", "20")),
@@ -120,7 +114,7 @@ async def lifespan(app: FastAPI):
     await pool.close()
 
 
-app = FastAPI(title="HellaBandz API", version="0.1.0", lifespan=lifespan, dependencies=[Depends(authorize)])
+app = FastAPI(title="HellaBandz API", version="0.1.0", lifespan=lifespan)
 from hellabandz.api.operator_auth import AccessControl, authenticated, origins, required, router as auth_router
 app.add_middleware(AccessControl)
 app.add_middleware(CORSMiddleware, allow_origins=origins(), allow_credentials=True,
@@ -132,7 +126,7 @@ app.include_router(audit_router)
 
 @app.get("/healthz")
 def healthz():
-    return {"api": "ok", "auth_required": required() if operator_mode() else not disabled()}
+    return {"api": "ok", "auth_required": required()}
 
 
 @app.exception_handler(RequestValidationError)
@@ -213,8 +207,7 @@ class BarsIn(BaseModel):
 
 @app.post("/v1/bars")
 async def post_bars(body: BarsIn, portfolio_id: Ident = "main", wait: bool = True):
-    user = current_user()
-    dataset_id = f"user:{user.id}:{body.dataset_id}" if user else body.dataset_id
+    dataset_id = body.dataset_id
     async with pool.connection() as conn:
         cur = conn.cursor()
         await cur.executemany(
@@ -374,11 +367,6 @@ async def throughput_analytics(portfolio_id: Ident = "main"):
 
 @app.get("/v1/bars")
 async def bars(dataset_id: str = "live", symbol: str | None = None, limit: int = Query(2000, ge=1, le=20_000)):
-    user = current_user()
-    if user:
-        from hellabandz.ingestion.registry import registered
-        if dataset_id not in registered():
-            dataset_id = f"user:{user.id}:{dataset_id}"
     if symbol:
         return await q("SELECT * FROM market_bars WHERE dataset_id = %s AND symbol = %s ORDER BY ts DESC LIMIT %s",
                        (dataset_id, symbol, limit))
@@ -451,14 +439,6 @@ async def save_tournament(body: TournamentIn):
         raise HTTPException(422, "body run_id must match manifest.run_id")
     if sha256_hex(canonical(body.manifest)) != body.manifest_hash:
         raise HTTPException(422, "manifest_hash does not match canonical manifest content")
-    user = current_user()
-    if user and not user.scope:
-        existing_owner = await q("SELECT owner_id FROM account_resources WHERE kind='run' AND resource_id=%s", (body.run_id,))
-        if existing_owner:
-            await owned("run", body.run_id)
-        else:
-            async with pool.connection() as conn, conn.transaction():
-                await claim(conn, "run", body.run_id)
     await q("INSERT INTO tournaments (run_id, manifest, manifest_hash) VALUES (%s, %s, %s) "
             "ON CONFLICT (run_id) DO NOTHING RETURNING run_id",
             (body.run_id, Jsonb(body.manifest), body.manifest_hash))
@@ -480,9 +460,6 @@ async def save_tournament(body: TournamentIn):
 
 @app.get("/v1/tournaments")
 async def list_tournaments(limit: int = Query(20, ge=1, le=200)):
-    user = current_user()
-    if user:
-        return await q("SELECT t.run_id, t.created_at, t.manifest_hash, t.manifest, t.solana_sig FROM tournaments t JOIN account_resources a ON a.kind='run' AND a.resource_id=t.run_id WHERE a.owner_id=%s ORDER BY t.created_at DESC LIMIT %s", (user.id, limit))
     return await q("SELECT run_id, created_at, manifest_hash, manifest, solana_sig FROM tournaments "
                    "ORDER BY created_at DESC LIMIT %s", (limit,))
 
@@ -533,9 +510,6 @@ async def agent_messages(run_id: Ident | None = None, limit: int = 200, portfoli
                        "ORDER BY id LIMIT %s", (portfolio_id, portfolio_id, limit))
     if run_id:
         return await q("SELECT * FROM agent_messages WHERE run_id = %s ORDER BY id LIMIT %s", (run_id, limit))
-    user = current_user()
-    if user:
-        return await q("SELECT m.* FROM agent_messages m JOIN account_resources a ON a.kind='run' AND a.resource_id=m.run_id WHERE a.owner_id=%s ORDER BY id DESC LIMIT %s", (user.id, min(max(limit, 1), 2000)))
     return await q("SELECT * FROM agent_messages ORDER BY id DESC LIMIT %s", (limit,))
 
 
@@ -553,7 +527,6 @@ class AskIn(BaseModel):
 
 @app.post("/v1/ask")
 async def ask(body: AskIn):
-    await owned("portfolio", body.portfolio_id)
     from hellabandz.agents.ask import answer
 
     ctx = {
@@ -619,24 +592,7 @@ async def stream(ws: WebSocket, portfolio_id: Ident = "main", after_seq: int = 0
         await ws.close(code=1008, reason="portfolio_id must appear only once")
         return
     await ws.accept()
-    token = None
-    if not disabled():
-        try:
-            # Tokens never travel in URLs, browser history, or access logs.
-            first = await asyncio.wait_for(ws.receive_json(), timeout=10)
-            token = first.get("access_token") if isinstance(first, dict) else None
-            if not isinstance(token, str) or len(token) > 16384:
-                raise HTTPException(401, "Sign in required")
-            user = await verify_token(token)
-            if user.scope:
-                raise HTTPException(403, "Account session required")
-            identity.set(user)
-            await owned("portfolio", portfolio_id)
-        except (HTTPException, ValueError, asyncio.TimeoutError, WebSocketDisconnect):
-            await ws.close(code=1008, reason="Account session or portfolio access invalid")
-            return
     last = after_seq
-    checked_at = asyncio.get_running_loop().time()
 
     async def disconnected():
         # Read the disconnect frame even on a quiet portfolio with no events.
@@ -649,19 +605,11 @@ async def stream(ws: WebSocket, portfolio_id: Ident = "main", after_seq: int = 0
     disconnect_task = asyncio.create_task(disconnected())
     try:
         while True:
-            if operator_mode() and not authenticated(ws.headers, ws.cookies):
+            if not authenticated(ws.headers, ws.cookies):
                 await ws.close(code=1008, reason="session expired")
                 return
             if disconnect_task.done():
                 return
-            if token and asyncio.get_running_loop().time() - checked_at > 60:
-                try:
-                    identity.set(await verify_token(token))
-                    await owned("portfolio", portfolio_id)
-                except HTTPException:
-                    await ws.close(code=1008, reason="Session expired; reconnect")
-                    return
-                checked_at = asyncio.get_running_loop().time()
             rows = await q("SELECT seq, type, event FROM ledger_events WHERE portfolio_id = %s AND seq > %s "
                            "ORDER BY seq LIMIT 500", (portfolio_id, last))
             if rows:
@@ -686,5 +634,3 @@ from hellabandz.api.workflows import router as workflow_router  # noqa: E402
 app.include_router(workflow_router)
 from hellabandz.api.marketplace import router as marketplace_router  # noqa: E402
 app.include_router(marketplace_router)
-from hellabandz.api.accounts import router as account_router  # noqa: E402
-app.include_router(account_router)

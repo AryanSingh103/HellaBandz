@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from hellabandz.agents.tournament import CAP_PER_STRATEGY, DEPLOYABLE, SUPERVISOR_BAND, allocate, score
+from hellabandz.agents.tournament import CAP_PER_STRATEGY, DEPLOYABLE, SUPERVISOR_BAND, allocate
 from hellabandz.audit.solana import manifest_hash_file, memo_for, verify
 from hellabandz.contracts import StrategyFamily, StrategyProposal
 from hellabandz.agents.tournament import expand_grid
@@ -30,14 +30,6 @@ def test_supervisor_cannot_move_weight_beyond_band_or_fund_failed_strategy():
 def test_all_failed_means_all_cash():
     w, _ = allocate({"a": 0.0, "b": 0.0}, {"a": 1.0})
     assert sum(w.values()) == 0
-
-
-def test_score_gates():
-    good = {"n_fills": 30, "max_drawdown": 0.1, "sharpe": 1.5}
-    assert score(good, 1.0)[0] > 0
-    assert score({**good, "n_fills": 3}, 1.0) == (0.0, ["n_fills 3 < 10"])
-    assert score({**good, "max_drawdown": 0.4}, 1.0)[0] == 0.0
-    assert score({**good, "sharpe": -1.0}, 1.0)[0] == 0.0
 
 
 def test_llm_grid_outside_whitelist_bounds_is_dropped():

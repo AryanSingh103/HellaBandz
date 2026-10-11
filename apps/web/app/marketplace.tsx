@@ -1,9 +1,9 @@
 "use client";
 import { FormEvent, useRef, useState } from "react";
 import { ArrowUpRight, BarChart3, FlaskConical, ShoppingBag, Search, Wallet, RefreshCw } from "lucide-react";
-import { errorText, id, Metrics, pct, post, request, stamp } from "./model";
+import { comparePerformance, matchesSearch, errorText, id, Metrics, pct, post, request, stamp } from "./model";
 import { useResource } from "./data";
-import { Empty, JsonView, Metric, Modal, Notice } from "./ui";
+import { Empty, JsonView, Metric, Modal, Notice, PerformanceMetrics } from "./ui";
 
 type Split = "train" | "validation" | "test";
 type Asset = { asset_id: string; title: string; family: string; agent_id: string; status: string; universe: string[];
@@ -51,11 +51,10 @@ export function MarketplaceView() {
   const changed = () => refresh(n => n + 1);
   const action = useMarketAction(changed);
   const available = (a: Asset) => offers.filter(o => o.asset_id === a.asset_id && o.seller_id !== account).sort((a, b) => a.price - b.price);
-  const filtered = assets.filter(a => `${a.title} ${a.agent_id} ${a.universe.join(" ")}`.toLowerCase().includes(query.toLowerCase())).sort((a,b) => {
+  const filtered = assets.filter(a => matchesSearch(query, a.title, a.agent_id, ...a.universe)).sort((a,b) => {
     if (sort === "price") return (available(a)[0]?.price ?? Infinity) - (available(b)[0]?.price ?? Infinity);
     const field = sort === "return" ? "net_return" : sort === "drawdown" ? "max_drawdown" : "sharpe";
-    const av = a.metrics[split]?.[field], bv = b.metrics[split]?.[field];
-    return av == null ? bv == null ? a.title.localeCompare(b.title) : 1 : bv == null ? -1 : sort === "drawdown" ? av - bv : bv - av;
+    return comparePerformance(a.metrics[split], b.metrics[split], field) || a.title.localeCompare(b.title);
   });
   const comparison = assets.filter(a => selected.includes(a.asset_id));
   return <>
@@ -73,7 +72,7 @@ export function MarketplaceView() {
         const m = a.metrics[split], ask = available(a)[0], owned = wallet.data?.holdings.find(h => h.asset_id === a.asset_id)?.quantity || 0;
         return <article className="market-card" key={a.asset_id}><div className="card-top"><span className="market-family"><BarChart3 size={17} />{a.universe.join(" · ")}</span><span className={`market-badge ${a.status === "research" ? "experimental" : ""}`}>{a.status === "research" ? "Unbacktested" : a.gates.length ? "Gates failed" : "Evaluated"}</span></div>
           <button className="market-title" onClick={() => setDetail(a)}><h2>{a.title}</h2><ArrowUpRight size={15} /></button><p className="market-agent">{a.agent_id.replaceAll("_", " ")} · {a.dataset_id || "Review research"}</p>
-          <div className="market-stats"><Metric label="Net return" value={pct(m?.net_return)} /><Metric label="Sharpe" value={num(m?.sharpe)} /><Metric label="Max drawdown" value={pct(m?.max_drawdown)} /></div>
+          <div className="market-stats"><PerformanceMetrics metrics={m} /></div>
           <p className="market-period">{label[split]} · {period(a, split)}<br />{m ? `${m.n_fills} fills · fees ${m.fees_usd.toFixed(2)} · slippage ${m.slippage_usd.toFixed(2)} (dataset quote units)` : "No measured trading performance"}</p>
           <div className="market-card-bottom"><div><span className="muted">Lowest ask</span><strong>{ask ? credits(ask.price) : "No offers"}</strong><small>{ask ? `${available(a).reduce((n,o) => n + o.remaining, 0)} licenses offered` : "Check back later"}{owned ? ` · ${owned} owned` : ""}</small></div><button className="primary" disabled={!ask || !wallet.data || !!wallet.error} onClick={() => setTicket(a)}><ShoppingBag size={15} />Buy</button></div>
           <label className="market-compare"><input type="checkbox" checked={selected.includes(a.asset_id)} disabled={!selected.includes(a.asset_id) && selected.length >= 4} onChange={e => select(e.target.checked ? [...selected, a.asset_id] : selected.filter(s => s !== a.asset_id))} />Compare {a.title}</label>

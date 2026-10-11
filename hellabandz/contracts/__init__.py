@@ -44,10 +44,6 @@ def usd_to_micros(x: str | int | float) -> int:
         raise ValueError("money must be a finite decimal in signed 64-bit micro-units") from exc
 
 
-def micros_to_usd(m: int) -> float:
-    return m / MICROS
-
-
 class _Frozen(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 

@@ -7,7 +7,7 @@ boundary, not the model.
 ```
                     ┌──────────────────────── untrusted / nondeterministic ───────────────────────┐
                     │                                                                             │
-  frozen dataset ──►│  Agent service (LangGraph + OpenAI, or recorded fixtures)                   │
+  frozen dataset ──►│  Agent service (parallel Python + OpenAI, or recorded fixtures)                   │
   (Parquet + hash)  │   summarize(train) → momentum | mean_reversion | volatility (parallel LLM)  │
                     │   → fit: deterministic grid search on TRAIN, scored against a passive core  │
                     │   → rank: excess over the core on walk-forward blocks + VALIDATION, gates   │
@@ -54,9 +54,9 @@ boundary, not the model.
 | Ledger core | `hellabandz/ledger/` | Pure state machine: `process(state, command) → events`, `apply_event`, invariants, digests | Shared by worker, backtester, recovery and tests, so "backtest == live" by construction |
 | Execution worker | `hellabandz/execution/worker.py` | Only writer of financial state. Batches commands, commits events + projections atomically | Single writer per portfolio removes races without distributed locks; crash domain is isolated from the API |
 | API gateway | `hellabandz/api/app.py` | Schema validation, idempotent command intake, read models, verification | Lets the worker die without losing requests (commands queue durably) |
-| Backtester | `hellabandz/backtester/` | `DataProvider`, `Strategy`, `ExecutionModel`, `Portfolio`, `ResultStore` over the same engine | No second implementation of fills or accounting |
+| Backtester | `hellabandz/backtester/` | `DataProvider`, frozen strategy `Slot`s and `BacktestResult` over the same engine | No second implementation of fills or accounting |
 | Strategies | `hellabandz/strategies/` | Whitelisted causal families; agents choose parameters only | LLMs never ship executable code |
-| Agents | `hellabandz/agents/` | LangGraph tournament, live session client, grounded Q&A | Nondeterministic, so kept strictly upstream of the command log |
+| Agents | `hellabandz/agents/` | Fixed research pipeline, live session client, grounded Q&A | Nondeterministic, so kept strictly upstream of the command log |
 | Local manager | `hellabandz/execution/manager.py` | Durable research/session jobs and explicitly owned execution children | API stays responsive; workers retain independent single-writer locks |
 | Browser workflows | `hellabandz/api/workflows.py` | Registered datasets, jobs, runtime controls, paged history, read-only selected-event replay and ledger analytics | Financial mutations still use the command queue |
 | Terminal | `apps/web/` | Strategy browsing, historical runs, manual simulated orders, history and voice Q&A | Uses the public API; provider keys stay server-side |
@@ -134,11 +134,14 @@ Equal-timestamp ordering (I-11): bars sorted by `(ts, symbol)`; at each timestam
   sell fills round down) and documented in `INVARIANTS.md`.
 - **TimescaleDB hypertables** for time-series (fills, equity, bars, telemetry); relational tables for
   everything that needs uniqueness or foreign keys.
-- **LangGraph** for fan-out/fan-in of the research agents; nodes after `fit` are plain deterministic Python.
+- **Python thread pool** for the six independent research calls, merged in stable agent order. The fixed
+  downstream pipeline uses plain Python; fitting can use a process pool. No graph framework is required.
 
 ## Scaling path (and what breaks first)
 
 Measured in `PERFORMANCE.md`. Incremental agent exposure and checkpoint recovery are implemented.
+Frozen-dataset validation is cached by manifest/Parquet file version with a bounded cache. The UI
+subscribes and polls according to its active view; it does not load the entire terminal on every page.
 The next limits are: (1) the single writer and I/O per portfolio (shard independent portfolios with
 `--portfolio`); (2) position marking, order scans for fills, and full-state invariant checks/digest work
 per batch (profile, then add symbol indexes/incremental marks); (3) checkpoint size and unbounded command,
@@ -149,6 +152,5 @@ and use Postgres for projections. Any such change must preserve the crash and fu
 The audit journal adds storage and transaction overhead. Streaming seals avoid loading the full baseline
 into memory; reconstruction retains distinct keys changed since the prior seal. Next: archive and schema
 migration proofs, restricted DB roles, independent receipt monitoring and authorization review.
-Private accounts use Supabase identity with TimescaleDB resource ownership and scoped job tokens.
-The local judge demo explicitly selects the shared `QS_AUTH_MODE=operator` access gate.
-The 16-table Solana proof excludes the new account and Kalshi credential/order-attempt tables.
+The shared operator workspace uses a bearer key for tools and expiring HttpOnly browser sessions.
+Per-user registration and resource ownership are future work; external identity and exchange account integrations are absent.

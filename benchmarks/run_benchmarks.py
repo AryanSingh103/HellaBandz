@@ -1,9 +1,9 @@
 """Reproducible, resource-bounded benchmarks. See docs/PERFORMANCE.md for methodology.
 
-    uv run python benchmarks/run_benchmarks.py engine      # in-process: risk latency, command latency, replay speed
-    uv run python benchmarks/run_benchmarks.py db          # API + worker + TimescaleDB in Docker with CPU/mem limits
-    uv run python benchmarks/run_benchmarks.py recovery    # restart/replay time vs ledger size
-    uv run python benchmarks/report.py                     # regenerate docs/PERFORMANCE.md
+    uv run --group bench python benchmarks/run_benchmarks.py engine      # in-process: risk latency, command latency, replay speed
+    uv run --group bench python benchmarks/run_benchmarks.py db          # API + worker + TimescaleDB in Docker with CPU/mem limits
+    uv run --group bench python benchmarks/run_benchmarks.py recovery    # restart/replay time vs ledger size
+    uv run --group bench python benchmarks/report.py                     # regenerate docs/PERFORMANCE.md
 
 LLM latency and data download time are never included in these numbers.
 """

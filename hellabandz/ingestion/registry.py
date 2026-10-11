@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import json
 import os
+from copy import deepcopy
+from functools import lru_cache
 from pathlib import Path
 
 from hellabandz.ingestion.dataset import load_snapshot, validate
@@ -33,6 +35,21 @@ def resolve(dataset_id: str) -> Path:
 
 
 def describe(dataset_id: str, path: Path) -> dict:
+    path = path.resolve()
+    # Hashing/validating a frozen snapshot is expensive. A changed manifest or
+    # Parquet file invalidates the bounded cache, including failed validations.
+    versions = []
+    for name in ("manifest.json", "bars.parquet"):
+        try:
+            stat = (path / name).stat()
+            versions.append((stat.st_mtime_ns, stat.st_ctime_ns, stat.st_size))
+        except FileNotFoundError:
+            versions.append(None)
+    return deepcopy(_describe_cached(dataset_id, path, tuple(versions)))
+
+
+@lru_cache(maxsize=32)
+def _describe_cached(dataset_id: str, path: Path, versions: tuple) -> dict:
     meta = json.loads((path / "manifest.json").read_text())
     try:
         table, _ = load_snapshot(path)

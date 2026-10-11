@@ -50,7 +50,7 @@ class AccessControl:
         self.app = app
 
     async def __call__(self, scope, receive, send):
-        if os.getenv("QS_AUTH_MODE", "accounts") != "operator" or scope["type"] not in ("http", "websocket"):
+        if scope["type"] not in ("http", "websocket"):
             return await self.app(scope, receive, send)
         headers = Headers(scope=scope)
         origin = headers.get("origin")
@@ -78,8 +78,6 @@ class AccessControl:
 @router.get("/status")
 def status(request: Request, response: Response):
     response.headers["Cache-Control"] = "no-store"
-    if os.getenv("QS_AUTH_MODE", "accounts") != "operator":
-        return {"mode": "accounts", "required": os.getenv("QS_AUTH_DISABLED", "").lower() != "true", "authenticated": False}
     return {"mode": "operator", "required": required(), "authenticated": authenticated(request.headers, request.cookies)}
 
 

@@ -50,13 +50,13 @@ prove-docker:     ## same, in a Linux container (use this on Windows; needs `mak
 	docker compose run --rm --build prove
 
 bench:            ## engine + DB + recovery benchmarks, then regenerate docs/PERFORMANCE.md
-	uv run python benchmarks/run_benchmarks.py engine
-	uv run python benchmarks/run_benchmarks.py db
-	uv run python benchmarks/run_benchmarks.py recovery
-	uv run python benchmarks/report.py
+	uv run --group bench python benchmarks/run_benchmarks.py engine
+	uv run --group bench python benchmarks/run_benchmarks.py db
+	uv run --group bench python benchmarks/run_benchmarks.py recovery
+	uv run --group bench python benchmarks/report.py
 
 report:
-	uv run python benchmarks/report.py
+	uv run --group bench python benchmarks/report.py
 
 crash-worker:     ## SIGKILL the execution worker (commands keep queueing in Postgres)
 	docker compose kill -s SIGKILL worker

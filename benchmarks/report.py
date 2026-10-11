@@ -114,7 +114,7 @@ def main() -> None:
                    f"{med(cl['summary'], 'bar_p50_us'):.0f} µs p50.\n")
         out.append("**Why it matters.** This is the cost the deterministic core adds per decision, separate from "
                    "I/O. It sets the ceiling a single-writer worker could reach with free storage.\n")
-        out.append("**Procedure.** `uv run python benchmarks/run_benchmarks.py engine`\n")
+        out.append("**Procedure.** `uv run --group bench python benchmarks/run_benchmarks.py engine`\n")
         out.append("### Working-order scaling\n")
         out.append("Same proposals and fixed positions; 3 warm-up + 5 measured passes per size. "
                    "Only open buys grow. Exposure and reservation lookups are O(1) per agent; "
@@ -136,7 +136,7 @@ def main() -> None:
         out.append("**Workload.** SMA(20/100) crossover on every symbol, sized so orders fill. "
                    "Synthetic data is committed; Binance BTCUSDT 1-minute klines Jan–Mar 2024 "
                    "(checksummed public archive) are included when downloaded. 1 warm-up + 3 runs, median.\n")
-        out.append("**Procedure.** `uv run python scripts/ingest_binance.py && uv run python benchmarks/run_benchmarks.py engine`\n")
+        out.append("**Procedure.** `uv run python scripts/ingest_binance.py && uv run --group bench python benchmarks/run_benchmarks.py engine`\n")
 
     # ------------------------------------------------------------------ db
     if d:
@@ -160,7 +160,7 @@ def main() -> None:
         out.append(f"\nResponse mix across measured runs: {json.dumps(st)} (duplicates return the original decision; "
                    "invalid orders are rejected by R6 and still recorded).\n")
         out.append("**Procedure.** `docker compose up -d --build db api && docker compose --profile bench build bench && "
-                   "uv run python benchmarks/run_benchmarks.py db` (starts one resource-limited worker container per run).\n")
+                   "uv run --group bench python benchmarks/run_benchmarks.py db` (starts one resource-limited worker container per run).\n")
 
     if rc:
         out.append("## 5. Recovery time vs ledger size\n")
@@ -178,7 +178,7 @@ def main() -> None:
             ip, cr = r["in_process"], r["container_restart"]
             out.append(f"| {r['events']:,} | {r['mode']} | {r['replayed_events']:,} | {med(ip, 'load_s'):.3f} | {med(ip, 'replay_s'):.3f} | {med(ip, 'total_s'):.3f} | "
                        f"{med(cr, 'container_start_to_ready_s'):.2f} |")
-        out.append("\n**Procedure.** `uv run python benchmarks/run_benchmarks.py recovery` (in-process: 1 warm-up + 3; "
+        out.append("\n**Procedure.** `uv run --group bench python benchmarks/run_benchmarks.py recovery` (in-process: 1 warm-up + 3; "
                    "container: 3 cold starts of the 1 vCPU worker image, timed until its recovery telemetry row appears).\n")
 
     out.append(INTERPRETATION)

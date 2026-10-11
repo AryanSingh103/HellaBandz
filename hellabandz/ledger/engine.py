@@ -19,7 +19,7 @@ from hellabandz.contracts import (
     SetKillSwitch,
     SubmitOrder,
 )
-from hellabandz.ledger.state import PortfolioState, append, canonical, pos_key, sha256_hex
+from hellabandz.ledger.state import PortfolioState, append, canonical, sha256_hex
 
 BPS = 10_000
 

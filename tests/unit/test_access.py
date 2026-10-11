@@ -12,7 +12,6 @@ from hellabandz.api import operator_auth as auth
 
 @pytest.fixture
 def protected(monkeypatch):
-    monkeypatch.setenv("QS_AUTH_MODE", "operator")
     monkeypatch.setenv("QS_AUTH_REQUIRED", "1")
     monkeypatch.setenv("QS_API_TOKEN", "test-operator-key-" + "a" * 40)
     auth.sessions.clear()

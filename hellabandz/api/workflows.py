@@ -14,7 +14,6 @@ from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
 
 from hellabandz.api import app as gateway
-from hellabandz.api.auth import claim, current_user, owned
 from hellabandz.contracts import MICROS, Ident, StrategySpec
 from hellabandz.execution.worker import public_state
 from hellabandz.ingestion.registry import MANIFESTS, describe, registered, resolve
@@ -33,19 +32,11 @@ async def capabilities():
     return {"execution": "historical simulated, long-only, cash-funded", "initial_capital": 10000,
             "research_provider": "OpenAI" if os.environ.get("OPENAI_API_KEY") else "labeled fixture/fallback",
             "speech_provider": "ElevenLabs" if os.environ.get("ELEVENLABS_API_KEY") else "browser fallback",
-            "live_observation": False, "kalshi_discovery": False}
+            "live_observation": False}
 
 
 @router.get("/portfolios")
 async def portfolios():
-    user = current_user()
-    if user:
-        return await gateway.q(
-            "SELECT a.resource_id AS portfolio_id, s.seq, s.digest, c.run_id, c.dataset_id, c.session_job_id, c.provenance, "
-            "CASE WHEN w.portfolio_id IS NULL THEN 'external' ELSE 'supervisor' END AS ownership "
-            "FROM account_resources a LEFT JOIN portfolio_state s ON s.portfolio_id=a.resource_id "
-            "LEFT JOIN portfolio_context c ON c.portfolio_id=a.resource_id LEFT JOIN managed_workers w ON w.portfolio_id=a.resource_id "
-            "WHERE a.kind='portfolio' AND a.owner_id=%s ORDER BY a.resource_id", (user.id,))
     return await gateway.q(
         "SELECT p.portfolio_id, s.seq, s.digest, c.run_id, c.dataset_id, c.session_job_id, c.provenance, "
         "CASE WHEN w.portfolio_id IS NULL THEN 'external' ELSE 'supervisor' END AS ownership "
@@ -75,7 +66,6 @@ async def reserve_portfolio(conn, portfolio_id: str):
         (portfolio_id,) * 4)).fetchone()
     if portfolio_id == "main" or exists:
         raise HTTPException(409, "choose a fresh isolated portfolio ID")
-    await claim(conn, "portfolio", portfolio_id)
     await conn.execute("INSERT INTO managed_workers (portfolio_id) VALUES (%s)", (portfolio_id,))
 
 
@@ -150,7 +140,6 @@ async def launch_job(body: JobIn):
     config = body.model_dump(mode="json")
     existing = await gateway.q("SELECT * FROM jobs WHERE request_id = %s", (body.request_id,))
     if existing:
-        await owned("request", body.request_id)
         if existing[0]["config"] != config:
             raise HTTPException(409, "request ID reused with different configuration")
         return existing[0]
@@ -197,10 +186,6 @@ async def launch_job(body: JobIn):
             raise HTTPException(422, "incomplete or incompatible frozen session manifest: " + str(exc)[:180])
     try:
         async with gateway.pool.connection() as conn, conn.transaction():
-            await claim(conn, "request", body.request_id)
-            await claim(conn, "job", job_id)
-            if body.kind == "research":
-                await claim(conn, "run", run_id)
             if body.kind == "session":
                 await reserve_portfolio(conn, body.portfolio_id)
                 await conn.execute("INSERT INTO portfolio_context (portfolio_id, run_id, dataset_id, session_job_id) "
@@ -212,23 +197,14 @@ async def launch_job(body: JobIn):
         # Another identical request may have committed while this request validated its dataset.
         existing = await gateway.q("SELECT * FROM jobs WHERE request_id = %s", (body.request_id,))
         if existing and existing[0]["config"] == config:
-            await owned("request", body.request_id)
             return existing[0]
         raise HTTPException(409, "portfolio or request ID already reserved")
     return (await gateway.q("SELECT * FROM jobs WHERE job_id = %s", (job_id,)))[0]
 
 
-def _owned_jobs(clauses: list[str], args: list) -> None:
-    user = current_user()
-    if user:
-        clauses.append("job_id IN (SELECT resource_id FROM account_resources WHERE kind='job' AND owner_id=%s)")
-        args.append(user.id)
-
-
 @router.get("/jobs")
 async def jobs(portfolio_id: Ident | None = None, run_id: Ident | None = None, include_cleared: bool = False):
     clauses, args = [], []
-    _owned_jobs(clauses, args)
     if not include_cleared:
         clauses.append("cleared_at IS NULL")
     if portfolio_id:
@@ -245,7 +221,6 @@ async def jobs(portfolio_id: Ident | None = None, run_id: Ident | None = None, i
 async def clear_jobs():
     """Hide every finished job from the list. Queued and running jobs are never touched."""
     clauses, args = ["cleared_at IS NULL", "status NOT IN ('queued', 'running')"], []
-    _owned_jobs(clauses, args)
     rows = await gateway.q("UPDATE jobs SET cleared_at = now() WHERE " + " AND ".join(clauses) + " RETURNING job_id",
                            tuple(args))
     return {"cleared": len(rows)}

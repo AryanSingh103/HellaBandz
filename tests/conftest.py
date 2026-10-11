@@ -22,7 +22,6 @@ ADMIN_URL = os.environ.get("QS_TEST_ADMIN_URL", "postgresql://quantswarm:quantsw
 def isolated_test_auth(monkeypatch):
     # Disposable test stacks explicitly opt out; auth tests override this to exercise fail-closed access.
     monkeypatch.setenv("QS_AUTH_REQUIRED", "0")
-    monkeypatch.setenv("QS_AUTH_MODE", "accounts")
 
 
 def _db_available() -> bool:
@@ -48,9 +47,9 @@ class Stack:
         self.base = f"http://127.0.0.1:{self.port}"
 
     def env(self, **extra: str) -> dict:
-        # Infrastructure tests intentionally exercise the legacy offline API.
-        # Account-security tests separately run the default fail-closed mode.
-        return {**os.environ, "QS_AUTH_DISABLED": "true", "DATABASE_URL": self.url, "PYTHONUNBUFFERED": "1", **extra}
+        # Infrastructure tests use disposable stacks without operator auth.
+        # Access-control tests explicitly enable the default fail-closed mode.
+        return {**os.environ, "DATABASE_URL": self.url, "PYTHONUNBUFFERED": "1", **extra}
 
     def start_worker(self, **extra: str) -> subprocess.Popen:
         self.worker = subprocess.Popen([sys.executable, "-m", "hellabandz.execution.worker"], cwd=ROOT,

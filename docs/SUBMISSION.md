@@ -1,10 +1,31 @@
 # Submission status
 
-P1, P2 and P3 implementation work is combined on `main` and `p1-demo`. The combined checkout
+The historical P1/P2/P3 combined checkout
 `45e51e701ea64d7fc3bdf2898a179c34278bcf6e` was verified on October 10, 2026.
 This is not yet a claim that the HackRU submission is complete.
 
-## Combined verification
+## Current cleanup (October 11)
+
+The `p3-core` working tree removes the retired external account/exchange integrations, dead
+interfaces and graph dependencies. Six parallel research agents, simulated execution, the
+strategy marketplace, Nike review lab, voice and Solana audit trail remain. UI requests now
+follow the active view, charts and performance helpers are shared, and dataset validation
+uses a file-version cache. Historical planning and presentation notes live in `docs/archive/`.
+
+The cleaned production frontend and four backend services were rebuilt and restarted. All eight
+UI views loaded. Main-portfolio replay verified **2,177 events**; the browser's independent
+blockchain check verified **9,603 sealed records**, with zero later changes awaiting a seal.
+The judge database, marketplace holdings, wallet and public receipts were retained. Four
+obsolete databases were archived to checksummed, fully readable custom dumps before removal;
+three empty retired-provider tables were dropped. Old build folders and legacy bytecode were
+moved to a recoverable temporary folder outside the repo.
+
+Focused validation of the cache and research changes passed **22 tests**. This cleanup does
+not rerun the full proof or benchmark suites. The measured headlines below and in
+[PERFORMANCE](PERFORMANCE.md) remain historical; fresh submission-commit measurements,
+judge access and Devpost publication are still separate submission gates.
+
+## Historical combined verification (October 10)
 
 - `make setup` and `make up` passed; API, worker, database and production terminal started.
 - `make prove` on Windows and `make prove-docker` on Linux each passed **92 tests**, with zero
@@ -38,7 +59,7 @@ gitignored. Raw Alpaca/Binance snapshots are not redistributed.
 read back; API receipts and the browser verification button now work. See [VERIFICATION.md](VERIFICATION.md).
 This integration remains outside the deterministic execution path.
 
-Tiger Cloud, an Anchor registry and live Kalshi execution remain optional/stretch work.
+Tiger Cloud and an Anchor registry remain optional/stretch work.
 Operator API authentication and periodic full-trace Devnet seals are implemented; see [SECURITY](SECURITY.md).
 Combined measurements are recorded in [PERFORMANCE.md](PERFORMANCE.md), with matching Devpost
 headlines. Run the required final `make prove` and `make bench` on the chosen submission commit. Runtime

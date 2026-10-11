@@ -33,7 +33,7 @@ restart the API after editing it: `docker compose up -d api`.
 - Crisis responses must be one of `buy_dip | reduce | hold` with `fraction` clamped to [0, 1]; anything else
   falls back. The resulting orders still go through the risk engine.
 - Reasoning models (`o1`, `o3`, `o4`, `gpt-5*`) are called without `temperature`.
-- Cost: one tournament makes 4 small calls (3 research agents + supervisor), a session makes 3 more (crisis), each a few
+- Cost: one tournament makes 7 small calls (6 research agents + supervisor), a session makes 3 more (crisis), each a few
   hundred tokens.
 
 ## Solana

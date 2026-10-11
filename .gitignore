@@ -13,11 +13,12 @@ runs/
 node_modules/
 .next/
 apps/web/.next/
-apps/web/.next-build/
+apps/web/.next-*/
 *.tsbuildinfo
 benchmarks/results/tmp/
 graphify-out/
 data/solana/
 .DS_Store
 data/manifests/job-logs/
-apps/web/.next-merge/
+data/archives/
+artifacts/browser-smoke/

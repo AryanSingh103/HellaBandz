@@ -4,9 +4,7 @@ import { CircleStop, Play, ShieldCheck, Plus, Power } from "lucide-react";
 import { Analytics, Band, Dataset, Event, Portfolio, Runtime, Verification, money, moneyInput, pct, validId, stamp } from "./model";
 import { useCommand, useResource } from "./data";
 import { Chart, Empty, JsonView, Metric, Notice } from "./ui";
-import { RuleLabel } from "./help";
 import { History } from "./orders";
-import { operatorMode } from "./auth-client";
 import { AuditProof } from "./audit-proof";
 
 export function PortfolioView({ pid, port, runtime, dataset, refresh, onSelect, crash }: { pid: string; port?: Portfolio | null; runtime?: Runtime | null; dataset?: Dataset; refresh: () => void; onSelect: (p:string)=>void; crash?: Band }) {
@@ -43,7 +41,7 @@ export function AuditView({pid,port,events,streamStatus}:{pid:string;port?:Portf
     {verify.error && <Notice error>{verify.error}</Notice>}
     {verify.data && <Notice error={verify.data.status!=="not_opened" && !verify.data.match}>{verify.data.status==="not_opened" ? "Not opened: no ledger to verify." : verify.data.match && verify.data.chain_ok ? `Verified: ${verify.data.events} events, hash chain intact, projection matches replay.` : `Integrity mismatch. ${verify.data.error || "Projection or hash chain differs."}`}</Notice>}
     {verify.data && <JsonView label="Verification digests" value={verify.data} />}
-    {operatorMode() && <AuditProof />}
+    <AuditProof />
     <section><div className="section-title"><h2>Recent ledger stream</h2><span className="muted">{streamStatus} / {events.length} recent events</span></div><div className="table-scroll bounded"><table><thead><tr><th>Sequence</th><th>Type</th><th>Event & hash</th></tr></thead><tbody>{events.map(e=><tr key={e.seq}><td>{e.seq}</td><td>{e.type}</td><td><JsonView value={e} label="Event details" /></td></tr>)}</tbody></table></div></section>
     <h2>Full event history</h2>{port===null ? <Empty>No ledger. Event replay becomes available after opening this portfolio.</Empty> : <History key={pid} pid={pid} initialCollection="events" />}
   </>;
