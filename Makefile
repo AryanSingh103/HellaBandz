@@ -62,3 +62,10 @@ restart-worker:   ## restart it: replays the hash-chained log, verifies the dige
 
 check-integrations: ## which optional keys are configured + one live smoke call each
 	uv run python scripts/check_integrations.py
+
+.PHONY: solana-commit verify-solana
+solana-commit: ## commit the selected/latest manifest and publish its verified Devnet receipt to the API
+	uv run python -m quantswarm.audit.solana commit "$(RUN)" --api $(API)
+
+verify-solana: ## read the memo back from Devnet and compare the canonical manifest fingerprint
+	uv run python -m quantswarm.audit.solana verify "$(RUN)"

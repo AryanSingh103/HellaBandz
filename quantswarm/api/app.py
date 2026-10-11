@@ -397,6 +397,17 @@ class TournamentIn(BaseModel):
     manifest_hash: str
     solana_sig: str | None = None
 
+    @field_validator("solana_sig")
+    @classmethod
+    def valid_solana_signature(cls, value: str | None) -> str | None:
+        if value is not None:
+            from solders.signature import Signature
+            try:
+                Signature.from_string(value)
+            except ValueError as exc:
+                raise ValueError("invalid Solana transaction signature") from exc
+        return value
+
     @field_validator("manifest")
     @classmethod
     def finite_json(cls, value: dict) -> dict:
@@ -420,13 +431,45 @@ async def save_tournament(body: TournamentIn):
     existing = (await q("SELECT manifest, manifest_hash FROM tournaments WHERE run_id = %s", (body.run_id,)))[0]
     if existing["manifest"] != body.manifest or existing["manifest_hash"] != body.manifest_hash:
         raise HTTPException(409, "finalized run is immutable; revised content requires a new run_id")
+    if body.solana_sig:
+        from quantswarm.audit.solana import memo_for, onchain_memo
+        try:
+            memo = await asyncio.to_thread(onchain_memo, body.solana_sig)
+        except Exception as exc:
+            raise HTTPException(502, "Solana Devnet verification unavailable; retry publishing the saved receipt") from exc
+        if memo != memo_for(body.run_id, body.manifest_hash):
+            raise HTTPException(422, "Solana transaction does not commit this manifest")
+        await q("UPDATE tournaments SET solana_sig = %s WHERE run_id = %s RETURNING run_id",
+                (body.solana_sig, body.run_id))
     return {"ok": True}
 
 
 @app.get("/v1/tournaments")
 async def list_tournaments(limit: int = Query(20, ge=1, le=200)):
-    return await q("SELECT run_id, created_at, manifest_hash, manifest FROM tournaments "
+    return await q("SELECT run_id, created_at, manifest_hash, manifest, solana_sig FROM tournaments "
                    "ORDER BY created_at DESC LIMIT %s", (limit,))
+
+
+@app.get("/v1/tournaments/{run_id}/solana")
+async def verify_tournament_solana(run_id: Ident):
+    from quantswarm.audit.solana import explorer, memo_for, onchain_memo
+    from quantswarm.ledger import canonical, sha256_hex
+    rows = await q("SELECT manifest, solana_sig FROM tournaments WHERE run_id = %s", (run_id,))
+    if not rows:
+        raise HTTPException(404, "research run not found")
+    record = rows[0]
+    h = sha256_hex(canonical(record["manifest"]))
+    sig = record["solana_sig"]
+    result = {"run_id": run_id, "recomputed_sha256": h, "signature": sig, "cluster": "devnet"}
+    if not sig:
+        return {**result, "ok": False, "status": "not_committed"}
+    try:
+        memo = await asyncio.to_thread(onchain_memo, sig)
+    except Exception as exc:
+        raise HTTPException(502, "Solana Devnet verification unavailable; try again") from exc
+    ok = memo == memo_for(run_id, h)
+    return {**result, "ok": ok, "status": "verified" if ok else "mismatch",
+            "onchain_memo": memo, "explorer": explorer(sig)}
 
 
 class AgentMessageIn(BaseModel):

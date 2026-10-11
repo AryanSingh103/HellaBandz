@@ -49,7 +49,7 @@ export type Manifest = { run_id: string; created_at: string; dataset: { dataset_
   proposals: { agent_id: string; source: string; proposal: { rationale: string; evidence: string[]; param_grid: Record<string, number[]>; universe: string[] } }[];
   allocations: { by_strategy: Record<string, { weight: number; capital_micros: number }> }; supervisor: { source: string; rationale: string };
   held_out_test: { portfolio: { metrics: Metrics }; per_strategy_standalone: Record<string, Metrics>; equity_curve: { ts: number[]; equity: number[] } }; policy: Record<string, number> };
-export type Tournament = { run_id: string; manifest: Manifest; manifest_hash: string; created_at: string };
+export type Tournament = { run_id: string; manifest: Manifest; manifest_hash: string; created_at: string; solana_sig?: string | null };
 export type Dataset = { dataset_id: string; source: string; content_sha256: string; symbols: string[]; interval_s: number; first_ts: number; last_ts: number; row_count: number;
   splits: Record<string, number[]>; execution_usable: boolean; unavailable_reason?: string; quality: unknown; synthetic: boolean; quote_currency: string; lots_per_base_unit: number; units?: string };
 export type Position = { qty: number; basis: number; reserved: number };

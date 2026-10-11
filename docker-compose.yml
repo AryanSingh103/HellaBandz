@@ -40,6 +40,7 @@ services:
       ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
       ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID:-onwK4e9ZLuTAKqWW03F9}
       QS_OPENAI_MODEL: ${QS_OPENAI_MODEL:-gpt-4.1-mini}
+      SOLANA_RPC: ${SOLANA_RPC:-https://api.devnet.solana.com}
     ports: ["8000:8000"]
     depends_on: { db: { condition: service_healthy } }
     healthcheck:

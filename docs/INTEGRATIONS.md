@@ -41,7 +41,14 @@ restart the API after editing it: `docker compose up -d api`.
    one SPL Memo transaction `quantswarm:v1:<run_id>:<sha256>`, writes `data/manifests/<run>.solana.json`,
    and stores the signature with the tournament so the terminal shows the explorer link.
 4. `make verify-solana`: recomputes the hash from the local file and compares it with the memo read back
-   from chain. Edit any byte of the manifest and it fails (exit code 1).
+   from chain. Changing manifest content fails verification (exit code 1); JSON formatting does not affect the canonical hash.
+
+Select a specific run with `make solana-commit RUN=data/manifests/<run>.json`. A retry reuses a saved,
+confirmed matching transaction, including when API publication previously failed. API errors are reported
+instead of silently ignored. The API validates the confirmed memo before storing the signature;
+signature-free research retries retain the saved proof. Research shows an Explorer link and a
+**Verify on-chain fingerprint** button, backed by `GET /v1/tournaments/<run>/solana`.
+An unsigned run is shown as uncommitted, and a mismatching or failed transaction never verifies.
 
 ## Real-data tournament (Alpaca)
 

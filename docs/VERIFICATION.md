@@ -54,7 +54,24 @@ their tournament manifests. Later manual console checks add events beyond these 
 
 The existing `T20261010194733.solana.json` commitment verified against the actual Devnet memo.
 The new local wallet was created under ignored `data/solana/`; it still reported zero SOL after
-the automatic airdrop failed. New tournament commitments are pending funding; no private key is committed.
+the automatic airdrop failed. This funding blocker was resolved in the later check below; no private key is committed.
+
+## Solana follow-up (October 10, 2026)
+
+The Solana Foundation web faucet supplied 0.5 free Devnet SOL to the ignored local wallet.
+Three new SPL Memo commitments were confirmed, read back from Devnet, and published to the API:
+`T20261010203045`, `T20261010203316`, and `T20261010203916`. Their public receipts are stored
+beside the manifests as `.solana.json` files. The previously committed `T20261010194733` receipt
+was reused and published without sending a duplicate transaction.
+
+The API now verifies and retains the signature, including on signature-free research retries.
+The Research page's verification button checked the newly created `T20261010203916` memo against
+the recomputed canonical manifest hash and displayed a successful match. The production web build
+and 31 focused Solana/integration unit tests passed. The complete Linux proof run then passed
+127/127 tests with all 11 invariant categories proven and no skips. Solana Explorer independently
+displayed the new `T20261010203916` transaction as Success / Finalized. The wallet retained
+0.499985 Devnet SOL after the three transaction fees. API-publication failures retain the receipt
+and surface an error so a retry can reuse the confirmed transaction.
 
 ## Performance and reproducibility
 

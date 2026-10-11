@@ -108,6 +108,8 @@ def onchain_memo(sig: str) -> str | None:
         tx = rpc("getTransaction", [sig, {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0,
                                           "commitment": "confirmed"}])
         if tx:
+            if tx.get("meta", {}).get("err"):
+                return None
             for ix in tx["transaction"]["message"]["instructions"]:
                 if ix.get("programId") == MEMO_PROGRAM:
                     return ix.get("parsed")
@@ -123,13 +125,21 @@ def explorer(sig: str) -> str:
 def commit(path: Path, api: str | None = None) -> dict:
     h, m = manifest_hash_file(path)
     memo = memo_for(m["run_id"], h)
-    sig = send_memo(memo)
+    record_path = path.with_suffix(".solana.json")
+    previous = json.loads(record_path.read_text()) if record_path.exists() else {}
+    # Reuse a confirmed matching receipt if publishing to the API previously failed.
+    sig = previous.get("signature") if previous.get("manifest_sha256") == h else None
+    if not sig or onchain_memo(sig) != memo:
+        sig = send_memo(memo)
+    if onchain_memo(sig) != memo:
+        raise RuntimeError("confirmed transaction does not contain the expected manifest memo")
     rec = {"run_id": m["run_id"], "manifest_sha256": h, "memo": memo, "signature": sig, "cluster": "devnet",
            "explorer": explorer(sig)}
-    path.with_suffix(".solana.json").write_text(json.dumps(rec, indent=1))
+    record_path.write_text(json.dumps(rec, indent=1))
     if api:
-        httpx.post(f"{api}/v1/tournaments", json={"run_id": m["run_id"], "manifest": m, "manifest_hash": h,
-                                                   "solana_sig": sig}, timeout=30)
+        response = httpx.post(f"{api}/v1/tournaments", json={"run_id": m["run_id"], "manifest": m, "manifest_hash": h,
+                                                           "solana_sig": sig}, timeout=90)
+        response.raise_for_status()
     return rec
 
 

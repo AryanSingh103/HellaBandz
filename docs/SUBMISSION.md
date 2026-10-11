@@ -29,9 +29,11 @@ gitignored. Raw Alpaca/Binance snapshots are not redistributed.
 - **Judge access:** the repository is private. The authenticated collaborator has push access but no
   admin/maintain access. The owner must make it public or grant judges access.
 - **Devpost:** [DEVPOST.md](DEVPOST.md) contains prepared copy; publication/submission has not been verified.
-- **New Solana commitments:** the local Devnet wallet reports zero balance. The automatic airdrop failed;
-  an existing on-chain commitment verifies, but the new tournament hashes have not been committed.
-  A new commitment requires funded Devnet test SOL. It is outside the deterministic execution path.
+
+**Solana funding resolved:** the official faucet supplied 0.5 free Devnet SOL. New commitments for
+`T20261010203045`, `T20261010203316`, and `T20261010203916` were confirmed and independently
+read back; API receipts and the browser verification button now work. See [VERIFICATION.md](VERIFICATION.md).
+This integration remains outside the deterministic execution path.
 
 Tiger Cloud, an Anchor registry, Kalshi and API authentication remain optional/stretch work.
 Combined measurements are recorded in [PERFORMANCE.md](PERFORMANCE.md), with matching Devpost
