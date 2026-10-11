@@ -117,6 +117,7 @@ class ExecutionAuthority:
         self.lp = SyntheticLiquidityProvider(self.clob, liquidity or LiquidityConfig()) if self.clob else None
         self.shadow_orders: list[dict] = []
         self.clob_events: list[dict] = []
+        self.keep_clob_events = True
         self.marks: dict[str, int] = {}
         self.last_ts = 0
         self.n_cmd = 0
@@ -146,7 +147,8 @@ class ExecutionAuthority:
 
     def _clob(self, cmd) -> tuple[list[dict], dict]:
         evs, resp = self.clob.process(cmd)
-        self.clob_events.extend(evs)
+        if self.keep_clob_events:
+            self.clob_events.extend(evs)
         self._route(evs)
         return evs, resp
 
@@ -174,7 +176,8 @@ class ExecutionAuthority:
         self.last_ts = max(self.last_ts, ts)
         if self.lp is not None:
             evs = self.lp.requote(sym, close, volume, ts)
-            self.clob_events.extend(evs)
+            if self.keep_clob_events:
+                self.clob_events.extend(evs)
             self._route(evs)
 
     # ------------------------------------------------------------------ decisions

@@ -158,9 +158,21 @@ class CoordinatedRuntime:
                                              data_class=self.gateway.data_class, event_type=EventType.BAR, seq=seq,
                                              exchange_ts=ts, receive_ts=ts, open=b.open, high=b.high, low=b.low,
                                              close=b.close, volume=b.volume))
-        for e in self.gateway.drain():
+        market_events = self.gateway.drain()
+        # Batching is financially equivalent only when bars cannot fill/expire
+        # resting orders. Retain the exact interleaved path whenever any exist.
+        batch = getattr(self.ledger, "process_bars", None)
+        batched = bool(batch and not self.ledger.state.orders and
+                       (self.authority.clob is None or not self.authority.clob.open_orders(self.authority.owner)))
+        if batched:
+            accepted_bars = [next(b for b in bars if b.symbol == e.instrument) for e in market_events]
+            if accepted_bars:
+                evs, _ = batch(accepted_bars)
+                self.authority.on_ledger_events(evs)
+        for e in market_events:
             bar = next(b for b in bars if b.symbol == e.instrument)
-            self.authority.ledger_process(ApplyBar(bar=bar))
+            if not batched:
+                self.authority.ledger_process(ApplyBar(bar=bar))
             self.authority.on_bar(e.instrument, e.close, e.volume, ts)
         c1 = clock()
         snap = self.gateway.snapshot()
@@ -171,6 +183,7 @@ class CoordinatedRuntime:
         c2 = clock()
         acct = AccountView.from_state(self.ledger.state)
         decisions = self.coordinator.decide(snap, intents, acct, self.book, self.active)
+        self.last_decisions = decisions
         c3 = clock()
         for d in decisions:
             self.authority.execute(d, clock)

@@ -8,7 +8,7 @@ from hellabandz.ingestion.dataset import load_snapshot
 from hellabandz.trading import live
 from hellabandz.trading.execution import LocalLedger
 from hellabandz.trading.registry import Registry
-from hellabandz.trading.reporting import load_report, research_context, save_report, simulation_context
+from hellabandz.trading.reporting import load_report, research_context, save_report, simulation_context, live_report
 from hellabandz.trading.research import POLICY_VERSION, research_current
 from hellabandz.trading.strategies import CODE_VERSION, make_version
 
@@ -103,6 +103,15 @@ def test_managed_runner_reports_every_rule_and_matches_truncated_baseline(tmp_pa
         assert report["context"]["agents"][0]["research_approved"] is False
     assert sum(s["equity"] for s in result["attribution"].values()) + result["unallocated_cash"] == round(result["final_equity"] * 1e6)
     assert [m for m in messages if m["role"] == "coordinator_start"][0]["content"]["context"]["agents"][0]["version"] == chosen.version
+    compact = load_report(tmp_path, "fresh", live=True)
+    assert compact["steps"] == report["steps"][-1:]
+    assert compact["points"] == report["points"]
+    assert compact["benchmark"] == report["benchmark"]
+    assert "rule_readings" not in compact and "decisions" not in compact
+    assert len(report["decisions"]) > 0
+    for step, point in zip(report["steps"], report["points"]):
+        assert step["ts"] == point["ts"]
+        assert sum(s["pnl"] for s in step["sleeves"].values()) == step["equity"] - 10_000_000_000
     stages = [p[0] for p in progress]
     assert stages[0] == "loading_market_data"
     assert stages.index("opening_paper_account") < stages.index("warming_strategy_history") < stages.index("coordinating")
@@ -137,3 +146,67 @@ def test_incomplete_research_never_starts_trading(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match="completed compatible research"):
         live.run_coordinated({"config": {}, "portfolio_id": "fresh", "run_id": "run"},
             ROOT / "data/fixtures/synthetic_1h", "http://test", {}, lambda *a: None, lambda: False)
+
+
+def test_live_view_omits_archive_and_falls_back_for_existing_reports(tmp_path):
+    report = {"schema": "coordinated-simulation-1", "portfolio_id": "old", "steps": [{"step": 1}, {"step": 2}],
+              "points": [{"ts": 100, "equity": 10}], "decisions": ["large"], "rule_readings": ["large"],
+              "telemetry": ["large"], "benchmark": {"baseline": [{"ts": 100, "equity": 9}]}}
+    save_report(tmp_path, "old", report)
+    compact = load_report(tmp_path, "old", live=True)
+    assert compact == live_report(report)
+    assert compact["steps"] == [{"step": 2}]
+    assert load_report(tmp_path, "old")["decisions"] == ["large"]
+
+
+def test_batching_empty_book_preserves_every_financial_event():
+    from hellabandz.backtester import SnapshotProvider
+    from hellabandz.contracts import ApplyBar
+    from hellabandz.trading.coordinator import paper_budget
+    from hellabandz.trading.instruments import instruments_for_dataset
+    from hellabandz.trading.research import core_version, data_class
+    from hellabandz.trading.runtime import CoordinatedRuntime
+    from hellabandz.trading.execution import VenueMode
+    from hellabandz.trading.strategies import RuntimeStrategy
+    class BatchLedger(LocalLedger):
+        batches = 0
+        def process_bars(self, bars):
+            self.batches += 1
+            events = []
+            for bar in bars:
+                evs, _ = self.process(ApplyBar(bar=bar))
+                events.extend(evs)
+            return events, {"processed": True}
+    table, meta = load_snapshot(ROOT / "data/fixtures/synthetic_1h")
+    provider = SnapshotProvider(table)
+    start, end = meta["splits"]["test"]
+    runtimes = []
+    for ledger in (LocalLedger(), BatchLedger()):
+        rt = CoordinatedRuntime("same", VenueMode.PAPER_CLOB,
+            [RuntimeStrategy(core_version(meta["symbols"]), "paper_clob")], {"core": 9_000_000_000},
+            paper_budget(10_000_000_000), instruments_for_dataset(meta), data_class(meta), ledger=ledger)
+        rt.open()
+        rt.warm(provider, start)
+        rt.run(provider, start, end, max_cycles=30)
+        runtimes.append(rt)
+    a, b = runtimes
+    assert b.ledger.batches > 0
+    assert a.ledger.events == b.ledger.events
+    assert a.ledger.state.digest() == b.ledger.state.digest()
+    assert a.book.report({s: v[1] for s, v in a.ledger.state.last_bar.items()}) == b.book.report({s: v[1] for s, v in b.ledger.state.last_bar.items()})
+    # Any resting order forces the original serial path, even if it is another
+    # owner. A stale external order must not be silently processed as an empty book.
+    from types import SimpleNamespace
+    b.ledger.state.orders["sentinel"] = SimpleNamespace(created_seq=999_999, agent_id="other")
+    before = b.ledger.batches
+    # Isolate the plumbing condition without mutating the real ledger with a fake order.
+    original = b.authority.ledger_process
+    def serial(cmd):
+        b.ledger.state.orders.pop("sentinel", None)
+        return original(cmd)
+    b.authority.ledger_process = serial
+    groups = {}
+    for bar in provider.bars(start, end):
+        groups.setdefault(int(bar.ts.timestamp()), []).append(bar)
+    b.step(list(groups.values())[30])
+    assert b.ledger.batches == before

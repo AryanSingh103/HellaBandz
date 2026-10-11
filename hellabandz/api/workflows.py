@@ -44,10 +44,10 @@ async def coordinated_research(dataset_id: Ident):
 
 
 @router.get("/coordinated/report")
-async def coordinated_report(portfolio_id: Ident):
+async def coordinated_report(portfolio_id: Ident, view: Literal["full", "live"] = "full"):
     from hellabandz.trading.reporting import load_report
     try:
-        report = await asyncio.to_thread(load_report, MANIFESTS, portfolio_id)
+        report = await asyncio.to_thread(load_report, MANIFESTS, portfolio_id, live=view == "live")
     except (ValueError, OSError) as exc:
         raise HTTPException(409, "coordinated report cannot be verified") from exc
     if report is None:
@@ -136,7 +136,7 @@ async def runtime(portfolio_id: Ident = "main"):
     intentional_down = bool(w and w["desired"] == "down" and w["status"] in ("stopping", "intentional_down"))
     fresh = bool(not w or (w.get("started_at") and beat["worker_last_heartbeat"] and
                           beat["worker_last_heartbeat"] >= w["started_at"]))
-    alive = beat["worker_alive"] and fresh and not intentional_down and (not w or w["status"] != "failed")
+    alive = beat["worker_alive"] and fresh and not intentional_down and (not w or w["status"] not in ("failed", "idle"))
     return {**beat, "portfolio_id": portfolio_id, "ownership": "supervisor" if w else "external",
             "manager_alive": manager_alive, "intentional_down": intentional_down,
             "worker_alive": alive,

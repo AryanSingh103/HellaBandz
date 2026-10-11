@@ -160,17 +160,18 @@ export function SimulationView({ pid, manifest, dataset, datasets, runs, onSelec
   const exists = !!ledger.port || !!job;
   // polled while the replay runs, then fetched once more when it ends so the final numbers are complete
   const settled = finished ? 1 : 0;
-  // Kept light on purpose: the API serves the replay itself. The recorded curve is read once and extended from the
-  // stream; per-agent profit (a full ledger replay on the server) refreshes only every 30 seconds while running.
+  // Legacy sessions use the ledger stream and occasional analytics replay.
+  // Coordinated financials all come from one compact completed-cycle checkpoint.
   const equity = useResource<{ ts: string; equity: number }[]>(exists ? "/v1/equity" : null, { portfolio_id: pid, limit: 12000 }, 0, settled);
-  const analytics = useResource<Analytics>(exists ? "/v1/analytics/history" : null, { portfolio_id: pid }, running ? 30000 : 0, settled);
+  const analytics = useResource<Analytics>(exists && job?.kind !== "coordinated" ? "/v1/analytics/history" : null, { portfolio_id: pid }, running ? 30000 : 0, settled);
   const messages = useMessages(pid, exists, running);
   const coordinated = job?.kind === "coordinated";
   const report = useResource<CoordinatedReport>(coordinated ? "/v1/coordinated/report" : null,
-    { portfolio_id: pid }, running ? 5000 : 0, settled, true);
+    { portfolio_id: pid, view: "live" }, running ? 1500 : 0, settled, true);
   const context = report.data?.context || messages.data.find(m => m.role === "coordinator_start")?.content.context as CoordinatedContext | undefined;
   const coordinatorState = [...messages.data].reverse().find(m => m.role === "coordinator_state")?.content;
-  const sleeves = report.data?.final_attribution || coordinatorState?.sleeves as Record<string, Sleeve> || report.data?.steps.at(-1)?.sleeves || {};
+  const checkpoint = report.data?.steps.at(-1);
+  const sleeves = report.data?.final_attribution || checkpoint?.sleeves || coordinatorState?.sleeves as Record<string, Sleeve> || {};
   const experimental = context?.allocation_mode === "experimental" || (job as Job & { config?: { allocation_mode?: string } })?.config?.allocation_mode === "experimental";
   const stop = useCommand();
   const [exporting, setExporting] = useState(false), [exportError, setExportError] = useState("");
@@ -285,12 +286,13 @@ export function SimulationView({ pid, manifest, dataset, datasets, runs, onSelec
     return out;
   }, [messages.data, pid]);
   const curve = useMemo(() => {
+    if (coordinated) return (report.data?.points || []).map(p => [p.ts, p.equity] as [number, number]);
     const recorded = [...(equity.data || [])].reverse().map(p => [Date.parse(p.ts) / 1000, p.equity] as [number, number]);
     if (finished && recorded.length) return recorded;
     const merged = new Map<number, number>(recorded);
     for (const [ts, value] of ledger.curve) merged.set(ts, value);
     return [...merged.entries()].sort((a, b) => a[0] - b[0]);
-  }, [equity.data, ledger.curve, finished]);
+  }, [equity.data, ledger.curve, finished, coordinated, report.data?.points]);
   const baseline = report.data?.benchmark.baseline || analytics.data?.benchmark.baseline;
   const lastTs = curve.at(-1)?.[0] || ledger.simTs, firstTs = curve[0]?.[0] || ledger.firstTs;
   const baseCurve = useMemo(() => (baseline || []).filter(p => p.ts >= firstTs && p.ts <= lastTs).map(p => [p.ts, p.equity] as [number, number]), [baseline, firstTs, lastTs]);
@@ -303,12 +305,18 @@ export function SimulationView({ pid, manifest, dataset, datasets, runs, onSelec
   const preparing = running && job?.stage !== "coordinating";
 
   const initial = st?.initial_cash || manifest?.policy.initial_cash_micros || 10_000_000_000;
-  const equityNow = ledger.port?.equity;
+  const equityNow = coordinated ? checkpoint?.equity : ledger.port?.equity;
   const ret = equityNow === undefined ? undefined : equityNow / initial - 1;
   const total = job?.total || (running ? undefined : ledger.steps) || undefined;
   const step = Math.max(job?.stage === "coordinating" || ledger.steps > 0 ? job?.progress || 0 : 0, ledger.steps);
   const result = obj(job?.result);
   const baseRet = baseCurve.length ? baseCurve.at(-1)![1] / initial - 1 : undefined;
+  const basePnl = baseCurve.length ? baseCurve.at(-1)![1] - initial : undefined;
+  const activePnl = Object.entries(sleeves).filter(([a]) => a !== "core").reduce((n, [, s]) => n + s.pnl, 0);
+  const passivePnl = sleeves.core?.pnl || 0;
+  const sleevePnl = Object.values(sleeves).reduce((n, s) => n + s.pnl, 0);
+  const totalPnl = equityNow === undefined ? undefined : equityNow - initial;
+  const residual = totalPnl === undefined ? undefined : totalPnl - sleevePnl;
   const topRule = Object.entries(ledger.rules).sort((a, b) => b[1] - a[1])[0];
   // only agents that were given money or actually traded are worth ranking
   const ranked = Object.entries(agentPnl).filter(([a]) => (sleeves[a]?.capital || st?.allocations[a] || 0) > 0 || !!ledger.agents[a]?.fills).sort((a, b) => b[1].pnl - a[1].pnl);
@@ -342,10 +350,10 @@ export function SimulationView({ pid, manifest, dataset, datasets, runs, onSelec
       <div className="metrics">
         <Metric label="Account value" value={equityNow === undefined ? "Not opened" : money(equityNow, currency)} />
         <Metric label="Return so far" value={ret === undefined ? "—" : <span className={ret < 0 ? "neg" : "pos"}>{`${ret >= 0 ? "+" : ""}${(ret * 100).toFixed(2)}%`}</span>} />
-        <Metric label="Cash" value={st ? money(st.cash, currency) : "—"} />
-        <Metric label="Invested" value={st && equityNow ? pct(st.market_value / equityNow) : "—"} />
+        <Metric label="Cash" value={checkpoint ? money(checkpoint.cash, currency) : st ? money(st.cash, currency) : "—"} />
+        <Metric label="Invested" value={checkpoint && equityNow ? pct((equityNow - checkpoint.cash) / equityNow) : st && equityNow ? pct(st.market_value / equityNow) : "—"} />
         <Metric label="Orders approved / shrunk / blocked" value={`${ledger.approved} / ${ledger.reduced} / ${ledger.rejected}`} />
-        <Metric label="Fees + slippage" value={st ? money(st.fees_paid + st.slippage_cost, currency) : "—"} />
+        <Metric label="Fees + slippage" value={checkpoint?.fees !== undefined ? money(checkpoint.fees + (checkpoint.slippage || 0), currency) : st ? money(st.fees_paid + st.slippage_cost, currency) : "—"} />
       </div>
 
       {finished && <section className="sim-results">
@@ -386,6 +394,7 @@ export function SimulationView({ pid, manifest, dataset, datasets, runs, onSelec
             <span><small>Profit / loss</small><b className={pnl !== undefined && pnl < 0 ? "neg" : pnl ? "pos" : ""}>{pnl === undefined ? "—" : signedMoney(pnl, currency)}</b></span>
             <span><small>Holding</small><b>{holdings.length ? holdings.join(", ") : "nothing"}</b></span></div>
           {coordinated && <p className="small"><b>{sleeves[agent]?.fills || 0} attributed fills.</b> {sleeves[agent]?.fills ? "Executed through the shared coordinator; positions and P&L above belong to this agent." : budget === 0 ? "Watch-only: this strategy cannot place orders." : preparing ? "Preparing market history before orders begin." : "Evaluating each market step; orders execute when its target changes and shared risk checks pass."}</p>}
+          {coordinated && budget !== undefined && budget > 0 && pnl !== undefined && <p className="small"><b>{pct(pnl / budget)} on this agent’s budget.</b>{agent === "core" ? " This passive sleeve is part of the green portfolio line; the blue baseline uses the entire deployable budget." : " Its dollar P&L contributes to the green portfolio line."}</p>}
           {!coordinated && <p className="small">{last ? <><b>Latest:</b> {last.type === "OrderFilled" ? `${last.side === "BUY" ? "bought" : "sold"} ${q(last.qty)} ${last.symbol}` : last.type === "OrderRejected" ? `blocked ${last.side} ${last.symbol} (${ruleText(last.rules?.[0] || "")})` : last.type === "OrderAccepted" ? `ordered ${last.side} ${q(last.qty)} ${last.symbol}` : last.type.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase()}{last.at ? ` · ${day(last.at)}` : ""}</> : <span className="muted">{budget === 0 ? "No budget, so it does not trade." : "No trades yet."}</span>}</p>}
           {stat && stat.approved + stat.reduced + stat.rejected > 0 && <p className="muted small">{stat.approved} approved · {stat.reduced} shrunk · {stat.rejected} blocked · {stat.fills} fills</p>}
           {proposal && <JsonView label="Evidence and settings it chose" value={{ evidence: proposal.proposal.evidence, fitted_settings: s.params, universe: s.universe }} />}
@@ -394,9 +403,22 @@ export function SimulationView({ pid, manifest, dataset, datasets, runs, onSelec
       {manifest?.supervisor?.rationale && <p className="sim-supervisor"><b>Supervisor ({manifest.supervisor.source === "llm" ? "AI" : manifest.supervisor.source}) on how the money was split:</b> {manifest.supervisor.rationale}</p>}
 
       <section>
-        <h2>Account value over market time</h2>
+        <h2>Whole portfolio vs. buy and hold</h2>
         {equity.error && <Notice error>{equity.error}</Notice>}
-        <Chart currency={currency} bands={crash ? [crash] : []} series={[{ name: experimental ? "Experimental agents" : "Agents (this simulation)", color: "#28d49b", values: curve }, ...(baseCurve.length > 1 ? [{ name: "Buy & hold everything", color: "#5b8cff", values: baseCurve }] : [])]} />
+        <Chart currency={currency} bands={crash ? [crash] : []} series={[{ name: "All agents + passive sleeve + cash", color: "#28d49b", values: curve }, ...(baseCurve.length > 1 ? [{ name: "Full-budget buy & hold", color: "#5b8cff", values: baseCurve }] : [])]} />
+        {coordinated && checkpoint && totalPnl !== undefined && <div data-testid="simulation-reconciliation">
+          <p className="small"><b>Same completed market step: {checkpoint.step} · {day(checkpoint.ts)}.</b> Both lines start with {money(initial, currency)}. The passive agent card has its own smaller budget; it is not the blue full-budget baseline.</p>
+          <table><thead><tr><th>Profit / loss contribution</th><th>Amount</th></tr></thead><tbody>
+            <tr><td>Active strategy agents combined</td><td>{signedMoney(activePnl, currency)}</td></tr>
+            <tr><td>Passive sleeve (inside this portfolio)</td><td>{signedMoney(passivePnl, currency)}</td></tr>
+            <tr><td>Unallocated cash profit / loss</td><td>{signedMoney(0, currency)}</td></tr>
+            <tr><td><b>Whole portfolio profit / loss</b></td><td><b>{signedMoney(totalPnl, currency)} ({pct(totalPnl / initial)})</b></td></tr>
+            {basePnl !== undefined && <tr><td>Separate full-budget buy &amp; hold profit / loss</td><td>{signedMoney(basePnl, currency)} ({pct(basePnl / initial)})</td></tr>}
+            {basePnl !== undefined && <tr><td>Portfolio minus buy &amp; hold</td><td>{signedMoney(totalPnl - basePnl, currency)}</td></tr>}
+          </tbody></table>
+          <p className="muted small">Agent P&amp;L includes execution costs. Reserve: {money(checkpoint.unallocated_cash ?? initial - Object.values(sleeves).reduce((n, a) => n + a.capital, 0), currency)}. Accounting difference: {signedMoney(residual || 0, currency)}.</p>
+          {residual !== undefined && Math.abs(residual) > 1 && <Notice error>Agent contributions do not reconcile with the account at this checkpoint.</Notice>}
+        </div>}
         <p className="muted small">Dates are market time of the replayed data.{crash && baseCurve.length > 1 ? " The buy-and-hold line is the recorded research baseline and does not include the scripted crash." : ""}{analytics.data && !baseline ? ` Buy-and-hold comparison unavailable: ${analytics.data.benchmark.reason || "no baseline recorded for this research run"}.` : ""}</p>
       </section>
 

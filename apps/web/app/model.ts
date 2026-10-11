@@ -86,7 +86,7 @@ export type CoordinatedContext = { current: boolean; policy_version: string; cod
 export type Sleeve = { capital: number; cash: number; equity: number; market_value: number; pnl: number; fees: number; slippage: number;
   fills: number; positions: Record<string, { qty: number; basis: number }> };
 export type CoordinatedReport = { schema: string; portfolio_id: string; context: CoordinatedContext; status: string;
-  points: Point[]; steps: { step: number; ts: number; equity: number; cash: number; closes: Record<string, number>; sleeves: Record<string, Sleeve> }[];
+  points: Point[]; steps: { step: number; ts: number; equity: number; cash: number; closes: Record<string, number>; sleeves: Record<string, Sleeve>; unallocated_cash?: number; fees?: number; slippage?: number }[];
   decisions: Record<string, unknown>[]; rule_readings: Record<string, unknown>[]; summary?: Record<string, unknown>;
   final_attribution?: Record<string, Sleeve>; benchmark: Analytics["benchmark"] };
 

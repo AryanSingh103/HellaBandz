@@ -55,6 +55,54 @@ def freeze(c):
     return dataset, manifest
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="worker lifecycle is verified by the Linux proof")
+def test_idle_workers_park_and_wake_without_losing_commands(stack, tmp_path):
+    stack.start_api()
+    pid = "parkable"
+    with httpx.Client(base_url=stack.base, timeout=10) as c, manager(stack, tmp_path, QS_WORKER_IDLE_S="2"):
+        assert c.post("/v1/portfolios", json={"portfolio_id": pid}).status_code == 201
+        wait_until(lambda: runtime(c, pid)["ready"])
+        assert c.post("/v1/admin/portfolio", params={"portfolio_id": pid}, json={}).status_code == 200
+        before = c.get("/v1/portfolio", params={"portfolio_id": pid}).json()
+        wait_until(lambda: runtime(c, pid)["status"] == "idle")
+        assert not runtime(c, pid)["ready"] and not runtime(c, pid)["intentional_down"]
+        assert c.get("/v1/portfolio", params={"portfolio_id": pid}).json()["digest"] == before["digest"]
+        # A command automatically wakes the parked worker; duplicate delivery
+        # still creates exactly one durable command and one allocation event.
+        for _ in range(2):
+            response = c.post("/v1/admin/allocations", params={"portfolio_id": pid},
+                headers={"Idempotency-Key": "wake-once"}, json={"agent_id": "a", "capital_usd": "1000"})
+            assert response.status_code in (200, 202)
+        wait_until(lambda: runtime(c, pid)["pending_commands"] == 0)
+        assert stack.sql("SELECT count(*) FROM ledger_events WHERE portfolio_id = %s AND type = 'AllocationSet'", (pid,))[0][0] == 1
+        wait_until(lambda: runtime(c, pid)["status"] == "idle")
+        c.post("/v1/runtime", params={"portfolio_id": pid}, json={"action": "restart"}).raise_for_status()
+        wait_until(lambda: runtime(c, pid)["ready"])
+        # Active jobs keep their worker alive even during long non-trading phases.
+        stack.sql("INSERT INTO jobs (job_id, request_id, kind, dataset_id, run_id, portfolio_id, config, status) "
+                  "VALUES ('hold-worker','hold-worker','coordinated','fixture','run',%s,'{}','running')", (pid,))
+        time.sleep(3)
+        assert runtime(c, pid)["ready"]
+        stack.sql("UPDATE jobs SET status = 'completed', finished_at = now(), updated_at = now() WHERE job_id = 'hold-worker'")
+        wait_until(lambda: runtime(c, pid)["status"] == "idle")
+        # Resting orders also prevent retirement, independently of job state.
+        from datetime import datetime, timezone
+        from hellabandz.contracts import Bar
+        bar = Bar(symbol="SPY", ts=datetime(2024, 1, 1, tzinfo=timezone.utc),
+                  open=100_000_000, high=100_000_000, low=100_000_000, close=100_000_000, volume=10000)
+        c.post("/v1/bars", params={"portfolio_id": pid}, json={"bars": [bar.model_dump(mode="json")]}).raise_for_status()
+        order = OrderRequest(client_order_id="keep-awake", agent_id="a", symbol="SPY", side="BUY", qty=1,
+                             order_type="LMT", limit_px=100_000_000, signal_bar_ts=bar.ts)
+        accepted = c.post("/v1/venue/orders", params={"portfolio_id": pid}, json={"venue": "paper_clob", "order": order.model_dump(mode="json")})
+        accepted.raise_for_status()
+        assert accepted.json()["approved_qty"] == 1
+        time.sleep(3)
+        assert runtime(c, pid)["ready"]
+        c.post("/v1/orders/keep-awake/cancel", params={"portfolio_id": pid, "agent_id": "a"}).raise_for_status()
+        wait_until(lambda: runtime(c, pid)["status"] == "idle")
+        assert c.get("/v1/verify", params={"portfolio_id": pid}).json()["match"]
+
+
 @pytest.mark.skipif(sys.platform == "win32", reason="supervisor process lifecycle is verified by the Linux proof")
 def test_managed_crash_queue_exactly_once_and_isolated_health(stack, tmp_path):
     stack.start_api()
@@ -221,6 +269,13 @@ def test_real_research_job_persists_manifest_baseline_and_session(stack, tmp_pat
         assert len(report["rule_readings"]) == 5 * len(report["context"]["agents"])
         assert len(report["steps"]) == len(report["benchmark"]["baseline"]) == 5
         assert report["benchmark"]["end_ts"] == report["steps"][-1]["ts"] + 1
+        compact = c.get("/v1/coordinated/report", params={"portfolio_id": "allocation-session", "view": "live"})
+        assert compact.status_code == 200
+        compact = compact.json()
+        assert compact["steps"] == report["steps"][-1:]
+        assert compact["points"] == report["points"]
+        assert compact["benchmark"] == report["benchmark"]
+        assert "rule_readings" not in compact and "decisions" not in compact
         analytics = c.get("/v1/analytics/history", params={"portfolio_id": "allocation-session"}).json()
         assert analytics["points"] == report["points"]
         assert "trend" in analytics["points"][-1]["agents"]

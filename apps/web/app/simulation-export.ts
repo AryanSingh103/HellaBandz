@@ -34,6 +34,7 @@ export async function buildSimulationExport(pid: string, manifest: Manifest | nu
     // position is never an acceptable substitute for coordinated sleeve evidence.
     const report = await request<CoordinatedReport>("/v1/coordinated/report", { portfolio_id: pid });
     const last = report.steps.at(-1), books = report.final_attribution || last?.sleeves || {};
+    const initialCash = port?.state.initial_cash || 10_000_000_000;
     const complete = report.status === "completed" && job?.status === "completed";
     return {
       about: { what: "Coordinated stock/ETF historical paper replay; pretend money.", portfolio_id: pid,
@@ -48,11 +49,12 @@ export async function buildSimulationExport(pid: string, manifest: Manifest | nu
         started_at: job?.started_at, finished_at: job?.finished_at, dataset: report.context.dataset,
         completed_requested_replay: complete, actual_range: { start_ts: report.benchmark.start_ts, end_ts_exclusive: report.benchmark.end_ts },
         coverage: { coordinated_through_ledger_seq: report.points.at(-1)?.seq, exported_ledger_seq: port?.seq,
-          report_finalized: !!report.summary, note: "During a run, coordinated reports checkpoint every 5 cycles. Failed/interrupted exports retain the last checkpoint; later raw ledger events may exist. Full-horizon metrics require a finalized summary." } },
+          report_finalized: !!report.summary, note: "Financial metrics, agent contributions and comparison curves share this archive checkpoint. Live views update every 5 cycles; full-history archives every 100 cycles and at finish. Later raw ledger events/account state may exist. Full-horizon metrics require a finalized summary." } },
       provenance: report.context,
-      metrics: { starting_cash: quote(port?.state.initial_cash), account_value: quote(port?.equity),
-        return: port && port.state.initial_cash ? port.equity / port.state.initial_cash - 1 : undefined,
-        fees: quote(port?.state.fees_paid), slippage: quote(port?.state.slippage_cost),
+      metrics: { starting_cash: quote(initialCash), account_value: quote(last?.equity),
+        return: last ? last.equity / initialCash - 1 : undefined,
+        fees: quote(last?.fees ?? Object.values(books).reduce((n, s) => n + s.fees, 0)),
+        slippage: quote(last?.slippage ?? Object.values(books).reduce((n, s) => n + s.slippage, 0)),
         strategy: report.benchmark.strategy_metrics, baseline: report.benchmark.baseline_metrics,
         ledger_check: verify },
       agents: report.context.agents.map(a => ({ agent: a.agent_id, strategy_id: a.strategy_id,
@@ -71,7 +73,7 @@ export async function buildSimulationExport(pid: string, manifest: Manifest | nu
       trades: ledger.filter(r => r.event.type === "OrderFilled").map(r => ({ ...r.event, ledger_seq: r.seq,
         note: "Aggregate execution fill; per-strategy holdings, fees and P&L are in coordinated_report.steps[].sleeves." })),
       steps: report.steps, buy_and_hold_comparison: report.benchmark,
-      agent_profit_history: analytics, coordinated_report: report, raw_ledger_events: ledger,
+      agent_profit_history: { points: report.points, benchmark: report.benchmark }, coordinated_report: report, raw_ledger_events: ledger,
       session_messages: messages, final_account_state: port?.state,
     };
   }

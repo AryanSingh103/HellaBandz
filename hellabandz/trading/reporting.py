@@ -113,7 +113,13 @@ def report_path(directory: Path, portfolio_id: str) -> Path:
     return directory / f"{portfolio_id}.coordinated.json"
 
 
-def save_report(directory: Path, portfolio_id: str, report: dict) -> None:
+def live_report(report: dict) -> dict:
+    """Completed-cycle view for polling; omit the growing decision/reading archive."""
+    return {**{k: v for k, v in report.items() if k not in ("decisions", "rule_readings", "steps", "telemetry")},
+            "steps": report.get("steps", [])[-1:]}
+
+
+def save_report(directory: Path, portfolio_id: str, report: dict, *, live: bool = False) -> None:
     directory.mkdir(parents=True, exist_ok=True)
     fd, temp = tempfile.mkstemp(prefix=".coordinated-", dir=directory)
     try:
@@ -121,7 +127,7 @@ def save_report(directory: Path, portfolio_id: str, report: dict) -> None:
             json.dump(report, f, separators=(",", ":"), allow_nan=False)
         for attempt in range(6):
             try:
-                os.replace(temp, report_path(directory, portfolio_id))
+                os.replace(temp, directory / f"{portfolio_id}.coordinated.live.json" if live else report_path(directory, portfolio_id))
                 break
             except PermissionError:
                 if attempt == 5:
@@ -132,8 +138,11 @@ def save_report(directory: Path, portfolio_id: str, report: dict) -> None:
             os.unlink(temp)
 
 
-def load_report(directory: Path, portfolio_id: str) -> dict | None:
-    path = report_path(directory, portfolio_id)
+def load_report(directory: Path, portfolio_id: str, *, live: bool = False) -> dict | None:
+    path = directory / f"{portfolio_id}.coordinated.live.json" if live else report_path(directory, portfolio_id)
+    if live and not path.is_file():
+        report = load_report(directory, portfolio_id)
+        return live_report(report) if report else None
     if not path.is_file():
         return None
     report = json.loads(path.read_text())

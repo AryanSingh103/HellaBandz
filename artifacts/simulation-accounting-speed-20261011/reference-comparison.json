@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "identical_financial_steps": 100,
+  "portfolio_id": "sim-mv3z465z",
+  "old_seconds": 164.3,
+  "new_seconds": 69.5,
+  "old_job_seconds": 209.397,
+  "new_job_seconds": 91.305,
+  "accounting_residual_micros": 0,
+  "final_equity_dollars": 9888.11,
+  "fees_dollars": 0.2,
+  "slippage_dollars": 4.84,
+  "actual_fills": 19,
+  "baseline_equity_dollars": 9751.62,
+  "speedup": 2.3640287769784174
+}

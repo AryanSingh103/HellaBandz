@@ -37,7 +37,7 @@ from hellabandz.trading.instruments import instruments_for_dataset
 from hellabandz.trading.registry import Registry, RegistryError
 from hellabandz.trading.research import (INITIAL, data_class, portfolio_sleeves, research, research_current)
 from hellabandz.trading.research import core_version, DEPLOYABLE, research_metrics
-from hellabandz.trading.reporting import simulation_context, registry_path, save_report
+from hellabandz.trading.reporting import simulation_context, registry_path, save_report, live_report
 from hellabandz.ingestion.registry import MANIFESTS
 from hellabandz.trading.runtime import CoordinatedRuntime, percentiles
 from hellabandz.trading.strategies import FAMILY_CARDS, RuntimeStrategy, StrategyVersion
@@ -65,6 +65,8 @@ class ApiLedger:
             replay(evs, verify_chain=True, initial_state=self.state)
             self.events.extend(evs)
             new.extend(evs)
+            if len(rows) < 5000:
+                return new
 
     def _post(self, path: str, body: dict, **kw) -> dict:
         t0 = time.perf_counter_ns()
@@ -106,6 +108,12 @@ class ApiLedger:
                                                                                         "portfolio_id": self.pid})
         else:
             raise TypeError(f"unsupported command {type(cmd).__name__}")
+        return self.sync(), resp
+
+    def process_bars(self, bars) -> tuple[list[dict], dict]:
+        """One HTTP round trip for a same-timestamp group with no resting orders."""
+        resp = self._post("/v1/bars", {"dataset_id": f"coordinated:{self.run_id}",
+            "bars": [json.loads(b.model_dump_json()) for b in bars]})
         return self.sync(), resp
 
 
@@ -217,7 +225,10 @@ def run_coordinated(job: dict, dataset_dir: Path, api: str, headers: dict, progr
               for sid, v, _ in sleeves]
     rt = CoordinatedRuntime(run_id, VenueMode.PAPER_CLOB, strats, {sid: cap for sid, _, cap in sleeves},
                             paper_budget(INITIAL), instruments_for_dataset(meta), data_class(meta), INITIAL, ledger=ledger,
-                            keep_decisions=True, keep_telemetry=True)
+                            keep_decisions=False, keep_telemetry=True)
+    # Synthetic LP quotes are ephemeral replay machinery. The CLOB still hashes
+    # every event; financial fills remain in the durable ledger and full export.
+    rt.authority.keep_clob_events = False
     if ledger.state.opened or ledger.state.seq:
         raise ValueError("coordinated simulation requires a fresh, unopened portfolio")
     for o in list(ledger.state.orders.values()):  # a previous process's paper book is gone: release its orders
@@ -239,6 +250,7 @@ def run_coordinated(job: dict, dataset_dir: Path, api: str, headers: dict, progr
         [RuntimeStrategy(core_version(universe), "paper_clob")], {"core": DEPLOYABLE},
         paper_budget(INITIAL), instruments_for_dataset(meta), data_class(meta), INITIAL)
     baseline.open()
+    baseline.authority.keep_clob_events = False
     progress("warming_baseline_history", 0)
     baseline.warm(p, te0)
     for sh in shadow:
@@ -292,7 +304,8 @@ def run_coordinated(job: dict, dataset_dir: Path, api: str, headers: dict, progr
             "exposure": ledger.state.market_value(), "agents": point_agents})
         report["steps"].append({"step": i + 1, "ts": snap.ts, "equity": rec.equity,
             "cash": ledger.state.cash, "closes": marks, "sleeves": attribution,
-            "unallocated_cash": rt.book.unallocated})
+            "unallocated_cash": rt.book.unallocated, "fees": ledger.state.fees_paid,
+            "slippage": ledger.state.slippage_cost})
         shadow_intents = [x for s in shadow for x in s.on_snapshot(snap)]
         intents = rt.last_intents
         for agent in context["agents"]:
@@ -313,7 +326,7 @@ def run_coordinated(job: dict, dataset_dir: Path, api: str, headers: dict, progr
                 futures.append(thinker.submit(comment, aid, {"step": i + 1, "ts": snap.ts,
                     "funded": agent["funded"], "family": agent["family"], "symbols": symbols,
                     "sleeve": attribution.get(aid, {}), "promotion_reasons": agent["reasons"]}))
-        for d in rec.decisions:
+        for d in rt.last_decisions:
             report["decisions"].append(d.model_dump(mode="json"))
             if d.order or d.transfers or d.cancel_order_id or any(r.outcome.value == "rejected" for r in d.intents):
                 _say(ledger, run_id, "coordinator_decision", d.model_dump(mode="json"))
@@ -328,6 +341,10 @@ def run_coordinated(job: dict, dataset_dir: Path, api: str, headers: dict, progr
             "baseline": [{"ts": r.ts, "equity": r.equity} for r in baseline.records],
             "strategy": {"ts": [r.ts for r in rt.records], "equity": [r.equity for r in rt.records]}}
         if i % 5 == 0 or i == len(groups) - 1:
+            save_report(MANIFESTS, pid, live_report(report), live=True)
+        # The archive is for download/recovery, not live polling. Avoid serializing
+        # the entire accumulated history to a host-mounted file every five cycles.
+        if i % 100 == 0 or i == len(groups) - 1:
             save_report(MANIFESTS, pid, report)
         progress("coordinating", i + 1, len(groups))
         if speed > 0:
@@ -358,5 +375,6 @@ def run_coordinated(job: dict, dataset_dir: Path, api: str, headers: dict, progr
     report.update(status="stopped" if stop_requested() else "completed", summary=summary,
                   final_attribution=res.attribution, telemetry=res.telemetry)
     save_report(MANIFESTS, pid, report)
+    save_report(MANIFESTS, pid, live_report(report), live=True)
     _say(ledger, run_id, "coordinator_summary", summary)
     return summary

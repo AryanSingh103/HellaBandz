@@ -183,9 +183,27 @@ def supervise():
     log_dir = MANIFESTS / "job-logs"
     log_dir.mkdir(exist_ok=True)
     last_beat = 0
+    idle_s = max(1., float(os.environ.get("QS_WORKER_IDLE_S", "30")))
     try:
         while not shutdown:
-            for row in conn.execute("SELECT * FROM managed_workers ORDER BY portfolio_id").fetchall():
+            # Historical portfolios need durable state, not a permanent Python
+            # process each. Commands remain the wake-up signal; desired='down'
+            # is still an explicit operator stop and never wakes automatically.
+            rows = conn.execute("""
+                SELECT w.*, s.updated_at IS NOT NULL AS opened,
+                    EXISTS (SELECT 1 FROM jobs j WHERE j.portfolio_id = w.portfolio_id
+                            AND j.status IN ('queued','running')) AS active_job,
+                    EXISTS (SELECT 1 FROM commands c WHERE c.portfolio_id = w.portfolio_id
+                            AND c.status = 'pending') AS pending,
+                    EXISTS (SELECT 1 FROM orders o WHERE o.portfolio_id = w.portfolio_id
+                            AND o.status = 'working') AS resting,
+                    greatest(s.updated_at, w.started_at,
+                        (SELECT max(j.updated_at) FROM jobs j WHERE j.portfolio_id = w.portfolio_id))
+                        < now() - (%s * interval '1 second') AS quiet
+                FROM managed_workers w LEFT JOIN portfolio_state s USING (portfolio_id)
+                ORDER BY w.portfolio_id
+                """, (idle_s,)).fetchall()
+            for row in rows:
                 pid, generation = row["portfolio_id"], row["generation"]
                 child_info = workers.get(pid)
                 child = child_info[0] if child_info else None
@@ -199,6 +217,20 @@ def supervise():
                     conn.execute("UPDATE managed_workers SET status = 'intentional_down', updated_at = now() "
                                  "WHERE portfolio_id = %s AND status <> 'failed'", (pid,))
                     continue
+                if row["status"] in ("running", "idle") and row["opened"] and row["quiet"] and not (row["active_job"] or row["pending"] or row["resting"]):
+                    if child:
+                        if child.poll() is None:
+                            child.terminate()
+                        try:
+                            child.wait(timeout=5)
+                        except subprocess.TimeoutExpired:
+                            child.kill()
+                            child.wait()
+                        workers.pop(pid)
+                    conn.execute("UPDATE managed_workers SET status = 'idle', updated_at = now() "
+                                 "WHERE portfolio_id = %s AND generation = %s AND status NOT IN ('idle','starting')",
+                                 (pid, generation))
+                    continue
                 if child and child.poll() is not None:
                     conn.execute("UPDATE managed_workers SET status = 'failed', error = 'Execution recovery failed; restart to retry', "
                                  "desired = 'down', updated_at = now() WHERE portfolio_id = %s", (pid,))
@@ -210,12 +242,12 @@ def supervise():
                     child = subprocess.Popen([sys.executable, "-m", "hellabandz.execution.worker", "--portfolio", pid])
                     workers[pid] = (child, generation)
                     conn.execute("UPDATE managed_workers SET status = 'recovering', started_at = now(), "
-                                 "updated_at = now() WHERE portfolio_id = %s", (pid,))
+                                 "updated_at = now() WHERE portfolio_id = %s AND generation = %s", (pid, generation))
                 else:
                     conn.execute("UPDATE managed_workers SET status = 'running', updated_at = now() "
-                                 "WHERE portfolio_id = %s AND EXISTS (SELECT 1 FROM telemetry WHERE metric = 'heartbeat' "
+                                 "WHERE portfolio_id = %s AND generation = %s AND EXISTS (SELECT 1 FROM telemetry WHERE metric = 'heartbeat' "
                                  "AND labels->>'portfolio_id' = %s AND ts >= managed_workers.started_at "
-                                 "AND ts > now() - interval '4 seconds')", (pid, pid))
+                                 "AND ts > now() - interval '4 seconds')", (pid, generation, pid))
             for job_id, child in list(children.items()):
                 job = conn.execute("SELECT status, stop_requested, kind FROM jobs WHERE job_id = %s", (job_id,)).fetchone()
                 if job["stop_requested"] and job["kind"] == "research" and child.poll() is None:
