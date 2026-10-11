@@ -123,6 +123,34 @@ class ApplyBar(_Frozen):
     bar: Bar
 
 
+class SubmitVenueOrder(_Frozen):
+    """An order the ledger reserves for but does not fill from bars: the venue reports fills.
+
+    Only the internal paper exchange is supported. Venue orders must be limit orders so the
+    ledger can check every reported fill price against what was authorized."""
+
+    kind: Literal["submit_venue_order"] = "submit_venue_order"
+    venue: Literal["paper_clob"] = "paper_clob"
+    order: OrderRequest
+
+
+class ApplyVenueFill(_Frozen):
+    """A fill reported by a venue for a working venue order. Idempotent on (venue, trade_id).
+
+    `liquidity` says who took the other side: "synthetic" for the simulated liquidity provider,
+    "internal" for another simulated participant. Paper fills are never labeled as external fills."""
+
+    kind: Literal["apply_venue_fill"] = "apply_venue_fill"
+    venue: Literal["paper_clob"] = "paper_clob"
+    order_id: Ident
+    trade_id: Ident
+    qty: int
+    px: int
+    reference_px: int = Field(gt=0)  # price the slippage is measured against (last close)
+    ts: UtcDatetime
+    liquidity: Literal["synthetic", "internal"]
+
+
 class SetKillSwitch(_Frozen):
     kind: Literal["set_kill_switch"] = "set_kill_switch"
     on: bool
@@ -130,7 +158,8 @@ class SetKillSwitch(_Frozen):
 
 
 Command = Annotated[
-    Union[OpenPortfolio, SetAllocation, SubmitOrder, CancelOrder, ApplyBar, SetKillSwitch],
+    Union[OpenPortfolio, SetAllocation, SubmitOrder, CancelOrder, ApplyBar, SetKillSwitch, SubmitVenueOrder,
+          ApplyVenueFill],
     Field(discriminator="kind"),
 ]
 
@@ -143,8 +172,10 @@ class CommandEnvelope(_Frozen):
 
 def command_id_for(cmd: Any) -> str:
     """Natural idempotency key for each command type."""
-    if isinstance(cmd, SubmitOrder):
+    if isinstance(cmd, (SubmitOrder, SubmitVenueOrder)):
         return f"order:{cmd.order.client_order_id}"
+    if isinstance(cmd, ApplyVenueFill):
+        return f"vfill:{cmd.venue}:{cmd.trade_id}"
     if isinstance(cmd, ApplyBar):
         return f"bar:{cmd.bar.symbol}:{int(cmd.bar.ts.timestamp())}"
     if isinstance(cmd, CancelOrder):

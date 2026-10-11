@@ -100,6 +100,10 @@ CREATE TABLE IF NOT EXISTS fills (
     PRIMARY KEY (portfolio_id, event_seq, bar_ts)
 );
 SELECT create_hypertable('fills', 'bar_ts', if_not_exists => TRUE, migrate_data => TRUE);
+-- Where a fill came from: bar_sim fills are the documented bar model; paper_clob fills matched on the
+-- internal paper exchange (liquidity says synthetic or internal). Neither is an external venue fill.
+ALTER TABLE fills ADD COLUMN IF NOT EXISTS venue TEXT NOT NULL DEFAULT 'bar_sim';
+ALTER TABLE fills ADD COLUMN IF NOT EXISTS liquidity TEXT NOT NULL DEFAULT 'bar_model';
 
 CREATE TABLE IF NOT EXISTS equity_points (
     ts            TIMESTAMPTZ NOT NULL,

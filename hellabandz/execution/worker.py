@@ -172,8 +172,8 @@ class Worker:
                         "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", orders_new)
                 if fills:
                     cur.executemany(
-                        "INSERT INTO fills (bar_ts, portfolio_id, event_seq, order_id, agent_id, symbol, side, qty, px, fee) "
-                        "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", fills)
+                        "INSERT INTO fills (bar_ts, portfolio_id, event_seq, order_id, agent_id, symbol, side, qty, px, fee, "
+                        "venue, liquidity) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", fills)
                 for sql, args in order_updates:
                     cur.execute(sql, args)
                 if equity_pts:
@@ -220,7 +220,7 @@ class Worker:
                                e["requested_qty"], 0, None, "rejected", "REJECT", e["rules"], None))
         elif t == "OrderFilled":
             fills.append((_ts(e["bar_ts"]), self.pid, e["seq"], e["order_id"], e["agent_id"], e["symbol"], e["side"],
-                          e["qty"], e["px"], e["fee"]))
+                          e["qty"], e["px"], e["fee"], e.get("venue", "bar_sim"), e.get("liquidity", "bar_model")))
             order_updates.append(("UPDATE orders SET filled_qty = filled_qty + %s, updated_at = now() "
                                   "WHERE portfolio_id = %s AND order_id = %s",
                                   (e["qty"], self.pid, e["order_id"])))
