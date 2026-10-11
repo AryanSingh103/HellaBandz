@@ -218,13 +218,19 @@ async def launch_job(body: JobIn):
     return (await gateway.q("SELECT * FROM jobs WHERE job_id = %s", (job_id,)))[0]
 
 
-@router.get("/jobs")
-async def jobs(portfolio_id: Ident | None = None, run_id: Ident | None = None):
-    clauses, args = [], []
+def _owned_jobs(clauses: list[str], args: list) -> None:
     user = current_user()
     if user:
         clauses.append("job_id IN (SELECT resource_id FROM account_resources WHERE kind='job' AND owner_id=%s)")
         args.append(user.id)
+
+
+@router.get("/jobs")
+async def jobs(portfolio_id: Ident | None = None, run_id: Ident | None = None, include_cleared: bool = False):
+    clauses, args = [], []
+    _owned_jobs(clauses, args)
+    if not include_cleared:
+        clauses.append("cleared_at IS NULL")
     if portfolio_id:
         clauses.append("portfolio_id = %s")
         args.append(portfolio_id)
@@ -233,6 +239,16 @@ async def jobs(portfolio_id: Ident | None = None, run_id: Ident | None = None):
         args.append(run_id)
     return await gateway.q("SELECT * FROM jobs" + (" WHERE " + " AND ".join(clauses) if clauses else "") +
                            " ORDER BY created_at DESC LIMIT 100", tuple(args))
+
+
+@router.post("/jobs/clear")
+async def clear_jobs():
+    """Hide every finished job from the list. Queued and running jobs are never touched."""
+    clauses, args = ["cleared_at IS NULL", "status NOT IN ('queued', 'running')"], []
+    _owned_jobs(clauses, args)
+    rows = await gateway.q("UPDATE jobs SET cleared_at = now() WHERE " + " AND ".join(clauses) + " RETURNING job_id",
+                           tuple(args))
+    return {"cleared": len(rows)}
 
 
 @router.post("/jobs/{job_id}/stop")
