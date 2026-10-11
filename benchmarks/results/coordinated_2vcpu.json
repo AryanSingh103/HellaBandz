@@ -1,0 +1,355 @@
+{
+ "cpu_count": 4,
+ "cgroup_cpu_max": "200000 100000",
+ "cgroup_memory_max": "1073741824",
+ "runs": [
+  {
+   "mode": "historical_sim",
+   "cycles": 1368,
+   "wall_s": 1.104,
+   "cycles_per_s": 1239.6,
+   "cpu_s": 1.075,
+   "peak_rss_mb": 181.4,
+   "final_equity": 10596.02,
+   "net_return": 0.059602,
+   "orders": 652,
+   "ledger_rejections": 0,
+   "fills": 651,
+   "clob_trades": 0,
+   "turnover_x_capital": 26.38,
+   "fees": 18.41,
+   "slippage": 0.0,
+   "mean_exposure_pct": 22.1,
+   "intent_outcomes": {
+    "accepted": 20374,
+    "reduced": 0,
+    "netted": 40,
+    "deferred": 106,
+    "rejected": 0
+   },
+   "reconciliation_breaks": 0,
+   "timings_us": {
+    "market_data": {
+     "n": 1368,
+     "p50_us": 120.52,
+     "p95_us": 189.16,
+     "p99_us": 256.75,
+     "max_us": 514.38
+    },
+    "intents": {
+     "n": 1368,
+     "p50_us": 261.21,
+     "p95_us": 311.32,
+     "p99_us": 478.12,
+     "max_us": 1489.42
+    },
+    "decision": {
+     "n": 1368,
+     "p50_us": 169.44,
+     "p95_us": 363.18,
+     "p99_us": 962.68,
+     "max_us": 31064.27
+    },
+    "execution": {
+     "n": 1368,
+     "p50_us": 1.12,
+     "p95_us": 87.0,
+     "p99_us": 132.9,
+     "max_us": 452.29
+    },
+    "reconcile": {
+     "n": 1368,
+     "p50_us": 37.58,
+     "p95_us": 47.82,
+     "p99_us": 60.61,
+     "max_us": 427.25
+    },
+    "cycle": {
+     "n": 1368,
+     "p50_us": 628.73,
+     "p95_us": 957.06,
+     "p99_us": 1436.15,
+     "max_us": 31625.48
+    },
+    "submit": {
+     "n": 652,
+     "p50_us": 30.48,
+     "p95_us": 46.28,
+     "p99_us": 74.87,
+     "max_us": 335.25
+    },
+    "match": {
+     "n": 0
+    }
+   },
+   "gateway": {
+    "published": 6840,
+    "duplicates": 0,
+    "conflicts": 0,
+    "invalid": 0,
+    "buffered_out_of_order": 0,
+    "gaps": 0,
+    "resyncs": 0,
+    "coalesced_quotes": 0,
+    "backpressure": 0,
+    "queue_high_water": 5
+   },
+   "ledger_digest": "9d55dece524bc36555252979fcf81c989206ccad4364cf69480ed7750d43db62",
+   "clob_head_hash": null,
+   "attribution": {
+    "defensive": {
+     "pnl": -65.51,
+     "fees": 3.1,
+     "fills": 218
+    },
+    "mean_reversion": {
+     "pnl": 612.47,
+     "fees": 11.31,
+     "fills": 333
+    },
+    "trend": {
+     "pnl": 49.06,
+     "fees": 4.0,
+     "fills": 134
+    }
+   },
+   "example_aggregate_order": "2 agents requested a change in AAPL (defensive +2, mean_reversion +4 lots); it approved one aggregate BUY of 6 at a limit of 132.54 within the portfolio budget.",
+   "example_internal_netting": "2 agents requested a change in SPY (defensive +1, trend -1 lots); the coordinator netted 1 lots between strategies without trading."
+  },
+  {
+   "mode": "paper_clob",
+   "cycles": 1368,
+   "wall_s": 2.921,
+   "cycles_per_s": 468.3,
+   "cpu_s": 2.902,
+   "peak_rss_mb": 277.4,
+   "final_equity": 10422.005,
+   "net_return": 0.042201,
+   "orders": 652,
+   "ledger_rejections": 0,
+   "fills": 652,
+   "clob_trades": 652,
+   "turnover_x_capital": 26.39,
+   "fees": 18.445,
+   "slippage": 159.2,
+   "mean_exposure_pct": 22.4,
+   "intent_outcomes": {
+    "accepted": 20374,
+    "reduced": 0,
+    "netted": 40,
+    "deferred": 106,
+    "rejected": 0
+   },
+   "reconciliation_breaks": 0,
+   "timings_us": {
+    "market_data": {
+     "n": 1368,
+     "p50_us": 1235.23,
+     "p95_us": 1599.27,
+     "p99_us": 2140.69,
+     "max_us": 3812.42
+    },
+    "intents": {
+     "n": 1368,
+     "p50_us": 270.65,
+     "p95_us": 400.93,
+     "p99_us": 603.73,
+     "max_us": 11076.94
+    },
+    "decision": {
+     "n": 1368,
+     "p50_us": 185.19,
+     "p95_us": 557.4,
+     "p99_us": 740.05,
+     "max_us": 65008.3
+    },
+    "execution": {
+     "n": 1368,
+     "p50_us": 1.12,
+     "p95_us": 259.27,
+     "p99_us": 386.6,
+     "max_us": 845.88
+    },
+    "reconcile": {
+     "n": 1368,
+     "p50_us": 40.08,
+     "p95_us": 48.65,
+     "p99_us": 63.58,
+     "max_us": 1043.17
+    },
+    "cycle": {
+     "n": 1368,
+     "p50_us": 1858.9,
+     "p95_us": 2432.94,
+     "p99_us": 3171.55,
+     "max_us": 66933.43
+    },
+    "submit": {
+     "n": 652,
+     "p50_us": 35.21,
+     "p95_us": 50.74,
+     "p99_us": 66.08,
+     "max_us": 135.21
+    },
+    "match": {
+     "n": 652,
+     "p50_us": 82.83,
+     "p95_us": 105.94,
+     "p99_us": 136.9,
+     "max_us": 490.67
+    }
+   },
+   "gateway": {
+    "published": 6840,
+    "duplicates": 0,
+    "conflicts": 0,
+    "invalid": 0,
+    "buffered_out_of_order": 0,
+    "gaps": 0,
+    "resyncs": 0,
+    "coalesced_quotes": 0,
+    "backpressure": 0,
+    "queue_high_water": 5
+   },
+   "ledger_digest": "2721e3aa43a7c004d9f0c566f2da680f17a55db0c509ee0dba9a8a97f018bfb8",
+   "clob_head_hash": "587209dc7d382a72494fd224e659b62bc5ddc2a9d8bed5351f2d33f3cf926745",
+   "attribution": {
+    "defensive": {
+     "pnl": -97.585,
+     "fees": 3.135,
+     "fills": 219
+    },
+    "mean_reversion": {
+     "pnl": 517.08,
+     "fees": 11.31,
+     "fills": 333
+    },
+    "trend": {
+     "pnl": 2.51,
+     "fees": 4.0,
+     "fills": 134
+    }
+   },
+   "example_aggregate_order": "2 agents requested a change in AAPL (defensive +2, mean_reversion +4 lots); it approved one aggregate BUY of 6 at a limit of 132.54 within the portfolio budget.",
+   "example_internal_netting": "2 agents requested a change in SPY (defensive +1, trend -1 lots); the coordinator netted 1 lots between strategies without trading."
+  }
+ ],
+ "with_background_research": {
+  "mode": "paper_clob",
+  "cycles": 1368,
+  "wall_s": 2.765,
+  "cycles_per_s": 494.7,
+  "cpu_s": 2.742,
+  "peak_rss_mb": 279.7,
+  "final_equity": 10422.005,
+  "net_return": 0.042201,
+  "orders": 652,
+  "ledger_rejections": 0,
+  "fills": 652,
+  "clob_trades": 652,
+  "turnover_x_capital": 26.39,
+  "fees": 18.445,
+  "slippage": 159.2,
+  "mean_exposure_pct": 22.4,
+  "intent_outcomes": {
+   "accepted": 20374,
+   "reduced": 0,
+   "netted": 40,
+   "deferred": 106,
+   "rejected": 0
+  },
+  "reconciliation_breaks": 0,
+  "timings_us": {
+   "market_data": {
+    "n": 1368,
+    "p50_us": 1192.29,
+    "p95_us": 1291.68,
+    "p99_us": 1511.97,
+    "max_us": 3163.13
+   },
+   "intents": {
+    "n": 1368,
+    "p50_us": 263.79,
+    "p95_us": 378.64,
+    "p99_us": 441.53,
+    "max_us": 920.38
+   },
+   "decision": {
+    "n": 1368,
+    "p50_us": 168.73,
+    "p95_us": 360.01,
+    "p99_us": 643.65,
+    "max_us": 59993.88
+   },
+   "execution": {
+    "n": 1368,
+    "p50_us": 1.12,
+    "p95_us": 251.01,
+    "p99_us": 361.76,
+    "max_us": 697.34
+   },
+   "reconcile": {
+    "n": 1368,
+    "p50_us": 39.62,
+    "p95_us": 44.99,
+    "p99_us": 55.72,
+    "max_us": 68.62
+   },
+   "cycle": {
+    "n": 1368,
+    "p50_us": 1777.07,
+    "p95_us": 2147.57,
+    "p99_us": 2500.93,
+    "max_us": 61504.0
+   },
+   "submit": {
+    "n": 652,
+    "p50_us": 34.33,
+    "p95_us": 44.83,
+    "p99_us": 58.45,
+    "max_us": 72.38
+   },
+   "match": {
+    "n": 652,
+    "p50_us": 81.96,
+    "p95_us": 96.83,
+    "p99_us": 116.26,
+    "max_us": 162.75
+   }
+  },
+  "gateway": {
+   "published": 6840,
+   "duplicates": 0,
+   "conflicts": 0,
+   "invalid": 0,
+   "buffered_out_of_order": 0,
+   "gaps": 0,
+   "resyncs": 0,
+   "coalesced_quotes": 0,
+   "backpressure": 0,
+   "queue_high_water": 5
+  },
+  "ledger_digest": "2721e3aa43a7c004d9f0c566f2da680f17a55db0c509ee0dba9a8a97f018bfb8",
+  "clob_head_hash": "587209dc7d382a72494fd224e659b62bc5ddc2a9d8bed5351f2d33f3cf926745",
+  "attribution": {
+   "defensive": {
+    "pnl": -97.585,
+    "fees": 3.135,
+    "fills": 219
+   },
+   "mean_reversion": {
+    "pnl": 517.08,
+    "fees": 11.31,
+    "fills": 333
+   },
+   "trend": {
+    "pnl": 2.51,
+    "fees": 4.0,
+    "fills": 134
+   }
+  },
+  "example_aggregate_order": "2 agents requested a change in AAPL (defensive +2, mean_reversion +4 lots); it approved one aggregate BUY of 6 at a limit of 132.54 within the portfolio budget.",
+  "example_internal_netting": "2 agents requested a change in SPY (defensive +1, trend -1 lots); the coordinator netted 1 lots between strategies without trading."
+ },
+ "background_research_still_running": true
+}
