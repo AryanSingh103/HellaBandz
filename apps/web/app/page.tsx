@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Search, SlidersHorizontal, ArrowUpRight, RefreshCw, Activity, ChevronDown } from "lucide-react";
-import { Context, Dataset, initialRoute, Portfolio, PortfolioChoice, Route, Runtime, Tournament, View, familyName, pct, money, validId } from "./model";
+import { Context, Dataset, initialRoute, Portfolio, PortfolioChoice, Route, Runtime, Tournament, View, Job, crashBand, familyName, pct, money, validId } from "./model";
 import { useEventStream, useResource } from "./data";
 import { Empty, Metric, Modal, Notice, JsonView } from "./ui";
 import { PortfolioView, AuditView, AnalyticsView } from "./portfolio";
@@ -43,6 +43,8 @@ export default function Page() {
   const runtime = useResource<Runtime>("/v1/runtime", { portfolio_id: route.p }, 2000, revision);
   const stream = useEventStream(route.p);
   const equity = useLiveEquity(route.p, revision);
+  const jobs = useResource<Job[]>("/v1/jobs", {}, 6000, revision);
+  const crash = crashBand(jobs.data || undefined, route.p, equity.data || undefined);
   const manifest = (route.run ? runs.data?.find(t => t.run_id === route.run)?.manifest : context.data?.manifest) || null;
   const dataset = datasets.data?.find(d => d.content_sha256 === manifest?.dataset.content_sha256 || (!manifest && d.dataset_id === context.data?.dataset_id));
   const portfolioDataset = datasets.data?.find(d => d.dataset_id === context.data?.dataset_id || d.content_sha256 === context.data?.manifest?.dataset.content_sha256);
@@ -74,7 +76,7 @@ export default function Page() {
       {route.view === "browse" && <div className="home-grid"><div className="home-main">
         <PageIntro view="browse" manifest={manifest} />
         {!manifest ? <div className="card"><Empty>{context.loading || runs.loading ? "Loading research context..." : "No research associated with this portfolio."}<div className="row centered"><button className="cta-pill" onClick={() => navigate({ view: "run" })}>Run research <ArrowUpRight size={15} /></button>{!!runs.data?.length && <button onClick={() => navigate({ run: runs.data![0].run_id })}>Browse latest research</button>}</div></Empty></div>
-          : visible.length ? <Hero manifest={manifest} strategies={visible} currency={currency} live={live} equity={equity.data || undefined} open={setStrategy} /> : null}
+          : visible.length ? <Hero manifest={manifest} strategies={visible} currency={currency} live={live} equity={equity.data || undefined} crash={crash} open={setStrategy} /> : null}
         <HowItWorks go={v => navigate({ view: v })} />
         <Pillars go={v => navigate({ view: v })} />
         <div className="browse-title"><h2 className="section-h">{route.category === "All strategies" ? "All strategies" : route.category}</h2><div className="filters">
@@ -90,7 +92,7 @@ export default function Page() {
       <Sidebar manifest={manifest} strategies={visible} port={port.data} events={stream.events} currency={currency} go={v => navigate({ view: v })} open={setStrategy} />
       </div>}
       {route.view !== "browse" && <div className="view"><PageIntro view={route.view} manifest={manifest} />
-      {route.view === "portfolio" && <PortfolioView key={scope} pid={route.p} port={port.data} runtime={connected ? runtime.data : undefined} dataset={portfolioDataset} refresh={() => refresh(n=>n+1)} onSelect={p => { setPortfolioInput(p); navigate({ p, run: "", order: "" }); }} />}
+      {route.view === "portfolio" && <PortfolioView key={scope} crash={crash} pid={route.p} port={port.data} runtime={connected ? runtime.data : undefined} dataset={portfolioDataset} refresh={() => refresh(n=>n+1)} onSelect={p => { setPortfolioInput(p); navigate({ p, run: "", order: "" }); }} />}
       {route.view === "orders" && <OrdersView key={scope} pid={route.p} port={port.data} dataset={portfolioDataset} orderId={route.order} selectOrder={order => navigate({ order })} refresh={() => refresh(n=>n+1)} />}
       {route.view === "research" && <ResearchView key={scope} pid={route.p} manifest={manifest} explicit={!!route.run} runs={runs.data || []} selected={route.run} select={run => navigate({ run })} />}
       {route.view === "audit" && <AuditView key={scope} pid={route.p} port={port.data} events={stream.events} streamStatus={stream.status} />}

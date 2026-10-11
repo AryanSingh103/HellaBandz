@@ -1,13 +1,13 @@
 "use client";
 import { useState } from "react";
 import { CircleStop, Play, ShieldCheck, Plus, Power } from "lucide-react";
-import { Analytics, Dataset, Event, Portfolio, Runtime, Verification, money, moneyInput, validId, stamp } from "./model";
+import { Analytics, Band, Dataset, Event, Portfolio, Runtime, Verification, money, moneyInput, validId, stamp } from "./model";
 import { useCommand, useResource } from "./data";
 import { Chart, Empty, JsonView, Metric, Notice } from "./ui";
 import { RuleLabel } from "./help";
 import { History } from "./orders";
 
-export function PortfolioView({ pid, port, runtime, dataset, refresh, onSelect }: { pid: string; port?: Portfolio | null; runtime?: Runtime | null; dataset?: Dataset; refresh: () => void; onSelect: (p:string)=>void }) {
+export function PortfolioView({ pid, port, runtime, dataset, refresh, onSelect, crash }: { pid: string; port?: Portfolio | null; runtime?: Runtime | null; dataset?: Dataset; refresh: () => void; onSelect: (p:string)=>void; crash?: Band }) {
   const c = useCommand(pid), create = useCommand();
   const [newId, setNewId] = useState(""), [capital, setCapital] = useState("10000"), [agent, setAgent] = useState(""), [allocation, setAllocation] = useState("0");
   const [error, setError] = useState("");
@@ -17,7 +17,7 @@ export function PortfolioView({ pid, port, runtime, dataset, refresh, onSelect }
   return <><div className="section-title"><h1>Portfolio</h1><span className="muted">{pid} / {port ? `Sequence ${port.seq}` : "Not opened"}</span></div>
     {!port ? <Notice>{port === null ? "This portfolio has no ledger yet. Open it with virtual capital or launch an isolated session from Run." : "Portfolio data unavailable."}</Notice> : <>
       <div className="metrics"><Metric label="Equity" value={money(port.equity,currency)} /><Metric label="Available cash" value={money(s!.cash-s!.reserved_cash,currency)} /><Metric label="Reserved cash" value={money(s!.reserved_cash,currency)} /><Metric label="Market value" value={money(s!.market_value,currency)} /><Metric label="Realized P&L" value={money(s!.realized_pnl,currency)} /><Metric label="Fees / slippage" value={`${money(s!.fees_paid,currency)} / ${money(s!.slippage_cost,currency)}`} /></div>
-      {history.error && <Notice error>{history.error}</Notice>}<Chart currency={currency} series={[{name:"Portfolio equity",color:"#28d49b",values:history.data?.points.map(p=>[p.ts,p.equity]) || []}]} />
+      {history.error && <Notice error>{history.error}</Notice>}<Chart currency={currency} bands={crash ? [crash] : []} series={[{name:"Portfolio equity",color:"#28d49b",values:history.data?.points.map(p=>[p.ts,p.equity]) || []}]} />
       <section><h2>Holdings</h2><div className="table-scroll"><table><thead><tr><th>Agent</th><th>Symbol</th><th>Quantity ({lots>1 ? "base units" : "shares"})</th><th>Reserved</th><th>Value</th><th>Unrealized P&L</th></tr></thead><tbody>{Object.entries(s!.positions).filter(([,p])=>p.qty>0).map(([k,p])=>{const [a,symbol]=k.split("|"), value=p.qty*(s!.last_bar[symbol]?.[1]||0); return <tr key={k}><td>{a}</td><td>{symbol}</td><td>{p.qty/lots}</td><td>{p.reserved/lots}</td><td>{money(value,currency)}</td><td>{money(value-p.basis,currency)}</td></tr>;})}</tbody></table></div>{!Object.values(s!.positions).some(p=>p.qty>0) && <Empty>No open holdings yet. Holdings appear once agents buy during a session (start one from Run).</Empty>}</section>
       <section><h2>Agent allocations</h2><div className="table-scroll"><table><thead><tr><th>Agent</th><th>Capital</th></tr></thead><tbody>{Object.entries(s!.allocations).map(([a,n])=><tr key={a}><td>{a}</td><td>{money(n,currency)}</td></tr>)}</tbody></table></div></section>
     </>}

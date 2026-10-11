@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, ArrowUpRight, ShieldCheck, Link2, Scale, Activity, TrendingUp, Waves, Repeat2, Radio } from "lucide-react";
-import { Event, Manifest, Portfolio, Ranked, View, familyName, money, pct } from "./model";
+import { Band, Event, Manifest, Portfolio, Ranked, View, familyName, money, pct } from "./model";
 import { useResource } from "./data";
 import { Term, ruleText, useHints } from "./help";
 
@@ -26,7 +26,7 @@ const universeOf = (m: Manifest, id: string) => m.fitted.find(f => f.spec.strate
 
 type Line = { name: string; color: string; points: [number, number][] }; // [epoch s, % change]
 
-function KChart({ lines, height = 300 }: { lines: Line[]; height?: number }) {
+function KChart({ lines, height = 300, bands = [] }: { lines: Line[]; height?: number; bands?: Band[] }) {
   const all = lines.flatMap(l => l.points);
   if (all.length < 2) return <div className="kchart-empty"><Activity size={22} />Chart fills in as the session runs</div>;
   const W = 640, H = height, padR = 52, padB = 26, padT = 12;
@@ -39,10 +39,11 @@ function KChart({ lines, height = 300 }: { lines: Line[]; height?: number }) {
   const y = (v: number) => padT + (1 - (v - ymin) / (ymax - ymin)) * (H - padT - padB);
   const ticks = Array.from({ length: 5 }, (_, i) => ymin + (ymax - ymin) * (i / 4));
   const times = Array.from({ length: 5 }, (_, i) => xmin + (xmax - xmin) * (i / 4));
-  const fmtT = (t: number) => new Date(t * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const fmtT = (t: number) => { const d = new Date(t * 1000); return `${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })} '${String(d.getFullYear()).slice(2)}`; };
   return <svg className="kchart" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={lines.map(l => l.name).join(" vs ")}>
     <defs>{lines.map((l, i) => <linearGradient key={i} id={`fill${i}`} x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor={l.color} stopOpacity=".22" /><stop offset="100%" stopColor={l.color} stopOpacity="0" /></linearGradient>)}
       <filter id="glow"><feGaussianBlur stdDeviation="3" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter></defs>
+    {bands.filter(b => b.end >= xmin && b.start <= xmax).map(b => <g key={b.start} className="band"><rect x={x(Math.max(b.start, xmin)) - 3} y={padT} width={Math.max(8, x(Math.min(b.end, xmax)) - x(Math.max(b.start, xmin)) + 6)} height={H - padT - padB} /><text x={x(Math.max(b.start, xmin)) + 8} y={padT + 14}>{b.label}</text></g>)}
     {ticks.map((t, i) => <g key={i}><line x1="0" x2={W - padR} y1={y(t)} y2={y(t)} className="grid" /><text x={W - padR + 10} y={y(t) + 4} className="axis">{(t * 100).toFixed(t * 100 >= 10 || t * 100 <= -10 ? 0 : 1)}%</text></g>)}
     <line x1="0" x2={W - padR} y1={y(0)} y2={y(0)} className="zero" />
     {times.map((t, i) => <text key={i} x={Math.min(x(t), W - padR - 40)} y={H - 6} className="axis">{fmtT(t)}</text>)}
@@ -62,9 +63,9 @@ function KChart({ lines, height = 300 }: { lines: Line[]; height?: number }) {
 
 /* ------------------------------------------------------------------ hero */
 
-export function Hero({ manifest, strategies, currency, live, equity, open }: {
+export function Hero({ manifest, strategies, currency, live, equity, crash, open }: {
   manifest: Manifest; strategies: Ranked[]; currency: string; live: boolean;
-  equity: { ts: string; equity: number }[] | undefined; open: (id: string) => void;
+  equity: { ts: string; equity: number }[] | undefined; crash?: Band; open: (id: string) => void;
 }) {
   const [i, setI] = useState(0);
   useEffect(() => { setI(0); }, [manifest.run_id]);
@@ -87,7 +88,9 @@ export function Hero({ manifest, strategies, currency, live, equity, open }: {
   const alloc = manifest.allocations.by_strategy[s.strategy_id];
   const prop = manifest.proposals.find(p => p.agent_id === s.agent_id);
   const test = manifest.held_out_test.portfolio.metrics;
-  const liveRet = lines.find(l => l.name === "Live session")?.points.at(-1)?.[1];
+  const livePts = lines.find(l => l.name === "Live session")?.points;
+  const liveRet = livePts?.at(-1)?.[1];
+  const day = (t: number) => new Date(t * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   return <article className="hero card">
     <div className="hero-left">
       <div className="hero-top">
@@ -113,7 +116,8 @@ export function Hero({ manifest, strategies, currency, live, equity, open }: {
         {liveRet !== undefined && <span><i style={{ background: "#ff4d7d" }} />Live <b>{signed(liveRet)}</b></span>}
         <span className="brand">QuantSwarm</span>
       </div>
-      <KChart lines={lines} />
+      <KChart lines={lines} bands={crash ? [crash] : []} />
+      <p className="chart-note">Dates are market time of the replayed data.{livePts?.length ? ` Live replay covered ${day(livePts[0][0])} – ${day(livePts[livePts.length - 1][0])}.` : ""}{crash ? " Shaded = scripted crash injected to test the risk engine, not a real event." : ""}</p>
       <div className="chart-foot"><span><Term k="sharpe">Sharpe</Term> <b>{test.sharpe.toFixed(2)}</b></span><span><Term k="max drawdown">Max DD</Term> <b>{pct(test.max_drawdown)}</b></span><span><Term k="fills">Fills</Term> <b>{test.n_fills}</b></span></div>
     </div>
   </article>;

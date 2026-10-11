@@ -31,6 +31,16 @@ export function moneyInput(value: string, positive = false) {
   return Number.isSafeInteger(Math.round(n)) && (positive ? Math.round(n) > 0 : n >= 0);
 }
 export const familyName = (s: string) => ({ sma_crossover: "Moving Average Crossover", breakout: "Price Breakout", zscore_reversion: "Z-Score Reversion", vol_target: "Volatility Target" }[s] || s);
+export type Band = { start: number; end: number; label: string };
+/** Scheduled market-crash window of a browser-launched session, located on its equity points (one point per replay step). */
+export function crashBand(jobs: Job[] | undefined, pid: string, equity: { ts: string }[] | undefined): Band | undefined {
+  const job = jobs?.find(j => j.kind === "session" && j.portfolio_id === pid) as (Job & { config?: { steps?: number; crash_at?: number | null } }) | undefined;
+  const steps = job?.config?.steps, at = job?.config?.crash_at;
+  if (!steps || at === undefined || at === null || !equity?.length) return undefined;
+  const pts = [...equity].sort((a, b) => Date.parse(a.ts) - Date.parse(b.ts)), k = Math.floor(steps * at);
+  if (!pts[k]) return undefined;
+  return { start: Date.parse(pts[k].ts) / 1000, end: Date.parse(pts[Math.min(k + 4, pts.length - 1)].ts) / 1000, label: "Simulated crash" };
+}
 export const stamp = (s?: string | number | null) => s ? new Date(typeof s === "number" ? s * 1000 : s).toLocaleString() : "Unavailable";
 export type Metrics = { net_return: number; sharpe: number; max_drawdown: number; n_fills: number; fees_usd: number; slippage_usd: number; final_equity_usd: number };
 export type Ranked = { strategy_id: string; agent_id: string; family: string; params: Record<string, number>; train: Metrics; validation: Metrics; score: number; gates: string[]; stability: number };
