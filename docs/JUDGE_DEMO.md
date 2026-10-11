@@ -1,7 +1,7 @@
 # Judge demo
 
 Open [the local terminal](http://localhost:3000). The current terminal is a production
-build. Sign in with the operator key from local `.env` if the session has expired.
+build. It opens without sign-in unless `QS_AUTH_REQUIRED=1` is set.
 
 ## Three-minute walkthrough
 
@@ -40,5 +40,5 @@ Local operator credentials and the Devnet private key are never committed. Judge
 repository access and Devpost publication remain separate [submission gates](SUBMISSION.md).
 
 After merging the HellaBandz package rename, executable modules use `hellabandz`.
-The local demo uses an operator access key and expiring browser sessions.
+Operator sign-in is off by default; set `QS_AUTH_REQUIRED=1` to demonstrate it.
 Restart services after merging UI or backend changes to display the updated build.

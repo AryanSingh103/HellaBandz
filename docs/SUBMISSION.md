@@ -10,7 +10,7 @@ The `p3-core` working tree removes the retired external account/exchange integra
 interfaces and graph dependencies. Six parallel research agents, simulated execution, the
 strategy marketplace, Nike review lab, voice and Solana audit trail remain. UI requests now
 follow the active view, charts and performance helpers are shared, and dataset validation
-uses a file-version cache. Historical planning and presentation notes live in `docs/archive/`.
+uses a file-version cache.
 
 The cleaned production frontend and four backend services were rebuilt and restarted. All eight
 UI views loaded. Main-portfolio replay verified **2,177 events**; the browser's independent

@@ -5,7 +5,7 @@ a deterministic supervisor and crisis policy, browser speech, the synthetic data
 manifest verification. Every live path is unit-tested against mocked services
 (`tests/unit/test_integrations.py`), so adding a key should work on first use.
 
-Operator access is required by default even offline. `make auth-init` generates the local key;
+Operator sign-in is off by default. `make auth-init` generates a local key; with `QS_AUTH_REQUIRED=1`,
 sign in with `QS_API_TOKEN` from ignored `.env`. Use the same hostname for the terminal and API
 because browser sessions are SameSite cookies. See [SECURITY](SECURITY.md).
 
