@@ -1,4 +1,5 @@
 import json
+import copy
 from pathlib import Path
 
 import pytest
@@ -7,7 +8,7 @@ from hellabandz.ingestion.dataset import load_snapshot
 from hellabandz.trading import live
 from hellabandz.trading.execution import LocalLedger
 from hellabandz.trading.registry import Registry
-from hellabandz.trading.reporting import load_report, research_context, save_report
+from hellabandz.trading.reporting import load_report, research_context, save_report, simulation_context
 from hellabandz.trading.research import POLICY_VERSION, research_current
 from hellabandz.trading.strategies import CODE_VERSION, make_version
 
@@ -59,7 +60,8 @@ def test_report_identity_and_atomic_round_trip(tmp_path):
         load_report(tmp_path, "fresh")
 
 
-def test_managed_runner_reports_every_rule_and_matches_truncated_baseline(tmp_path, monkeypatch):
+@pytest.mark.parametrize("mode", ["approved", "experimental"])
+def test_managed_runner_reports_every_rule_and_matches_truncated_baseline(tmp_path, monkeypatch, mode):
     meta, reg, chosen = prepared(tmp_path)
     messages = []
     class Response:
@@ -79,7 +81,8 @@ def test_managed_runner_reports_every_rule_and_matches_truncated_baseline(tmp_pa
     monkeypatch.setattr(live, "ApiLedger", TestLedger)
     monkeypatch.setattr(live, "MANIFESTS", tmp_path)
     progress = []
-    result = live.run_coordinated({"config": {"steps": 10, "speed": 0}, "portfolio_id": "fresh",
+    before = copy.deepcopy(reg.data)
+    result = live.run_coordinated({"config": {"steps": 10, "speed": 0, "allocation_mode": mode}, "portfolio_id": "fresh",
         "run_id": "run"}, ROOT / "data/fixtures/synthetic_1h", "http://test", {},
         lambda *args: progress.append(args), lambda: len([x for x in progress if x[0] == "coordinating"]) >= 3)
     report = load_report(tmp_path, "fresh")
@@ -87,11 +90,43 @@ def test_managed_runner_reports_every_rule_and_matches_truncated_baseline(tmp_pa
     assert len(report["rule_readings"]) == 3 * 2  # current challenger + core, every cycle
     assert len(report["benchmark"]["baseline"]) == len(report["points"]) == 3
     assert report["benchmark"]["end_ts"] == report["steps"][-1]["ts"] + 1
-    assert report["benchmark"]["baseline_metrics"]["net_return"] == result["net_return"]
+    if mode == "approved":
+        assert report["benchmark"]["baseline_metrics"]["net_return"] == result["net_return"]
     assert result["reconciliation_breaks"] == result["ledger_rejections"] == 0
-    assert all(p["agents"]["trend"] == {"pnl": 0, "exposure": 0} for p in report["points"])
+    if mode == "approved":
+        assert all(p["agents"]["trend"] == {"pnl": 0, "exposure": 0} for p in report["points"])
+    else:
+        assert all(a["funded"] and a["capital"] == 4_500_000_000 for a in report["context"]["agents"])
+        assert report["context"]["allocation_mode"] == "experimental"
+        assert reg.data == before
+        assert report["context"]["agents"][0]["status"] == "rejected"
+        assert report["context"]["agents"][0]["research_approved"] is False
     assert sum(s["equity"] for s in result["attribution"].values()) + result["unallocated_cash"] == round(result["final_equity"] * 1e6)
     assert [m for m in messages if m["role"] == "coordinator_start"][0]["content"]["context"]["agents"][0]["version"] == chosen.version
+    stages = [p[0] for p in progress]
+    assert stages[0] == "loading_market_data"
+    assert stages.index("opening_paper_account") < stages.index("warming_strategy_history") < stages.index("coordinating")
+
+
+def test_experimental_reuses_last_completed_research_without_changing_refresh(tmp_path):
+    meta, reg, _ = prepared(tmp_path)
+    completed = json.loads(json.dumps(reg.data["research_state"]))
+    reg.data["research_runs"] = [completed]
+    reg.data["research_state"] = {"status": "running"}
+    before = copy.deepcopy(reg.data)
+    context = simulation_context(reg, meta, "experimental")
+    assert context["current"] and all(a["funded"] for a in context["agents"])
+    assert sum(a["capital"] for a in context["agents"]) == 9_000_000_000
+    assert reg.data == before
+    assert not simulation_context(reg, meta, "approved")["current"]
+    meta = {**meta, "content_sha256": "another dataset"}
+    assert not simulation_context(reg, meta, "experimental")["current"]
+
+
+def test_unknown_allocation_mode_is_rejected(tmp_path):
+    meta, reg, _ = prepared(tmp_path)
+    with pytest.raises(ValueError, match="allocation mode"):
+        simulation_context(reg, meta, "unsafe")
 
 
 def test_incomplete_research_never_starts_trading(tmp_path, monkeypatch):

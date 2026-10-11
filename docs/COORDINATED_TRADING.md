@@ -6,6 +6,27 @@ existing hash-chained ledger stays the only place money moves.
 
 Code: `hellabandz/trading/`. Ledger changes: `hellabandz/ledger/engine.py`, `hellabandz/ledger/state.py`.
 
+## Simulation budgets
+
+The Simulation page defaults to **Experimental: all agents trade paper budgets**. It divides the
+$9,000 deployable budget equally between the frozen challengers and passive core ($2,250 each
+when there are three challengers), retaining $1,000 in reserve. Research rejection and approval
+records stay unchanged. Experimental budgets are specific to that replay; they do not promote
+a strategy or establish that it outperforms the market. Agents may hold cash when their rules do
+not signal an entry. Aggregate allocation, netting, and risk checks remain in force.
+
+Choose **Research approved strategies only** to enforce registry promotion gates. The API defaults
+to this approved mode; experiments explicitly set `allocation_mode: "experimental"` on a
+`kind: "coordinated"` job. Exports record the mode and distinguish experimental funding from
+research approval. If a refresh is running, experiments can reuse the newest completed compatible
+frozen research snapshot without changing the refresh or its promotions.
+
+The live chart compares the actual portfolio with buy and hold using the same completed market
+timestamps, opening capital, fees, and paper execution assumptions. Agent cards show virtual-sleeve
+fills, holdings, and P&L; aggregate orders appear under shared execution. Startup stages distinguish
+research and history preparation from market replay, and strategy readings refresh during holding
+periods as well as when signals change.
+
 ## Components
 
 | Component | Module | Job |

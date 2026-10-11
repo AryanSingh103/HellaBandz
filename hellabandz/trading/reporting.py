@@ -6,6 +6,7 @@ tournament is only an optional dataset anchor; it never supplies allocations.
 from __future__ import annotations
 
 import hashlib
+import copy
 import json
 import os
 import tempfile
@@ -13,7 +14,7 @@ import time
 from pathlib import Path
 
 from hellabandz.trading.registry import Registry
-from hellabandz.trading.research import POLICY_VERSION, portfolio_sleeves, research_current
+from hellabandz.trading.research import DEPLOYABLE, POLICY_VERSION, portfolio_sleeves, research_current
 from hellabandz.trading.strategies import CODE_VERSION, FAMILY_CARDS, make_version
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -72,6 +73,40 @@ def research_context(reg: Registry, meta: dict) -> dict:
             "depth": "synthetic OHLCV liquidity ladder; not exchange order-book depth",
             "commentary": "Optional language-model remarks cannot change fixed rules or place orders.",
             "evaluation_status": "exploratory historical replay; this period has previously been inspected"}
+
+
+def simulation_context(reg: Registry, meta: dict, allocation_mode: str = "approved") -> dict:
+    """Paper experiments use frozen challengers without granting research approval.
+
+    A concurrent research refresh must not hide an already completed frozen run.
+    Read an isolated archived snapshot; never change registry promotions or budgets.
+    """
+    if allocation_mode not in ("approved", "experimental"):
+        raise ValueError("unknown coordinated allocation mode")
+    snapshot = copy.deepcopy(reg)
+    if allocation_mode == "experimental" and not research_current(snapshot, meta):
+        for state in reversed(snapshot.data.get("research_runs", [])):
+            snapshot.data["research_state"] = state
+            if research_current(snapshot, meta):
+                break
+    context = research_context(snapshot, meta)
+    context["allocation_mode"] = allocation_mode
+    if allocation_mode == "experimental" and context["current"]:
+        frozen = snapshot.data["research_state"].get("frozen_challengers", {})
+        selected = []
+        for role in sorted(frozen):
+            agent = next(a for a in context["agents"] if a["version"] == frozen[role]["version"]
+                         and a["agent_id"] in (role, role + "_challenger"))
+            selected.append({**agent, "agent_id": role, "strategy_id": role})
+        selected += [a for a in context["agents"] if a["agent_id"] == "core"]
+        cap, remainder = divmod(DEPLOYABLE, len(selected))
+        context["agents"] = [{**a, "research_approved": a["funded"], "funded": True,
+            "capital": cap + (remainder if a["agent_id"] == "core" else 0), "experimental": True}
+            for a in selected]
+        context["allocation_note"] = "Experimental paper budgets for every frozen challenger and passive core; research promotion gates are bypassed for this replay only. Not approved performance."
+    else:
+        context["allocation_note"] = "Only research-approved strategies receive paper capital; rejected challengers watch without trading."
+    return context
 
 
 def report_path(directory: Path, portfolio_id: str) -> Path:

@@ -34,10 +34,10 @@ from hellabandz.ledger import PortfolioState, replay
 from hellabandz.trading.coordinator import EXEC_AGENT, paper_budget
 from hellabandz.trading.execution import VenueMode
 from hellabandz.trading.instruments import instruments_for_dataset
-from hellabandz.trading.registry import Registry
+from hellabandz.trading.registry import Registry, RegistryError
 from hellabandz.trading.research import (INITIAL, data_class, portfolio_sleeves, research, research_current)
 from hellabandz.trading.research import core_version, DEPLOYABLE, research_metrics
-from hellabandz.trading.reporting import research_context, registry_path, save_report
+from hellabandz.trading.reporting import simulation_context, registry_path, save_report
 from hellabandz.ingestion.registry import MANIFESTS
 from hellabandz.trading.runtime import CoordinatedRuntime, percentiles
 from hellabandz.trading.strategies import FAMILY_CARDS, RuntimeStrategy, StrategyVersion
@@ -158,25 +158,50 @@ def state_message(rt: CoordinatedRuntime, reg: Registry, snap, intents: list, sh
 def run_coordinated(job: dict, dataset_dir: Path, api: str, headers: dict, progress, stop_requested) -> dict:
     config = job["config"]
     pid, run_id = job["portfolio_id"], job["run_id"]
+    progress("loading_market_data", 0)
     t, meta = load_snapshot(dataset_dir)
     p = SnapshotProvider(t)
     reg = Registry(registry_path(meta['dataset_id']))
-    if not research_current(reg, meta):
-        progress("research")
-        research(dataset_dir, reg, budget_s=float(config.get("research_budget_s", 600)),
-                 use_llm=True,
-                 progress=lambda stage, role, n: progress(f"research:{role}:{stage}"),
-                 stop_requested=stop_requested)
+    mode = config.get("allocation_mode", "approved")
+    progress("checking_frozen_strategies", 0)
+    context = simulation_context(reg, meta, mode)
+    research_wait_deadline = time.monotonic() + float(config.get("research_budget_s", 600)) + 60
+    while not context["current"] and not stop_requested():
+        progress("research", 0)
+        try:
+            research(dataset_dir, reg, budget_s=float(config.get("research_budget_s", 600)),
+                     use_llm=True,
+                     progress=lambda stage, role, n: progress(f"research:{role}:{stage}",
+                         n if stage == "optimized" and type(n) is int else None),
+                     stop_requested=stop_requested)
+        except RegistryError as exc:
+            if "research already running" not in str(exc):
+                raise
+            if time.monotonic() >= research_wait_deadline:
+                raise TimeoutError("timed out waiting for compatible research") from exc
+            progress("waiting_for_research", 0)
+            time.sleep(.5)
+            reg = Registry(registry_path(meta['dataset_id']))
+            context = simulation_context(reg, meta, mode)
+            continue
+        context = simulation_context(reg, meta, mode)
+        break
     if stop_requested():
         return {"run_id": run_id, "portfolio_id": pid, "stopped": True, "cycles": 0,
                 "detail": "Stopped before creating trading commands."}
     universe = sorted(meta["symbols"])
-    holdout_views = reg.view_holdout(meta["content_sha256"])
-    context = research_context(reg, meta)
-    context.update(holdout_views=holdout_views, holdout_untouched=False)
+    # The report itself records every exploratory replay. Avoid a registry write
+    # here: a simultaneous research writer must retain its own frozen state.
+    context.update(holdout_views=reg.data.get("holdout_views", {}).get(meta["content_sha256"], 0),
+                   holdout_count_recorded=False, holdout_untouched=False)
     if not context["current"]:
         raise ValueError("coordinated execution requires completed compatible research")
-    sleeves = portfolio_sleeves(reg, universe)
+    if mode == "experimental":
+        from hellabandz.trading.strategies import make_version
+        sleeves = [(a["agent_id"], make_version(a["agent_id"], FAMILY_CARDS[a["family"]], a["params"], a["universe"]),
+                    a["capital"]) for a in context["agents"] if a["funded"]]
+    else:
+        sleeves = portfolio_sleeves(reg, universe)
     funded = {s for s, _, _ in sleeves}
     # challengers that were not funded run in shadow: their intents are shown, never executed
     shadow = []
@@ -186,6 +211,7 @@ def run_coordinated(job: dict, dataset_dir: Path, api: str, headers: dict, progr
             card = FAMILY_CARDS[rec["family"]]
             v = make_version(rec["agent_id"], card, rec["params"], rec["universe"])
             shadow.append(RuntimeStrategy(v, "paper_clob"))
+    progress("connecting_execution_worker", 0)
     ledger = ApiLedger(api, pid, headers, run_id)
     strats = [RuntimeStrategy(StrategyVersion(sid, v.family, v.params, v.universe, v.version, v.card), "paper_clob")
               for sid, v, _ in sleeves]
@@ -198,13 +224,22 @@ def run_coordinated(job: dict, dataset_dir: Path, api: str, headers: dict, progr
         if o.agent_id == EXEC_AGENT and o.venue == "paper_clob":
             ledger.process(CancelOrder(client_order_id=o.order_id, agent_id=EXEC_AGENT))
     if not ledger.state.opened:
+        progress("opening_paper_account", 0)
         rt.open()
     te0, te1 = meta["splits"]["test"]
+    report = {"schema": "coordinated-simulation-1", "portfolio_id": pid, "run_id": run_id,
+              "context": context, "config": config, "status": "starting", "points": [],
+              "decisions": [], "rule_readings": [], "steps": [], "benchmark": {"status": "pending"}}
+    save_report(MANIFESTS, pid, report)
+    _say(ledger, run_id, "coordinator_start", {"mode": "paper_clob", "context": context,
+         "sleeves": [(s, v.version, c) for s, v, c in sleeves], "shadow": [x.v.strategy_id for x in shadow]})
+    progress("warming_strategy_history", 0)
     rt.warm(p, te0)
     baseline = CoordinatedRuntime(run_id + "-baseline", VenueMode.PAPER_CLOB,
         [RuntimeStrategy(core_version(universe), "paper_clob")], {"core": DEPLOYABLE},
         paper_budget(INITIAL), instruments_for_dataset(meta), data_class(meta), INITIAL)
     baseline.open()
+    progress("warming_baseline_history", 0)
     baseline.warm(p, te0)
     for sh in shadow:
         sh.warm_universe({s: (ts, h.close, h.high, h.low) for s, (h, ts) in ((s, p.history(s, te0)) for s in universe)})
@@ -221,14 +256,9 @@ def run_coordinated(job: dict, dataset_dir: Path, api: str, headers: dict, progr
         raise ValueError("scripted crashes are unsupported in coordinated replay")
     if config.get("duration_s") and groups:
         speed = len(groups) / float(config["duration_s"])
-    start = {"mode": "paper_clob", "context": context,
-             "sleeves": [(s, v.version, c) for s, v, c in sleeves],
-             "shadow": [x.v.strategy_id for x in shadow], "steps": len(groups)}
-    _say(ledger, run_id, "coordinator_start", start)
-    report = {"schema": "coordinated-simulation-1", "portfolio_id": pid, "run_id": run_id,
-              "context": context, "config": config, "status": "running", "points": [],
-              "decisions": [], "rule_readings": [], "steps": [], "benchmark": {"status": "pending"}}
+    report["status"] = "running"
     save_report(MANIFESTS, pid, report)
+    progress("ready_to_trade", 0, len(groups))
     previous = {}
     from hellabandz.agents import llm
     thinker = ThreadPoolExecutor(max_workers=1, thread_name_prefix="coordinated-commentary")
@@ -276,7 +306,7 @@ def run_coordinated(job: dict, dataset_dir: Path, api: str, headers: dict, progr
                       "opening": i == 0, "symbols": symbols, "intents": readings,
                       "execution_effect": "coordinator input" if agent["funded"] else "shadow only; no orders"}
             report["rule_readings"].append(signal)
-            if i == 0 or i == len(groups) - 1 or any(x["target_bps"] != x["previous_bps"] for x in symbols.values()):
+            if i % 5 == 0 or i == len(groups) - 1 or any(x["target_bps"] != x["previous_bps"] for x in symbols.values()):
                 _say(ledger, run_id, "signal", signal, aid)
             previous.update({(aid, sym): v["target_bps"] for sym, v in symbols.items()})
             if aid != "core" and i in (0, len(groups) // 2) and llm.available():
@@ -297,7 +327,7 @@ def run_coordinated(job: dict, dataset_dir: Path, api: str, headers: dict, progr
             "assumptions": "Same completed bars, initial cash, deployable budget, coordinator limits, fees and synthetic paper CLOB. Equal-weight buy and hold; no crash overlay.",
             "baseline": [{"ts": r.ts, "equity": r.equity} for r in baseline.records],
             "strategy": {"ts": [r.ts for r in rt.records], "equity": [r.equity for r in rt.records]}}
-        if i % 25 == 0 or i == len(groups) - 1:
+        if i % 5 == 0 or i == len(groups) - 1:
             save_report(MANIFESTS, pid, report)
         progress("coordinating", i + 1, len(groups))
         if speed > 0:

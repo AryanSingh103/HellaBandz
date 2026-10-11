@@ -179,10 +179,13 @@ class JobIn(BaseModel):
     crash_at: float | None = Field(default=None, ge=0, lt=1, allow_inf_nan=False)
     # optional wall-clock target for a session replay; overrides speed when set
     duration_s: float | None = Field(default=None, ge=1, le=3600, allow_inf_nan=False)
+    allocation_mode: Literal["approved", "experimental"] = "approved"
 
 
 @router.post("/jobs", status_code=202)
 async def launch_job(body: JobIn):
+    if body.kind != "coordinated" and body.allocation_mode != "approved":
+        raise HTTPException(422, "experimental paper budgets require a coordinated simulation")
     config = body.model_dump(mode="json")
     existing = await gateway.q("SELECT * FROM jobs WHERE request_id = %s", (body.request_id,))
     if existing:

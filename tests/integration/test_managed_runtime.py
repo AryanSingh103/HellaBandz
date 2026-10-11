@@ -231,3 +231,25 @@ def test_real_research_job_persists_manifest_baseline_and_session(stack, tmp_pat
         crash = c.post("/v1/jobs", json={"request_id": "unsupported-coordinated-crash", "kind": "coordinated",
             "dataset_id": "runtime-synthetic", "portfolio_id": "no-crash", "crash_at": .5})
         assert crash.status_code == 422
+        registry_before = registry.path.read_text()
+        experimental = c.post("/v1/jobs", json={"request_id": "paper-experiment", "kind": "coordinated",
+            "dataset_id": "runtime-synthetic", "portfolio_id": "experimental-session", "steps": 10,
+            "speed": 0, "allocation_mode": "experimental"})
+        assert experimental.status_code == 202, experimental.text
+        experiment_id = experimental.json()["job_id"]
+        wait_until(lambda: job(experiment_id)["status"] in ("completed", "failed"), timeout=90)
+        experiment = job(experiment_id)
+        assert experiment["status"] == "completed", experiment
+        assert experiment["result"]["cycles"] == 10 and experiment["result"]["fills"] > 0
+        assert experiment["result"]["reconciliation_breaks"] == 0
+        report = c.get("/v1/coordinated/report", params={"portfolio_id": "experimental-session"}).json()
+        assert report["context"]["allocation_mode"] == "experimental"
+        assert len(report["context"]["agents"]) == 4
+        assert all(a["funded"] and a["experimental"] and a["capital"] == 2_250_000_000
+                   for a in report["context"]["agents"])
+        assert len(report["steps"]) == len(report["benchmark"]["baseline"]) == 10
+        assert c.get("/v1/verify", params={"portfolio_id": "experimental-session"}).json()["match"]
+        assert registry.path.read_text() == registry_before
+        invalid = c.post("/v1/jobs", json={"request_id": "invalid-mode", "kind": "research",
+            "dataset_id": "runtime-synthetic", "allocation_mode": "experimental"})
+        assert invalid.status_code == 422

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, Play, Square, Brain, ShieldAlert, CheckCircle2, Zap, ArrowUpRight, Radio, Flag, CircleDollarSign } from "lucide-react";
-import { Analytics, CoordinatedContext, CoordinatedReport, Dataset, Job, Manifest, State, Tournament, View, errorText, familyName, id, money, pct, request, stamp, url } from "./model";
+import { Analytics, CoordinatedContext, CoordinatedReport, Dataset, Job, Manifest, Sleeve, State, Tournament, View, errorText, familyName, id, money, pct, request, stamp, url } from "./model";
 import { useCommand, useResource } from "./data";
 import { Chart, Empty, JsonView, Metric, Notice } from "./ui";
 import { ruleText } from "./help";
@@ -109,7 +109,7 @@ type Target = { target_bps?: number; previous_bps?: number | null; reading?: str
 const obj = (v: unknown) => v && typeof v === "object" ? v as Record<string, unknown> : {};
 const str = (v: unknown) => typeof v === "string" ? v : "";
 const num = (v: unknown) => typeof v === "number" && Number.isFinite(v) ? v : undefined;
-const nice = (agent?: string) => (agent || "system").replaceAll("_", " ");
+const nice = (agent?: string) => agent === "exec" ? "shared execution" : (agent || "system").replaceAll("_", " ");
 const day = (ts: number) => new Date(ts * 1000).toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
 const signedMoney = (n: number, currency: string) => `${n >= 0 ? "+" : "−"}${money(Math.abs(n), currency)}`;
 const END = Number.MAX_SAFE_INTEGER;
@@ -167,9 +167,11 @@ export function SimulationView({ pid, manifest, dataset, datasets, runs, onSelec
   const messages = useMessages(pid, exists, running);
   const coordinated = job?.kind === "coordinated";
   const report = useResource<CoordinatedReport>(coordinated ? "/v1/coordinated/report" : null,
-    { portfolio_id: pid }, running ? 15000 : 0, settled, true);
+    { portfolio_id: pid }, running ? 5000 : 0, settled, true);
   const context = report.data?.context || messages.data.find(m => m.role === "coordinator_start")?.content.context as CoordinatedContext | undefined;
-  const sleeves = report.data?.final_attribution || report.data?.steps.at(-1)?.sleeves || {};
+  const coordinatorState = [...messages.data].reverse().find(m => m.role === "coordinator_state")?.content;
+  const sleeves = report.data?.final_attribution || coordinatorState?.sleeves as Record<string, Sleeve> || report.data?.steps.at(-1)?.sleeves || {};
+  const experimental = context?.allocation_mode === "experimental" || (job as Job & { config?: { allocation_mode?: string } })?.config?.allocation_mode === "experimental";
   const stop = useCommand();
   const [exporting, setExporting] = useState(false), [exportError, setExportError] = useState("");
   async function download() {
@@ -289,20 +291,22 @@ export function SimulationView({ pid, manifest, dataset, datasets, runs, onSelec
     for (const [ts, value] of ledger.curve) merged.set(ts, value);
     return [...merged.entries()].sort((a, b) => a[0] - b[0]);
   }, [equity.data, ledger.curve, finished]);
-  const baseline = analytics.data?.benchmark.baseline;
+  const baseline = report.data?.benchmark.baseline || analytics.data?.benchmark.baseline;
   const lastTs = curve.at(-1)?.[0] || ledger.simTs, firstTs = curve[0]?.[0] || ledger.firstTs;
   const baseCurve = useMemo(() => (baseline || []).filter(p => p.ts >= firstTs && p.ts <= lastTs).map(p => [p.ts, p.equity] as [number, number]), [baseline, firstTs, lastTs]);
   // the crash window comes from the session's own record of when it injected it (four bars from that market time)
   const crashTs = Date.parse(str(messages.data.find(m => m.portfolio_id === pid && m.role === "market_crash")?.content.ts)) / 1000 || 0;
   const crashFrom = crashTs ? curve.findIndex(p => p[0] >= crashTs) : -1;
   const crash = crashTs ? { start: crashTs, end: crashFrom >= 0 ? curve[Math.min(crashFrom + 4, curve.length - 1)][0] : crashTs, label: "Simulated crash" } : undefined;
-  const agentPnl = analytics.data?.points.at(-1)?.agents || {};
+  const agentPnl = coordinated ? Object.fromEntries(Object.entries(sleeves).map(([a, s]) => [a, { pnl: s.pnl, exposure: s.market_value }])) : analytics.data?.points.at(-1)?.agents || {};
+  const researching = !!job && (job.stage.startsWith("research") || job.stage === "waiting_for_research");
+  const preparing = running && job?.stage !== "coordinating";
 
   const initial = st?.initial_cash || manifest?.policy.initial_cash_micros || 10_000_000_000;
   const equityNow = ledger.port?.equity;
   const ret = equityNow === undefined ? undefined : equityNow / initial - 1;
   const total = job?.total || (running ? undefined : ledger.steps) || undefined;
-  const step = Math.max(job?.progress || 0, ledger.steps);
+  const step = Math.max(job?.stage === "coordinating" || ledger.steps > 0 ? job?.progress || 0 : 0, ledger.steps);
   const result = obj(job?.result);
   const baseRet = baseCurve.length ? baseCurve.at(-1)![1] / initial - 1 : undefined;
   const topRule = Object.entries(ledger.rules).sort((a, b) => b[1] - a[1])[0];
@@ -315,7 +319,7 @@ export function SimulationView({ pid, manifest, dataset, datasets, runs, onSelec
     <div className="section-title"><h1>Simulation</h1><span className="badge">Historical replay · pretend money</span></div>
     <Launcher pid={pid} manifest={manifest} datasets={datasets} runs={runs} onSelect={onSelect} open={!exists} />
 
-    {!exists ? <section><Empty>{ledger.status === "connecting" || pidJobs.loading ? "Loading simulation…" : `Portfolio ${pid} has no simulation yet. Pick a research run above and press Start simulation to watch it play from start to finish.`}</Empty></section> : <>
+    {!exists ? <section><Empty>{ledger.status === "connecting" || pidJobs.loading ? "Loading simulation…" : `Portfolio ${pid} has no simulation yet. Choose market data above and press Start simulation.`}</Empty></section> : <>
       <section className="sim-status">
         <div className="section-title"><div><h2>{pid}</h2><span className="muted">{coordinated ? `${context?.dataset.dataset_id || job?.dataset_id} · coordinated registry · ${context?.policy_version || "checking research"}` : manifest ? `Legacy session · Research ${manifest.run_id} · ${manifest.dataset.dataset_id}` : "Legacy recorded session"}</span></div>
           <div className="row">
@@ -323,11 +327,13 @@ export function SimulationView({ pid, manifest, dataset, datasets, runs, onSelec
             <button disabled={exporting} onClick={download} title="Everything recorded for this simulation as one JSON file: metrics, every step, agents, thinking, decisions and trades"><Download size={14} />{exporting ? "Preparing…" : "Download full history"}</button>
             {running && <button disabled={stop.pending || job!.stop_requested} onClick={() => stop.send(`/v1/jobs/${encodeURIComponent(job!.job_id)}/stop`, {})}><Square size={14} />{job!.stop_requested ? "Stopping…" : "Stop"}</button>}
           </div></div>
-        <progress value={step} max={total || Math.max(step, 1)} />
-        <div className="sim-clock"><span><b>Step {step.toLocaleString()}</b>{total ? ` of ${total.toLocaleString()}` : ""}</span>
+        <progress value={preparing ? undefined : step} max={total || Math.max(step, 1)} />
+        <div className="sim-clock"><span><b>{preparing ? "Preparing simulation" : `Step ${step.toLocaleString()}`}</b>{!preparing && total ? ` of ${total.toLocaleString()}` : ""}</span>
           <span>{ledger.simTs ? <>Market time <b>{day(ledger.simTs)}</b>{ledger.firstTs ? <span className="muted"> · started {day(ledger.firstTs)}</span> : null}</> : "Waiting for the first price bar"}</span>
           <span className="muted">Stream {ledger.status} · {ledger.bars.toLocaleString()} price bars · ledger #{ledger.port?.seq ?? 0}</span></div>
         {job?.error && <Notice error>{job.error}</Notice>}{stop.error && <Notice error>{stop.error}</Notice>}{exportError && <Notice error>{exportError}</Notice>}
+        {experimental && <Notice>Experimental paper trading: every frozen agent receives a paper budget. Research approval is unchanged; these results are an experiment. Shared allocation and risk checks still apply.</Notice>}
+        {preparing && <Notice>{researching ? `Preparing frozen strategies on training/validation data before trading. ${job?.stage === "waiting_for_research" ? "Waiting for the research already running on this dataset." : `${job?.stage.replaceAll(":", " · ").replaceAll("_", " ")}${job?.progress ? ` · ${job.progress} candidates evaluated in this stage` : ""}.`} Trades begin after preparation; Stop cancels this launch.` : `Simulation is starting: ${job?.stage.replaceAll("_", " ")}. The first orders appear once market replay begins.`}</Notice>}
         {context && !context.agents.some(a => a.funded && a.agent_id !== "core") && <Notice>No active strategy passed the current promotion gates. The passive core trades; rejected challengers remain watch-only. This is the expected fallback, not evidence of beating buy and hold.</Notice>}
         {context && <p className="muted small">{context.evaluation_status}. Data {context.dataset.content_sha256.slice(0, 16)} · runtime {context.code_version} · source {context.source_sha256.slice(0, 16)}. {context.depth}.</p>}
         {job?.status === "queued" && <Notice>Queued: the local manager starts a dedicated execution worker for this portfolio, then the replay begins.</Notice>}
@@ -365,7 +371,7 @@ export function SimulationView({ pid, manifest, dataset, datasets, runs, onSelec
         const last = stat?.last, thought = now[agent]?.thought, signal = now[agent]?.signal;
         return <article className="sim-agent" key={agent}>
           <div className="sim-agent-head"><div><span className="eyebrow">{nice(agent)}</span><h3>{familyName(s.family || "strategy")}</h3></div>
-            <span className={`badge ${budget === 0 ? "warn" : proposal?.source === "llm" ? "good" : ""}`}>{s.family === "buy_hold" ? "passive" : budget === 0 ? "no budget · watching" : proposal?.source === "llm" ? "AI proposed" : proposal?.source || "no proposal"}</span></div>
+            <span className={`badge ${budget === 0 ? "warn" : proposal?.source === "llm" ? "good" : ""}`}>{coordinatedAgent?.experimental ? "experimental paper budget" : s.family === "buy_hold" ? "passive" : budget === 0 ? "no budget · watching" : coordinatedAgent?.funded ? "approved strategy" : proposal?.source === "llm" ? "AI proposed" : proposal?.source || "no proposal"}</span></div>
           {s.family !== "buy_hold" && <div className={`sim-now ${running ? "live" : ""}`}>
             <span className="eyebrow">{running && <span className="live-dot" />}<Brain size={13} /> {running ? "Thinking now" : "Last thinking"}</span>
             {thought ? <blockquote>{str(thought.content.thought)}</blockquote> : <p className="muted small">{running ? "Waiting for its first AI remark…" : "No AI remark was recorded for this run."}</p>}
@@ -374,12 +380,13 @@ export function SimulationView({ pid, manifest, dataset, datasets, runs, onSelec
           </div>}
           <p className="sim-how"><b>How it trades.</b> {HOW[s.family || ""] || "Fixed, approved rule chosen during research."}</p>
           {proposal && <p className="sim-thesis"><b>Research thesis.</b> {proposal.proposal.rationale}</p>}
-          {coordinatedAgent && <><p className="sim-thesis"><b>Research thesis.</b> {coordinatedAgent.hypothesis}</p><p className="muted small">Frozen version {coordinatedAgent.version}. {coordinatedAgent.funded ? "Funded by the current registry." : `Not funded: ${coordinatedAgent.reasons.join("; ")}.`}</p></>}
+          {coordinatedAgent && <><p className="sim-thesis"><b>Research thesis.</b> {coordinatedAgent.hypothesis}</p><p className="muted small">Frozen version {coordinatedAgent.version}. {coordinatedAgent.experimental ? `Funded for this paper experiment only. Research status: ${coordinatedAgent.status}${coordinatedAgent.reasons.length ? ` (${coordinatedAgent.reasons.join("; ")})` : ""}.` : coordinatedAgent.funded ? "Funded by the current registry." : `Not funded: ${coordinatedAgent.reasons.join("; ")}.`}</p></>}
           {rank && <p className="muted small">Judged on unseen data: {pct(rank.validation.net_return)} return, Sharpe {rank.validation.sharpe.toFixed(2)}.{rank.gates.length ? ` Not funded: ${rank.gates.join("; ")}.` : " Passed its checks."}</p>}
           <div className="sim-agent-stats"><span><small>Budget</small><b>{budget === undefined ? "—" : money(budget, currency)}</b></span>
             <span><small>Profit / loss</small><b className={pnl !== undefined && pnl < 0 ? "neg" : pnl ? "pos" : ""}>{pnl === undefined ? "—" : signedMoney(pnl, currency)}</b></span>
             <span><small>Holding</small><b>{holdings.length ? holdings.join(", ") : "nothing"}</b></span></div>
-          <p className="small">{last ? <><b>Latest:</b> {last.type === "OrderFilled" ? `${last.side === "BUY" ? "bought" : "sold"} ${q(last.qty)} ${last.symbol}` : last.type === "OrderRejected" ? `blocked ${last.side} ${last.symbol} (${ruleText(last.rules?.[0] || "")})` : last.type === "OrderAccepted" ? `ordered ${last.side} ${q(last.qty)} ${last.symbol}` : last.type.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase()}{last.at ? ` · ${day(last.at)}` : ""}</> : <span className="muted">{budget === 0 ? "No budget, so it does not trade." : "No trades yet."}</span>}</p>
+          {coordinated && <p className="small"><b>{sleeves[agent]?.fills || 0} attributed fills.</b> {sleeves[agent]?.fills ? "Executed through the shared coordinator; positions and P&L above belong to this agent." : budget === 0 ? "Watch-only: this strategy cannot place orders." : preparing ? "Preparing market history before orders begin." : "Evaluating each market step; orders execute when its target changes and shared risk checks pass."}</p>}
+          {!coordinated && <p className="small">{last ? <><b>Latest:</b> {last.type === "OrderFilled" ? `${last.side === "BUY" ? "bought" : "sold"} ${q(last.qty)} ${last.symbol}` : last.type === "OrderRejected" ? `blocked ${last.side} ${last.symbol} (${ruleText(last.rules?.[0] || "")})` : last.type === "OrderAccepted" ? `ordered ${last.side} ${q(last.qty)} ${last.symbol}` : last.type.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase()}{last.at ? ` · ${day(last.at)}` : ""}</> : <span className="muted">{budget === 0 ? "No budget, so it does not trade." : "No trades yet."}</span>}</p>}
           {stat && stat.approved + stat.reduced + stat.rejected > 0 && <p className="muted small">{stat.approved} approved · {stat.reduced} shrunk · {stat.rejected} blocked · {stat.fills} fills</p>}
           {proposal && <JsonView label="Evidence and settings it chose" value={{ evidence: proposal.proposal.evidence, fitted_settings: s.params, universe: s.universe }} />}
         </article>;
@@ -389,7 +396,7 @@ export function SimulationView({ pid, manifest, dataset, datasets, runs, onSelec
       <section>
         <h2>Account value over market time</h2>
         {equity.error && <Notice error>{equity.error}</Notice>}
-        <Chart currency={currency} bands={crash ? [crash] : []} series={[{ name: "Agents (this simulation)", color: "#28d49b", values: curve }, ...(baseCurve.length > 1 ? [{ name: "Buy & hold everything", color: "#5b8cff", values: baseCurve }] : [])]} />
+        <Chart currency={currency} bands={crash ? [crash] : []} series={[{ name: experimental ? "Experimental agents" : "Agents (this simulation)", color: "#28d49b", values: curve }, ...(baseCurve.length > 1 ? [{ name: "Buy & hold everything", color: "#5b8cff", values: baseCurve }] : [])]} />
         <p className="muted small">Dates are market time of the replayed data.{crash && baseCurve.length > 1 ? " The buy-and-hold line is the recorded research baseline and does not include the scripted crash." : ""}{analytics.data && !baseline ? ` Buy-and-hold comparison unavailable: ${analytics.data.benchmark.reason || "no baseline recorded for this research run"}.` : ""}</p>
       </section>
 
@@ -418,6 +425,7 @@ function Launcher({ pid, manifest, datasets, runs, onSelect, open }: { pid: stri
   const usable = useMemo(() => datasets.filter(d => d.execution_usable && d.interval_s === 3600 && !d.synthetic && /alpaca|stock|equity|etf/i.test(d.source + d.dataset_id)), [datasets]);
   const synthetic = datasets.filter(d => d.execution_usable && d.interval_s === 3600 && d.synthetic);
   const [datasetId, setDatasetId] = useState(""), [length, setLength] = useState("full"), [duration, setDuration] = useState("max"), [error, setError] = useState("");
+  const [allocationMode, setAllocationMode] = useState<"experimental" | "approved">("experimental");
   const ds = [...usable, ...synthetic].find(d => d.dataset_id === datasetId) || usable.find(d => d.dataset_id === "alpaca-sip-1hour-2023-01-03-2026-09-30") || usable[0];
   const research = useResource<CoordinatedContext>(ds ? "/v1/coordinated/research" : null, { dataset_id: ds?.dataset_id }, 15000);
   const c = useCommand(), identity = useRef<{ signature: string; request_id: string; portfolio_id: string } | null>(null);
@@ -426,7 +434,7 @@ function Launcher({ pid, manifest, datasets, runs, onSelect, open }: { pid: stri
   async function start() {
     if (!ds) { setError("No usable real hourly stock/ETF snapshot is available. Import one, or explicitly choose the labeled synthetic fixture."); return; }
     // steps is capped by the API at 10,000; the replay itself stops at the end of the held-out period
-    const config = { kind: "coordinated", dataset_id: ds.dataset_id, steps: length === "full" ? 10000 : Number(length), speed: 0, crash_at: null, duration_s: duration === "max" ? null : Number(duration) };
+    const config = { kind: "coordinated", allocation_mode: allocationMode, dataset_id: ds.dataset_id, steps: length === "full" ? 10000 : Number(length), speed: 0, crash_at: null, duration_s: duration === "max" ? null : Number(duration) };
     const signature = JSON.stringify(config);
     if (identity.current?.signature !== signature) identity.current = { signature, request_id: id("job"), portfolio_id: `sim-${Date.now().toString(36)}` };
     setError("");
@@ -438,12 +446,13 @@ function Launcher({ pid, manifest, datasets, runs, onSelect, open }: { pid: stri
     <summary><Play size={15} /> New simulation</summary>
     <p className="muted">Replays hourly stock/ETF history through the current coordinated registry and paper CLOB with $10,000 in a fresh portfolio. Strategies share one market snapshot; opposing intents net before one aggregate order per symbol. Current-policy research runs first when needed.</p>
     <div className="form-grid">
+      <label>Agent budgets<select aria-label="Simulation agent budgets" value={allocationMode} onChange={e => setAllocationMode(e.target.value as "experimental" | "approved")}><option value="experimental">Experimental: all agents trade paper budgets</option><option value="approved">Research approved strategies only</option></select></label>
       <label>Market data<select aria-label="Simulation market data" value={ds?.dataset_id || ""} onChange={e => setDatasetId(e.target.value)}>{!usable.length && <option value="">No real stock/ETF snapshot available</option>}{usable.map(d => <option key={d.dataset_id} value={d.dataset_id}>{d.dataset_id} · real historical prices</option>)}{synthetic.map(d => <option key={d.dataset_id} value={d.dataset_id}>{d.dataset_id} · SYNTHETIC fixture (explicit choice)</option>)}</select></label>
       <label>How much to replay<select aria-label="Simulation length" value={length} onChange={e => setLength(e.target.value)}><option value="full">Whole period, start to finish</option><option value="300">First 300 steps (quick look)</option><option value="100">First 100 steps</option></select></label>
       <label>Finish in<select aria-label="Simulation duration" value={duration} onChange={e => setDuration(e.target.value)}><option value="max">As fast as it can</option><option value="240">Spread over about 4 minutes</option></select></label>
     </div>
     {test && <p className="muted small">Period: {day(test[0])} to {day(test[1])} (exclusive end). Exploratory replay of previously inspected history. Runtime depends on API/worker speed; a duration target cannot accelerate slow execution.</p>}
-    {research.data && <Notice>{research.data.current ? `${research.data.agents.filter(a => a.funded && a.agent_id !== "core").length} active strategies funded by ${research.data.policy_version}. Rejected challengers remain watch-only; residual capital follows the passive core.` : "Compatible research is missing. Starting will research on training/validation data before freezing allocations and replaying. Old tournament allocations will not be used."}</Notice>}
+    {allocationMode === "experimental" ? <Notice>Experimental paper mode gives equal shares of the $9,000 deployable budget to the frozen challengers and passive core, with $1,000 reserved. Agents can buy, sell or hold under shared risk limits. Research rejection remains recorded; this does not promote a strategy.</Notice> : research.data && <Notice>{research.data.current ? `${research.data.agents.filter(a => a.funded && a.agent_id !== "core").length} active strategies funded by ${research.data.policy_version}. Rejected challengers remain watch-only; residual capital follows the passive core.` : "Compatible research is missing. Starting will research on training/validation data before freezing allocations and replaying. Old tournament allocations will not be used."}</Notice>}
     {research.error && <Notice error>{research.error}</Notice>}
     {ds?.synthetic && <Notice>This is explicitly selected synthetic data. Its returns are not market evidence.</Notice>}
     <div className="row"><button className="primary" disabled={!ds || c.pending || !!research.error} onClick={start}><Play size={16} />{c.pending ? "Starting…" : "Start simulation"}</button></div>
