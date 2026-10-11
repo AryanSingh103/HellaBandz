@@ -98,6 +98,14 @@ and recompute hashes. Checkpoint loading/validation still grows with live state 
 
 ## Determinism contract
 
+The [strategy marketplace](MARKETPLACE.md) is a separate local demo subsystem. API
+transactions lock offers/accounts and transfer integer virtual credits and escrowed
+licenses atomically; `strategy_trades` records completed transfers. These operations
+do not enqueue execution commands or mutate trading cash. Frozen tournament descriptors
+provide comparison metrics. Review Radar classifies only dated evidence available by
+the cutoff, using an explicit cloud provider or offline ratings, and saves result
+digests in `review_analyses`. It does not submit orders.
+
 Deterministic: everything downstream of the frozen dataset + frozen proposals (grid search, validation,
 allocation, held-out test, every ledger transition). Inputs that are *not* deterministic (LLM text,
 wall-clock arrival order of concurrent HTTP requests) are fixed by recording them: proposals in the

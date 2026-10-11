@@ -1,8 +1,9 @@
 """FastAPI gateway.
 
-Writes only to the `commands` table (the durable input log) and reads
-projections. It never mutates financial state: that is the execution worker's
-exclusive job. Synchronous callers wait for the worker's NOTIFY with a
+Execution writes go to the `commands` durable input log; trading cash and
+positions remain the execution worker's exclusive responsibility. The separate
+demo license marketplace transfers virtual credits in atomic DB transactions.
+Synchronous callers wait for the worker's NOTIFY with a
 timeout; if the worker is down, commands stay queued and the API returns 202.
 """
 
@@ -102,6 +103,8 @@ async def lifespan(app: FastAPI):
     pool = AsyncConnectionPool(database_url(), min_size=2, max_size=int(os.environ.get("QS_API_POOL", "20")),
                                kwargs={"autocommit": True, "row_factory": dict_row}, open=False)
     await pool.open()
+    from quantswarm.api.marketplace import sync_catalog
+    await sync_catalog()
     hub.tasks = [asyncio.create_task(hub.listen()), asyncio.create_task(hub.waker())]
     yield
     for t in hub.tasks:
@@ -554,3 +557,5 @@ def micros(x: int) -> float:
 
 from quantswarm.api.workflows import router as workflow_router  # noqa: E402
 app.include_router(workflow_router)
+from quantswarm.api.marketplace import router as marketplace_router  # noqa: E402
+app.include_router(marketplace_router)

@@ -194,3 +194,49 @@ CREATE TABLE IF NOT EXISTS jobs (
 CREATE UNIQUE INDEX IF NOT EXISTS jobs_active_portfolio ON jobs (portfolio_id)
     WHERE kind = 'session' AND status IN ('queued', 'running');
 CREATE INDEX IF NOT EXISTS jobs_queue ON jobs (created_at) WHERE status = 'queued';
+
+-- Local strategy-license exchange. Credits are separate from trading capital.
+CREATE TABLE IF NOT EXISTS review_analyses (
+    digest TEXT PRIMARY KEY,
+    result JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS strategy_accounts (
+    account_id TEXT PRIMARY KEY,
+    balance BIGINT NOT NULL CHECK (balance >= 0),
+    credit_grant BIGINT NOT NULL CHECK (credit_grant >= 0)
+);
+CREATE TABLE IF NOT EXISTS strategy_assets (
+    asset_id TEXT PRIMARY KEY,
+    descriptor JSONB NOT NULL,
+    supply INTEGER NOT NULL CHECK (supply > 0)
+);
+CREATE TABLE IF NOT EXISTS strategy_holdings (
+    account_id TEXT REFERENCES strategy_accounts(account_id),
+    asset_id TEXT REFERENCES strategy_assets(asset_id),
+    quantity INTEGER NOT NULL CHECK (quantity >= 0),
+    PRIMARY KEY (account_id, asset_id)
+);
+CREATE TABLE IF NOT EXISTS strategy_listings (
+    listing_id TEXT PRIMARY KEY,
+    request_id TEXT NOT NULL UNIQUE,
+    config JSONB NOT NULL,
+    asset_id TEXT NOT NULL REFERENCES strategy_assets(asset_id),
+    seller_id TEXT NOT NULL REFERENCES strategy_accounts(account_id),
+    price BIGINT NOT NULL CHECK (price > 0),
+    remaining INTEGER NOT NULL CHECK (remaining >= 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS strategy_trades (
+    request_id TEXT PRIMARY KEY,
+    config JSONB NOT NULL,
+    listing_id TEXT NOT NULL REFERENCES strategy_listings(listing_id),
+    asset_id TEXT NOT NULL REFERENCES strategy_assets(asset_id),
+    buyer_id TEXT NOT NULL REFERENCES strategy_accounts(account_id),
+    seller_id TEXT NOT NULL REFERENCES strategy_accounts(account_id),
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    price BIGINT NOT NULL CHECK (price > 0),
+    total BIGINT NOT NULL CHECK (total = quantity * price),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

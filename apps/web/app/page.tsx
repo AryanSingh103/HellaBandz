@@ -8,10 +8,11 @@ import { PortfolioView, AuditView, AnalyticsView } from "./portfolio";
 import { OrdersView } from "./orders";
 import { ResearchView, RunView } from "./research";
 import { Ask } from "./voice";
+import { MarketplaceView } from "./marketplace";
 import { Hero, Pillars, Sidebar, StrategyCard, useLiveEquity } from "./browse";
 import { GuideToggle, HintsProvider, HowItWorks, PageIntro } from "./help";
 
-const views: View[] = ["browse", "portfolio", "orders", "research", "audit", "analytics", "run"];
+const views: View[] = ["browse", "marketplace", "portfolio", "orders", "research", "audit", "analytics", "run"];
 const categories = ["All strategies", "Momentum", "Reversion", "Volatility", "Equities", "Crypto"];
 function readRoute(): Route {
   const q = new URLSearchParams(location.search), route = { ...initialRoute };
@@ -92,6 +93,7 @@ export default function Page() {
       <Sidebar manifest={manifest} strategies={visible} port={port.data} events={stream.events} currency={currency} go={v => navigate({ view: v })} open={setStrategy} />
       </div>}
       {route.view !== "browse" && <div className="view"><PageIntro view={route.view} manifest={manifest} />
+      {route.view === "marketplace" && <MarketplaceView />}
       {route.view === "portfolio" && <PortfolioView key={scope} crash={crash} pid={route.p} port={port.data} runtime={connected ? runtime.data : undefined} dataset={portfolioDataset} refresh={() => refresh(n=>n+1)} onSelect={p => { setPortfolioInput(p); navigate({ p, run: "", order: "" }); }} />}
       {route.view === "orders" && <OrdersView key={scope} pid={route.p} port={port.data} dataset={portfolioDataset} orderId={route.order} selectOrder={order => navigate({ order })} refresh={() => refresh(n=>n+1)} />}
       {route.view === "research" && <ResearchView key={scope} pid={route.p} manifest={manifest} explicit={!!route.run} runs={runs.data || []} selected={route.run} select={run => navigate({ run })} />}

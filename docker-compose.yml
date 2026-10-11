@@ -34,6 +34,8 @@ services:
     environment:
       DATABASE_URL: ${QS_DATABASE_URL:-postgresql://quantswarm:quantswarm@db:5432/quantswarm}
       QS_API_POOL: ${QS_API_POOL:-20}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      QS_ANTHROPIC_MODEL: ${QS_ANTHROPIC_MODEL:-claude-sonnet-4-6}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
       ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID:-onwK4e9ZLuTAKqWW03F9}
