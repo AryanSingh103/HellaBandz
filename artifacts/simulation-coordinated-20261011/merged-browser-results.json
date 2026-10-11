@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "errors": [],
+  "portfolio": "sim-mv3lx4bs",
+  "checks": [
+    "Completed simulation visible",
+    "History download available",
+    "Auth-disabled sign-out hidden",
+    "No browser exceptions"
+  ]
+}
