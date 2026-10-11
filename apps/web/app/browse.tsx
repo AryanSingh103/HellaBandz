@@ -114,7 +114,7 @@ export function Hero({ manifest, strategies, currency, live, equity, crash, open
       <div className="legend">
         <span><i style={{ background: "#28d49b" }} /><Term k="held-out">Held-out</Term> <b>{signed(test.net_return)}</b></span>
         {liveRet !== undefined && <span><i style={{ background: "#ff4d7d" }} />Live <b>{signed(liveRet)}</b></span>}
-        <span className="brand">QuantSwarm</span>
+        <span className="brand">HellaBandz</span>
       </div>
       <KChart lines={lines} bands={crash ? [crash] : []} />
       <p className="chart-note">Dates are market time of the replayed data.{livePts?.length ? ` Live replay covered ${day(livePts[0][0])} – ${day(livePts[livePts.length - 1][0])}.` : ""}{crash ? " Shaded = scripted crash injected to test the risk engine, not a real event." : ""}</p>
@@ -196,6 +196,7 @@ export function StrategyCard({ manifest, s, open }: { manifest: Manifest; s: Ran
     <div className="tickers">{universeOf(manifest, s.strategy_id).map(u => <Ticker key={u} symbol={u} />)}</div>
     <div className="sc-row"><span><Term k="training">Training</Term></span><span className="muted">SR {s.train.sharpe.toFixed(2)}</span><span className={`pill sm ${t < 0 ? "neg" : ""}`}>{signed(t)}</span></div>
     <div className="sc-row"><span><Term k="validation">Validation</Term></span><span className="muted">SR {s.validation.sharpe.toFixed(2)}</span><span className={`pill sm ${v < 0 ? "neg" : ""}`}>{signed(v)}</span></div>
+    {s.excess && <div className="sc-row"><span><Term k="vs core">vs core</Term></span><span className="muted">IR {s.excess.out_of_sample_information_ratio.toFixed(2)}</span><span className={`pill sm ${s.excess.out_of_sample_excess_return < 0 ? "neg" : ""}`}>{signed(s.excess.out_of_sample_excess_return)}</span></div>}
     <div className="meter"><i style={{ width: `${Math.abs(t) / total * 100}%` }} className="blue" /><i style={{ width: `${Math.abs(v) / total * 100}%` }} className="rose" /></div>
     <footer><span>{pct(allocation?.weight)} <Term k="allocated">allocated</Term></span><span className={s.gates.length ? "neg" : "pos"}><Term k="gates">{s.gates.length ? `${s.gates.length} gate${s.gates.length > 1 ? "s" : ""} failed` : "Gates passed"}</Term><ArrowUpRight size={13} /></span></footer>
   </button>;

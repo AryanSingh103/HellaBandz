@@ -1,4 +1,4 @@
-# QuantSwarm — Refined Build Plan (HackRU Fall 2026, Lucera primary)
+# HellaBandz — Refined Build Plan (HackRU Fall 2026, Lucera primary)
 
 This is the original design plan, retained for context. The implemented interfaces, risk rules and
 commands are documented in `README.md`, `docs/ARCHITECTURE.md` and `docs/INVARIANTS.md`;
@@ -6,7 +6,7 @@ commands are documented in `README.md`, `docs/ARCHITECTURE.md` and `docs/INVARIA
 claims that every proposed feature shipped.
 
 ## Context
-The team has a strong scope doc but it leaves the *mechanics* undefined: exact schemas, how a "live" session works, how fills are timed, how agents use train/val/test without leaking, how the ledger/digest/crash-recovery actually work, what the risk numbers are, and what gets cut when time runs out. This plan fixes those blanks so four people can code in parallel from hour 0 without re-deciding things. Repo `/Users/aryan/Desktop/QuantSwarm` is empty — greenfield.
+The team has a strong scope doc but it leaves the *mechanics* undefined: exact schemas, how a "live" session works, how fills are timed, how agents use train/val/test without leaking, how the ledger/digest/crash-recovery actually work, what the risk numbers are, and what gets cut when time runs out. This plan fixes those blanks so four people can code in parallel from hour 0 without re-deciding things. Repo `/Users/aryan/Desktop/HellaBandz` is empty — greenfield.
 
 Guiding rule (unchanged, now enforced structurally): **the financial core is deterministic Python with zero LLM/network dependency; AI sits strictly upstream and only emits schema-valid data.**
 

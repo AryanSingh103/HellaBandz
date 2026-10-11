@@ -8,11 +8,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from quantswarm.backtester import SnapshotProvider, Slot, run_backtest
-from quantswarm.contracts import MICROS, StrategyFamily, StrategySpec
-from quantswarm.ingestion.dataset import BarTable, load_snapshot
-from quantswarm.ledger import replay
-from quantswarm.strategies import Series, signal
+from hellabandz.backtester import SnapshotProvider, Slot, run_backtest
+from hellabandz.contracts import MICROS, StrategyFamily, StrategySpec
+from hellabandz.ingestion.dataset import BarTable, load_snapshot
+from hellabandz.ledger import replay
+from hellabandz.strategies import Series, signal
 
 FIXTURE = Path(__file__).resolve().parents[2] / "data/fixtures/synthetic_1h"
 PARAMS = {
@@ -20,6 +20,10 @@ PARAMS = {
     StrategyFamily.BREAKOUT: {"lookback": 40},
     StrategyFamily.ZSCORE_REVERSION: {"lookback": 30, "entry_z": 1.5, "exit_z": 0.0},
     StrategyFamily.VOL_TARGET: {"vol_lookback": 30, "trend_lookback": 100, "target_vol": 0.15},
+    StrategyFamily.RSI_REVERSION: {"lookback": 14, "entry_rsi": 30, "exit_rsi": 55},
+    StrategyFamily.TS_MOMENTUM: {"lookback": 120, "threshold": 0.0},
+    StrategyFamily.REGIME_REVERSION: {"regime_lookback": 60, "min_reversion": 0.02, "lookback": 30, "sell_z": 1.0, "rebuy_z": 0.0},
+    StrategyFamily.BUY_HOLD: {},
 }
 
 
@@ -108,14 +112,14 @@ def test_tampered_snapshot_refused(tmp_path):
 
 
 def test_event_chain_detects_tampering(data):
-    from quantswarm.contracts import OpenPortfolio
-    from quantswarm.ledger import EngineConfig, PortfolioState, process
+    from hellabandz.contracts import OpenPortfolio
+    from hellabandz.ledger import EngineConfig, PortfolioState, process
     from tests.helpers import bar, order
     s = PortfolioState()
     log = []
     for c in [OpenPortfolio(initial_cash=10_000 * MICROS), bar(0, 100)]:
         log += process(s, c, EngineConfig())[0]
-    from quantswarm.contracts import SetAllocation
+    from hellabandz.contracts import SetAllocation
     log += process(s, SetAllocation(agent_id="a", capital=5_000 * MICROS), EngineConfig())[0]
     log += process(s, order("o1", qty=10), EngineConfig())[0]
     log += process(s, bar(1, 100), EngineConfig())[0]
@@ -125,3 +129,13 @@ def test_event_chain_detects_tampering(data):
     fill["px"] -= 1
     with pytest.raises(AssertionError, match="hash mismatch"):
         replay(bad)
+
+
+def test_new_family_bounds_and_ordering():
+    from hellabandz.strategies import validate_params
+    validate_params(StrategyFamily.RSI_REVERSION, {"lookback": 14, "entry_rsi": 30, "exit_rsi": 55})
+    validate_params(StrategyFamily.TS_MOMENTUM, {"lookback": 120, "threshold": 0.02})
+    with pytest.raises(ValueError, match="entry_rsi must be < exit_rsi"):
+        validate_params(StrategyFamily.RSI_REVERSION, {"lookback": 14, "entry_rsi": 45, "exit_rsi": 45})
+    with pytest.raises(ValueError, match="outside"):
+        validate_params(StrategyFamily.TS_MOMENTUM, {"lookback": 120, "threshold": 0.5})

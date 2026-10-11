@@ -1,7 +1,7 @@
 {
-  "family": "zscore_reversion",
-  "universe": ["AAPL", "MSFT", "SPY"],
-  "param_grid": {"lookback": [20, 35, 50, 80], "entry_z": [1.5, 2.0, 2.5], "exit_z": [-0.25, 0.0, 0.5]},
-  "rationale": "Single names have negative lag-1 return autocorrelation and high idiosyncratic volatility, so large deviations from a rolling mean should partially revert within days. Long-only: buy oversold, exit on reversion.",
-  "evidence": ["negative lag1 autocorrelation in AAPL and MSFT", "idiosyncratic vol well above index vol"]
+  "family": "regime_reversion",
+  "universe": ["AAPL", "MSFT", "NVDA", "QQQ", "SPY"],
+  "param_grid": {"regime_lookback": [200, 300], "min_reversion": [0.015, 0.025], "lookback": [60, 100], "sell_z": [1.0, 1.5], "rebuy_z": [-0.5, 0.0]},
+  "rationale": "Stay invested in the whole basket and trade only the range-bound stretches: when the trailing mean-reversion speed of the equal-weight index is above what a random walk produces, sell once the index is stretched above its rolling mean and buy back when it returns. Reading the regime from the index rather than from single names keeps idiosyncratic noise out of the signal.",
+  "evidence": ["index variance ratio below 1 at 20-40 bar horizons", "trailing reversion speed above the random-walk level for a large share of training bars"]
 }

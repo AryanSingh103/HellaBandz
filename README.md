@@ -1,4 +1,6 @@
-# QuantSwarm
+# HellaBandz
+
+Private accounts and Kalshi connections: follow [Accounts and Kalshi setup](docs/ACCOUNTS_AND_KALSHI.md) before deployment. Authentication defaults to locked until Supabase is configured. Research uses virtual capital; manual demo exchange orders are optional and production connections are read-only.
 
 **Autonomous AI strategy agents on top of trading infrastructure they cannot break.**
 HackRU Fall 2026 · Lucera Trading Systems Challenge (also: Tiger Data, Solana)
@@ -9,11 +11,11 @@ single-writer execution worker decides what actually happens to money. It enforc
 fills, and keeps a hash-chained ledger that survives duplicate requests, concurrent clients, malformed input,
 and `kill -9`.
 
-> **New to trading or to this project?** Start with [QUANTSWARM_EXPLAINED.md](QUANTSWARM_EXPLAINED.md): concepts, pipeline, and the track scorecard.
+> **New to trading or to this project?** Start with [HELLABANDZ_EXPLAINED.md](HELLABANDZ_EXPLAINED.md): concepts, pipeline, and the track scorecard.
 
 > **Showing judges?** Use the short [judge demo walkthrough](docs/JUDGE_DEMO.md), including the working full-trace Solana seal.
 
-> Paper trading only. No real orders, no real funds, no brokerage connection. Market data is synthetic
+> Research and ledger trading use simulated orders and funds. Optional manual Kalshi demo orders use exchange test funds; production connections are read-only. Market data is synthetic
 > (committed fixture) or historical (Alpaca / Binance scripts).
 
 ## The 10 questions (Lucera starter-guide outline)
@@ -22,7 +24,7 @@ and `kill -9`.
 |---|---|
 | **User and problem** | A desk letting autonomous agents propose trades needs a hard boundary that keeps a buggy or overconfident agent from overspending, double-filling, shorting, or corrupting the books. |
 | **Core claim** | No sequence of duplicated, concurrent, malformed, delayed, or crash-interrupted commands can create cash or shares from nothing or apply a fill twice, and the ledger can always be rebuilt bit-for-bit from its event log. |
-| **Boundary** | Bar-based simulated fills (no order book or queue position), long-only cash account, 5 symbols, single-operator authentication. See [LIMITATIONS](docs/LIMITATIONS.md). |
+| **Boundary** | Bar-based simulated fills (no order book or queue position), long-only cash account, 5 symbols, private account authentication or explicit local operator mode. See [LIMITATIONS](docs/LIMITATIONS.md). |
 | **Correctness** | 12 invariant categories (idempotency, cash/position safety, risk enforcement, fill validity, determinism, accounting identity, recovery, causality, audit integrity, ordering and operator access): [INVARIANTS](docs/INVARIANTS.md). |
 | **Evidence** | The full proof suite covers unit, property-based (random command programs checked after every step), real-Postgres concurrency, SIGKILL fault injection, tamper detection. `make prove` prints the invariant table. |
 | **Interfaces** | HTTP API ⇄ Postgres command log ⇄ execution worker; agents and UI are API clients. [ARCHITECTURE](docs/ARCHITECTURE.md). |
@@ -107,7 +109,7 @@ If something goes wrong on stage: `docker compose ps` should list `db`, `worker`
 ## Repository map
 
 ```
-quantswarm/
+hellabandz/
   contracts/      versioned Pydantic schemas (orders, bars, commands, proposals, specs)
   ledger/         ★ pure deterministic core: state, events, risk rules, fill model, invariants, replay
   execution/      worker (single writer) + Postgres/Timescale schema
@@ -127,7 +129,7 @@ data/manifests/   tournament manifests (hash-committed)
 
 ## What we built vs. what we used
 
-**Built during HackRU:** everything under `quantswarm/`, `apps/web/`, `tests/`, `benchmarks/`, `scripts/`,
+**Built during HackRU:** everything under `hellabandz/`, `apps/web/`, `tests/`, `benchmarks/`, `scripts/`,
 the synthetic dataset generator, the schema, the docs, and the recorded fixture proposals.
 
 **External components:**
@@ -148,4 +150,5 @@ the synthetic dataset generator, the schema, the docs, and the recorded fixture 
 ## Docs
 
 [ARCHITECTURE](docs/ARCHITECTURE.md) · [INVARIANTS](docs/INVARIANTS.md) · [PERFORMANCE](docs/PERFORMANCE.md) ·
-[DATA_SOURCES](docs/DATA_SOURCES.md) · [INTEGRATIONS](docs/INTEGRATIONS.md) · [LIMITATIONS](docs/LIMITATIONS.md) · [PLAN](PLAN.md)
+[DATA_SOURCES](docs/DATA_SOURCES.md) · [INTEGRATIONS](docs/INTEGRATIONS.md) · [LIMITATIONS](docs/LIMITATIONS.md) ·
+[STRATEGY_EVALUATION](docs/STRATEGY_EVALUATION.md) · [PLAN](PLAN.md)

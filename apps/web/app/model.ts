@@ -1,3 +1,4 @@
+import { authFetch } from "./auth-client";
 export const API = process.env.NEXT_PUBLIC_API || "http://localhost:8000";
 export const validId = (s: string) => /^[A-Za-z0-9_.:\-]{1,96}$/.test(s);
 export type View = "browse" | "marketplace" | "portfolio" | "orders" | "research" | "audit" | "analytics" | "run";
@@ -10,7 +11,7 @@ export function url(path: string, params: Record<string, string | number | boole
 }
 export class ApiError extends Error { constructor(public status: number, message: string) { super(message); } }
 export async function request<T>(path: string, params: Record<string, string | number | boolean | undefined> = {}, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(url(path, params), { ...init, credentials: "include", signal: init.signal || AbortSignal.timeout(45000) });
+  const response = await authFetch(url(path, params), { ...init, signal: init.signal || AbortSignal.timeout(45000) });
   const data = await response.json().catch(() => null);
   if (response.status === 401 && path !== "/v1/auth/session" && typeof window !== "undefined") window.dispatchEvent(new Event("qs-auth-expired"));
   if (!response.ok) throw new ApiError(response.status, typeof data?.detail === "string" ? data.detail :
@@ -31,7 +32,7 @@ export function moneyInput(value: string, positive = false) {
   const n = Number(value) * 1e6;
   return Number.isSafeInteger(Math.round(n)) && (positive ? Math.round(n) > 0 : n >= 0);
 }
-export const familyName = (s: string) => ({ sma_crossover: "Moving Average Crossover", breakout: "Price Breakout", zscore_reversion: "Z-Score Reversion", vol_target: "Volatility Target" }[s] || s);
+export const familyName = (s: string) => ({ sma_crossover: "Moving Average Crossover", breakout: "Price Breakout", zscore_reversion: "Z-Score Reversion", vol_target: "Volatility Target", rsi_reversion: "RSI Reversion", ts_momentum: "Trend Momentum", regime_reversion: "Range-Regime Reversion Overlay", buy_hold: "Passive Core" }[s] || s);
 export type Band = { start: number; end: number; label: string };
 /** Scheduled market-crash window of a browser-launched session, located on its equity points (one point per replay step). */
 export function crashBand(jobs: Job[] | undefined, pid: string, equity: { ts: string }[] | undefined): Band | undefined {
@@ -44,12 +45,15 @@ export function crashBand(jobs: Job[] | undefined, pid: string, equity: { ts: st
 }
 export const stamp = (s?: string | number | null) => s ? new Date(typeof s === "number" ? s * 1000 : s).toLocaleString() : "Unavailable";
 export type Metrics = { net_return: number; sharpe: number; max_drawdown: number; n_fills: number; fees_usd: number; slippage_usd: number; final_equity_usd: number };
-export type Ranked = { strategy_id: string; agent_id: string; family: string; params: Record<string, number>; train: Metrics; validation: Metrics; score: number; gates: string[]; stability: number };
+// `excess` and `core` exist on runs scored against the passive core; older frozen manifests have neither.
+export type Ranked = { strategy_id: string; agent_id: string; family: string; params: Record<string, number>; train: Metrics; validation: Metrics; score: number; gates: string[]; stability: number;
+  excess?: { validation_excess_return: number; out_of_sample_excess_return: number; out_of_sample_information_ratio: number } };
 export type Manifest = { run_id: string; created_at: string; dataset: { dataset_id: string; source: string; content_sha256: string; splits: Record<string, number[]> };
   ranked: Ranked[]; fitted: { spec: { strategy_id: string; agent_id: string; universe: string[]; params: Record<string, number> } }[];
   proposals: { agent_id: string; source: string; proposal: { rationale: string; evidence: string[]; param_grid: Record<string, number[]>; universe: string[] } }[];
   allocations: { by_strategy: Record<string, { weight: number; capital_micros: number }> }; supervisor: { source: string; rationale: string };
-  held_out_test: { portfolio: { metrics: Metrics }; per_strategy_standalone: Record<string, Metrics>; equity_curve: { ts: number[]; equity: number[] } }; policy: Record<string, number> };
+  core?: { spec: { strategy_id: string; universe: string[] }; train: Metrics; validation: Metrics };
+  held_out_test: { portfolio: { metrics: Metrics }; per_strategy_standalone: Record<string, Metrics>; core_standalone?: Metrics; excess_return_vs_core?: number; equity_curve: { ts: number[]; equity: number[] } }; policy: Record<string, number> };
 export type Tournament = { run_id: string; manifest: Manifest; manifest_hash: string; created_at: string; solana_sig?: string | null };
 export type Dataset = { dataset_id: string; source: string; content_sha256: string; symbols: string[]; interval_s: number; first_ts: number; last_ts: number; row_count: number;
   splits: Record<string, number[]>; execution_usable: boolean; unavailable_reason?: string; quality: unknown; synthetic: boolean; quote_currency: string; lots_per_base_unit: number; units?: string };
@@ -71,4 +75,4 @@ export type Verification = { status?: string; events: number; chain_ok: boolean 
 export type Replay = { event: Event; before: State; after: State; through_seq: number; before_digest: string; after_digest: string; progress: number; total: number };
 export type Point = { seq: number; ts: number; equity: number; exposure: number; agents: Record<string, { pnl: number; exposure: number }> };
 export type Analytics = { points: Point[]; definitions: Record<string, string>; benchmark: { status: string; reason?: string; assumptions?: string; start_ts?: number; end_ts?: number;
-  baseline?: { ts: number; equity: number }[]; strategy?: { ts: number[]; equity: number[] } } };
+  baseline?: { ts: number; equity: number }[]; strategy?: { ts: number[]; equity: number[] }; baseline_metrics?: Metrics; strategy_metrics?: Metrics } };

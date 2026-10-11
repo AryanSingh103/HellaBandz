@@ -66,6 +66,11 @@ export const GLOSSARY: Record<string, string> = {
   "momentum": "Bets that prices moving up keep moving up (trend-following).",
   "mean reversion": "Bets that prices that moved too far will snap back toward normal.",
   "volatility": "Owns less when the market is wild and more when it is calm.",
+  "breakout": "Buys when a price jumps above its recent high, sells if it falls back below its recent low.",
+  "rsi": "Buys after a stretch of heavy selling (low RSI) and sells once the price has bounced back.",
+  "vs core": "Out-of-sample return minus a passive equal-weight hold of every symbol. Positive means the strategy beat just buying and holding on data it was not tuned on.",
+  "passive core": "Equal-weight buy-and-hold of every symbol. Capital no strategy has earned stays here.",
+  "trend": "Holds a stock only while it is up over the last few weeks, and steps aside when it isn't.",
   "frozen": "This research is finished and locked: strategies, settings and allocations can't change anymore.",
   "live": "A paper-trading session is streaming right now: prices arrive and agents trade through the risk engine.",
 };
@@ -114,7 +119,7 @@ function intros(manifest: Manifest | null): Record<View | "ask", Intro> {
   return {
     marketplace: { icon: <Store size={18} />, line: "Compare strategies and buy or resell their demo licenses with virtual credits. This wallet is separate from your paper-trading account.",
       more: ["Compare returns, Sharpe and maximum drawdown on the same dataset and evaluation period.", "My licenses shows what you own. Listing a license reserves it until it sells or you cancel.", "Nike Review Radar studies dated customer reviews; it has no measured trading returns yet."] },
-    browse: { icon: <Store size={18} />, line: "Three AI agents each proposed a trading strategy. We tested them on data they never saw, then gave the winners pretend money.",
+    browse: { icon: <Store size={18} />, line: `${manifest?.proposals.length || "Several"} AI agents each proposed a trading strategy. We tested them on data they never saw, then gave the winners pretend money.`,
       more: ["Each card is one agent's strategy. Green pills are returns; the validation one is what counts.", "The big chart compares the sealed final-exam result with the live paper session.", "Everything is simulated with $10,000 of pretend money."] },
     portfolio: { icon: <Briefcase size={18} />, line: "Your simulated account: $10,000 of pretend money, what each AI agent bought, and how it's doing right now.",
       more: ["Equity = cash + the value of everything owned.", "Reserved cash is set aside for orders still waiting, so agents can never double-spend.", "The kill switch here is an emergency stop that blocks new buying."] },
@@ -155,13 +160,13 @@ export function HowItWorks({ go }: { go: (v: View) => void }) {
   const { on, dismissed, dismiss } = useHints();
   if (!on || dismissed.includes("how")) return null;
   const steps = [
-    { n: 1, icon: <FlaskConical size={18} />, t: "Research", d: "3 AI agents study the market and each propose a strategy", v: "research" as View },
+    { n: 1, icon: <FlaskConical size={18} />, t: "Research", d: "A team of AI agents study the market; each proposes a strategy", v: "research" as View },
     { n: 2, icon: <Scale size={18} />, t: "Test", d: "Judged on data they never saw. Overfitters get $0", v: "research" as View },
     { n: 3, icon: <Radio size={18} />, t: "Trade", d: "Market replays live. 10 risk rules check every order", v: "orders" as View },
     { n: 4, icon: <ShieldCheck size={18} />, t: "Verify", d: "Books are replayed and checked. Results sealed on Solana", v: "audit" as View },
   ];
   return <div className="how card">
-    <div className="how-head"><span className="eyebrow"><BookOpen size={13} /> How QuantSwarm works</span>
+    <div className="how-head"><span className="eyebrow"><BookOpen size={13} /> How HellaBandz works</span>
       <button className="intro-close" aria-label="Hide how it works" title="Hide" onClick={() => dismiss("how")}><X size={15} /></button></div>
     <div className="how-steps">{steps.map(s => <button key={s.n} className="how-step" onClick={() => go(s.v)}>
       <span className="how-n">{s.n}</span><span className="how-icon">{s.icon}</span>

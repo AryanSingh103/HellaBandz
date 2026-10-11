@@ -1,6 +1,6 @@
 """Create/reuse a local Devnet wallet and pin its public identity; never print key bytes."""
 from pathlib import Path
-from quantswarm.audit.solana import load_keypair
+from hellabandz.audit.solana import load_keypair
 
 path = Path(__file__).resolve().parents[1] / ".env"
 lines = path.read_text().splitlines() if path.exists() else []

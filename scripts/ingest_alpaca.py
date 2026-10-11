@@ -24,8 +24,8 @@ from zoneinfo import ZoneInfo
 
 import httpx
 
-from quantswarm.config import load_env
-from quantswarm.ingestion.dataset import BarTable, write_snapshot
+from hellabandz.config import load_env
+from hellabandz.ingestion.dataset import BarTable, write_snapshot
 
 load_env()
 
@@ -97,7 +97,7 @@ def main() -> None:
         "adjustment": "all (split+dividend)", "symbols_requested": a.symbols,
         "download_seconds": round(time.perf_counter() - t0, 2)})
     print(f"{ds}: {m['row_count']} rows, sha256 {m['content_sha256'][:16]}..., warnings: {m['validation']['warnings'][:3]}")
-    print(f"run a tournament on it: uv run python -m quantswarm.agents.tournament --dataset data/snapshots/{ds}")
+    print(f"run a tournament on it: uv run python -m hellabandz.agents.tournament --dataset data/snapshots/{ds}")
 
 
 if __name__ == "__main__":

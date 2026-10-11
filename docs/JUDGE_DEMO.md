@@ -38,3 +38,8 @@ and container `QS_DATABASE_URL`, so the judge demo stays focused on demo activit
 For another machine, follow the README setup and use its own demo database/wallet.
 Local operator credentials and the Devnet private key are never committed. Judge
 repository access and Devpost publication remain separate [submission gates](SUBMISSION.md).
+
+After merging the HellaBandz package rename, executable modules use `hellabandz`.
+The existing local demo selects `QS_AUTH_MODE=operator`; new account installations
+default to Supabase-backed private accounts. Restart services only when ready to
+switch the running demo to the merged source.

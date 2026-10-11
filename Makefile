@@ -1,9 +1,11 @@
-# QuantSwarm — common workflows. Everything runs offline (no API keys) using committed fixtures.
+# HellaBandz — common workflows. Everything runs offline (no API keys) using committed fixtures.
 # Recipes avoid Unix-only tools so they also work with GNU make on Windows (cmd.exe or Git Bash).
 API ?= http://localhost:8000
 RUN ?= $(shell uv run python -c "import glob, os; f = [p for p in glob.glob('data/manifests/T*.json') if p.count('.') == 1]; print(max(f, key=os.path.getmtime).replace(os.sep, '/') if f else '')")
 
-.PHONY: check-integrations setup up backend down reset fixture tournament session demo web test prove prove-docker bench report crash-worker restart-worker
+SEEDS ?= 101-130
+
+.PHONY: check-integrations setup up backend down reset fixture tournament session evaluate demo web test prove prove-docker bench report crash-worker restart-worker
 
 setup: auth-init   ## install Python + web dependencies
 	uv sync
@@ -25,10 +27,13 @@ fixture:          ## regenerate the committed synthetic dataset (deterministic, 
 	uv run python scripts/make_fixture.py
 
 tournament:       ## agents propose -> grid search on train -> rank on validation -> allocate -> test once
-	uv run python -m quantswarm.agents.tournament --api $(API)
+	uv run python -m hellabandz.agents.tournament --api $(API)
 
 session:          ## replay the held-out period through API -> worker, with a crash at 50%
-	uv run python -m quantswarm.agents.session --api $(API)
+	uv run python -m hellabandz.agents.session --api $(API)
+
+evaluate:         ## tournament vs buy-and-hold on independent synthetic markets, recorded proposals (slow)
+	uv run python scripts/evaluate_vs_baseline.py --seeds $(SEEDS) --out artifacts/strategy-eval/seeds-$(SEEDS).json
 
 demo: up tournament session   ## full pipeline end to end
 
@@ -58,17 +63,17 @@ crash-worker:     ## SIGKILL the execution worker (commands keep queueing in Pos
 
 restart-worker:   ## restart it: replays the hash-chained log, verifies the digest, resumes
 	docker compose start worker
-	@uv run python -c "import httpx, json, time; from quantswarm.api.client import api_headers; time.sleep(3); c=httpx.Client(headers=api_headers()); print(json.dumps({'health': c.get('$(API)/v1/health').json(), 'verify': c.get('$(API)/v1/verify').json()}, indent=1))"
+	@uv run python -c "import httpx, json, time; from hellabandz.api.client import api_headers; time.sleep(3); c=httpx.Client(headers=api_headers()); print(json.dumps({'health': c.get('$(API)/v1/health').json(), 'verify': c.get('$(API)/v1/verify').json()}, indent=1))"
 
 check-integrations: ## which optional keys are configured + one live smoke call each
 	uv run python scripts/check_integrations.py
 
 .PHONY: solana-commit verify-solana
 solana-commit: ## commit the selected/latest manifest and publish its verified Devnet receipt to the API
-	uv run python -m quantswarm.audit.solana commit "$(RUN)" --api $(API)
+	uv run python -m hellabandz.audit.solana commit "$(RUN)" --api $(API)
 
 verify-solana: ## read the memo back from Devnet and compare the canonical manifest fingerprint
-	uv run python -m quantswarm.audit.solana verify "$(RUN)"
+	uv run python -m hellabandz.audit.solana verify "$(RUN)"
 
 .PHONY: auth-init audit-init audit-up audit-seal audit-verify
 auth-init:
@@ -81,7 +86,7 @@ audit-up: audit-init ## run the isolated periodic Devnet signer
 	docker compose --profile audit up -d --build auditor
 
 audit-seal:
-	uv run python -m quantswarm.audit.traces seal
+	uv run python -m hellabandz.audit.traces seal
 
 audit-verify:
-	uv run python -m quantswarm.audit.traces verify
+	uv run python -m hellabandz.audit.traces verify

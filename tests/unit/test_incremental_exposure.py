@@ -2,8 +2,8 @@
 
 import pytest
 
-from quantswarm.contracts import CancelOrder, OpenPortfolio, SetAllocation, SetKillSwitch
-from quantswarm.ledger import LedgerInvariantError, PortfolioState, append, check_invariants, evaluate_order, process, replay
+from hellabandz.contracts import CancelOrder, OpenPortfolio, SetAllocation, SetKillSwitch
+from hellabandz.ledger import LedgerInvariantError, PortfolioState, append, check_invariants, evaluate_order, process, replay
 from tests.helpers import CFG, bar, fresh, order, usd
 
 

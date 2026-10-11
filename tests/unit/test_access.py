@@ -7,11 +7,12 @@ from fastapi import FastAPI, WebSocket
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
-from quantswarm.api import auth
+from hellabandz.api import operator_auth as auth
 
 
 @pytest.fixture
 def protected(monkeypatch):
+    monkeypatch.setenv("QS_AUTH_MODE", "operator")
     monkeypatch.setenv("QS_AUTH_REQUIRED", "1")
     monkeypatch.setenv("QS_API_TOKEN", "test-operator-key-" + "a" * 40)
     auth.sessions.clear()
@@ -43,7 +44,7 @@ def test_api_auth_fail_closed_http_and_config(protected, monkeypatch):
         assert method("/v1/private").status_code == 401
         assert method("/v1/private", headers={"Authorization": "Bearer wrong"}).status_code == 401
         assert method("/v1/private", headers=headers).status_code == 200
-    assert c.get("/v1/auth/status").json() == {"required": True, "authenticated": False}
+    assert c.get("/v1/auth/status").json() == {"mode": "operator", "required": True, "authenticated": False}
     monkeypatch.delenv("QS_API_TOKEN")
     with pytest.raises(RuntimeError, match="QS_API_TOKEN"):
         auth.validate_configuration()

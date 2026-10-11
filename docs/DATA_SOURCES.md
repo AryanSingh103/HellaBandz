@@ -25,7 +25,10 @@ Tournament `T20261010194733` (live GPT-4.1-mini agents and supervisor; manifest
 
 Held-out test (Jan–Sep 2026, evaluated once after the freeze): **+6.28%**, Sharpe 1.10, max drawdown 5.53%,
 298 fills. That is one period and five large-cap symbols under the bar-fill model, so it is not evidence of
-a durable edge (see LIMITATIONS).
+a durable edge (see LIMITATIONS). It was also not compared with buy-and-hold at the time: equal-weight
+buy-and-hold of the same five symbols returned about +15.8% over that period, well ahead of this run. Under
+the current scoring no strategy earns capital on this dataset and the portfolio holds the passive core
+(see STRATEGY_EVALUATION).
 
 ## Synthetic fixture
 

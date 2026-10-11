@@ -14,9 +14,21 @@ What follows separates **demonstrated** behavior (tests and benchmarks in this r
 - **No corporate actions in the engine.** It relies on split/dividend-adjusted input (`adjustment=all`).
 - **No holidays or DST** in the synthetic calendar; the Alpaca script keeps only regular-hours bars.
 - **Long-only cash account.** No margin, shorting, borrow, or overnight financing.
-- **"Winner" means best on validation among a handful of candidates under these assumptions**, not a strategy
-  with predictive power. The held-out period is evaluated once and reported even when negative (it is negative
-  on the default fixture).
+- **"Funded" means it beat the passive core on a few out-of-sample periods under these assumptions**, not a
+  strategy with proven predictive power. The held-out period is evaluated once and reported whatever it shows.
+- **The edge on the fixture is built into the fixture.** The synthetic generator alternates trending and
+  mean-reverting regimes, and the regime-reversion overlay earns its excess by stepping aside when a
+  range-bound market is stretched. Real markets have no such guarantee. `STRATEGY_EVALUATION.md` records what
+  the same pipeline did on real Alpaca bars.
+- **One held-out period is mostly luck.** Buy-and-hold's return over a single test period swings by tens of
+  percentage points between otherwise identical synthetic markets, far more than any strategy's edge. Compare
+  across many independent datasets (`make evaluate`), not on one.
+- **Most capital is usually passive.** Each active strategy is capped at 40% and sized by the strength of its
+  out-of-sample evidence; everything else is held in the equal-weight core. A portfolio that "beats the
+  baseline" is therefore the baseline plus a bounded active bet, and when no strategy earns capital it is
+  simply the baseline.
+- **The kill switch is never reset in a backtest.** After a 15% drawdown buying stays disabled for the rest of
+  the run. Hold-style slots then keep their position rather than make an exit they could not reverse.
 
 ## System (demonstrated limits)
 
@@ -41,18 +53,19 @@ What follows separates **demonstrated** behavior (tests and benchmarks in this r
   ledger records the processed order. A lower `seq` that commits late can be processed after a higher one;
   replay uses the recorded order, so determinism holds, but "fairness" between simultaneous clients is not
   defined beyond that.
-- **Single-operator access.** API/streams require a bearer key or expiring browser session by default.
-  Agent IDs and marketplace accounts remain shared demo labels, not separately authorized customers.
-  See [SECURITY](SECURITY.md) for the access boundary and the Devnet audit threat model.
+- **Two explicit access modes.** Private Supabase accounts and resource ownership are the default.
+  The local judge demo uses `QS_AUTH_MODE=operator`, with a bearer key or expiring browser session
+  protecting its shared workspace. See [SECURITY](SECURITY.md) for both boundaries and the Devnet audit threat model.
 - **Periodic external audit.** Solana seals cover 16 durable record sets, including agent traces and
   strategy sales. Only records at the latest verified seal are finalized; newer changes are provisional.
-  The journal adds write/storage overhead, and verification scans retained history. Next: archive proofs,
+  New account ownership, encrypted Kalshi connections and demo-order attempts are outside this
+  16-table proof version. The journal adds write/storage overhead, and verification scans retained history. Next: archive proofs,
   restricted DB roles and external receipt monitoring. Devnet/RPC availability is not a production SLA.
 
 ## AI components
 
 - The [strategy marketplace](MARKETPLACE.md) trades demo licenses with virtual credits and
-  shared demo identities behind operator authentication. It has no real payments, enforceable IP licensing,
+  account-owned wallets in account mode or shared demo identities in local operator mode. It has no real payments, enforceable IP licensing,
   private strategy access or automatic deployment. Its transaction receipts are separate
   from the trading ledger; completed receipts and balances are included in periodic external audit seals.
 - Nike Review Radar is unbacktested review research. Imported timestamps and sources are

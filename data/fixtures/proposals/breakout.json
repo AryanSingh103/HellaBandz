@@ -1,0 +1,7 @@
+{
+  "family": "breakout",
+  "universe": ["QQQ", "NVDA", "MSFT"],
+  "param_grid": {"lookback": [35, 70, 140, 280]},
+  "rationale": "Growth names trend in bursts: closes above the prior multi-week high tend to keep running, and the trailing-low exit gives back little when a breakout fails.",
+  "evidence": ["positive lag7 autocorrelation in QQQ and NVDA", "frac_above_sma200 > 0.5 for growth names"]
+}

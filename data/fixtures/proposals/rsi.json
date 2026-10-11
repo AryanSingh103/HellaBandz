@@ -1,0 +1,7 @@
+{
+  "family": "rsi_reversion",
+  "universe": ["SPY", "AAPL", "MSFT"],
+  "param_grid": {"lookback": [7, 14, 21], "entry_rsi": [20, 25, 30], "exit_rsi": [50, 60, 70]},
+  "rationale": "Short-horizon returns in large caps mean-revert, so buying after a run of losses pushes RSI deep into oversold territory and exiting once it normalizes should harvest the bounce.",
+  "evidence": ["negative lag1 autocorrelation in AAPL and MSFT", "SPY drawdowns recover within days"]
+}

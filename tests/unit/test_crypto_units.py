@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from quantswarm.contracts import ApplyBar, Bar, CancelOrder, OpenPortfolio, OrderRequest, SetAllocation, SubmitOrder
-from quantswarm.ingestion.dataset import BarTable, load_snapshot, unit_context, write_snapshot
-from quantswarm.ledger import EngineConfig, PortfolioState, check_invariants, process, replay
+from hellabandz.contracts import ApplyBar, Bar, CancelOrder, OpenPortfolio, OrderRequest, SetAllocation, SubmitOrder
+from hellabandz.ingestion.dataset import BarTable, load_snapshot, unit_context, write_snapshot
+from hellabandz.ledger import EngineConfig, PortfolioState, check_invariants, process, replay
 
 ROOT = Path(__file__).resolve().parents[2]
 TS = datetime(2024, 1, 1, tzinfo=timezone.utc)
@@ -102,9 +102,9 @@ def test_crypto_limit_partial_cancel_sell_and_accounting():
 
 
 def test_crypto_human_facts_use_usdt_lots_and_short_statistics_are_explicit(monkeypatch):
-    from quantswarm.agents import ask, session
-    from quantswarm.agents.research import train_summary
-    from quantswarm.backtester import SnapshotProvider
+    from hellabandz.agents import ask, session
+    from hellabandz.agents.research import train_summary
+    from hellabandz.backtester import SnapshotProvider
     units = unit_context({"unit_version": "base-lot-v2"})
     captured = {}
     monkeypatch.setattr(session.llm, "available", lambda: True)

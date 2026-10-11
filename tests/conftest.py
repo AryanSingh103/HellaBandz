@@ -22,6 +22,7 @@ ADMIN_URL = os.environ.get("QS_TEST_ADMIN_URL", "postgresql://quantswarm:quantsw
 def isolated_test_auth(monkeypatch):
     # Disposable test stacks explicitly opt out; auth tests override this to exercise fail-closed access.
     monkeypatch.setenv("QS_AUTH_REQUIRED", "0")
+    monkeypatch.setenv("QS_AUTH_MODE", "accounts")
 
 
 def _db_available() -> bool:
@@ -47,10 +48,12 @@ class Stack:
         self.base = f"http://127.0.0.1:{self.port}"
 
     def env(self, **extra: str) -> dict:
-        return {**os.environ, "DATABASE_URL": self.url, "PYTHONUNBUFFERED": "1", **extra}
+        # Infrastructure tests intentionally exercise the legacy offline API.
+        # Account-security tests separately run the default fail-closed mode.
+        return {**os.environ, "QS_AUTH_DISABLED": "true", "DATABASE_URL": self.url, "PYTHONUNBUFFERED": "1", **extra}
 
     def start_worker(self, **extra: str) -> subprocess.Popen:
-        self.worker = subprocess.Popen([sys.executable, "-m", "quantswarm.execution.worker"], cwd=ROOT,
+        self.worker = subprocess.Popen([sys.executable, "-m", "hellabandz.execution.worker"], cwd=ROOT,
                                        env=self.env(**extra), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         return self.worker
 
@@ -76,7 +79,7 @@ class Stack:
         # psycopg async connections require a selector loop on Windows. Uvicorn
         # defaults to ProactorEventLoop there; Docker/Linux keeps its normal loop.
         loop_args = ["--loop", "asyncio:SelectorEventLoop"] if sys.platform == "win32" else []
-        self.api = subprocess.Popen([sys.executable, "-m", "uvicorn", "quantswarm.api.app:app", "--port",
+        self.api = subprocess.Popen([sys.executable, "-m", "uvicorn", "hellabandz.api.app:app", "--port",
                                      str(self.port), "--log-level", "warning", *loop_args], cwd=ROOT, env=self.env(**extra),
                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         for _ in range(200):
@@ -109,7 +112,7 @@ def stack():
         c.execute(f"CREATE DATABASE {name}")
     url = ADMIN_URL.rsplit("/", 1)[0] + "/" + name
     st = Stack(url)
-    from quantswarm.execution.db import apply_schema
+    from hellabandz.execution.db import apply_schema
     with psycopg.connect(url, autocommit=True) as c:
         apply_schema(c)
     try:
@@ -124,7 +127,7 @@ def enqueue(st: Stack, cmd, command_id: str, portfolio_id: str = "main") -> int:
     """Insert a command exactly like the API does (used where HTTP is not the subject under test)."""
     from psycopg.types.json import Jsonb
 
-    from quantswarm.execution.db import encode_command
+    from hellabandz.execution.db import encode_command
     kind, payload, h = encode_command(cmd)
     rows = st.sql("INSERT INTO commands (command_id, portfolio_id, kind, payload, payload_hash) VALUES "
                   "(%s,%s,%s,%s,%s) ON CONFLICT (command_id) DO NOTHING RETURNING seq",
@@ -135,8 +138,8 @@ def enqueue(st: Stack, cmd, command_id: str, portfolio_id: str = "main") -> int:
 
 def expected_from_command_log(st: Stack):
     """Re-run the durable command log through the pure engine, in processing order."""
-    from quantswarm.execution.db import decode_command
-    from quantswarm.ledger import EngineConfig, PortfolioState, process
+    from hellabandz.execution.db import decode_command
+    from hellabandz.ledger import EngineConfig, PortfolioState, process
     s = PortfolioState()
     for (payload,) in st.sql("SELECT payload FROM commands WHERE status = 'done' ORDER BY processed_at, seq"):
         process(s, decode_command(payload), EngineConfig())

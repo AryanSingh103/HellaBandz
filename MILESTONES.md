@@ -5,7 +5,7 @@ See `docs/VERIFICATION.md` for combined evidence and `docs/SUBMISSION.md` for re
 
 ## Done and verified
 
-- [x] Deterministic ledger core (`quantswarm/ledger`): risk rules R0–R9, bar-based fill model, integer money, hash-chained events, invariant checker, replay
+- [x] Deterministic ledger core (`hellabandz/ledger`): risk rules R0–R9, bar-based fill model, integer money, hash-chained events, invariant checker, replay
 - [x] Execution worker (single writer, advisory lock, atomic batch commits, startup replay + digest check)
 - [x] FastAPI gateway: idempotent command intake, 409 on payload conflict, 202 when worker down, read models, `/v1/verify`, WebSocket stream, `/v1/ask`, `/v1/speak`
 - [x] TimescaleDB schema (hypertables: fills, equity_points, market_bars, telemetry)
@@ -37,7 +37,7 @@ Before merging anything, run `make prove` (all tests must stay green).
 **Done when:** a teammate who did not build it can run the whole demo from the README without help.
 
 ### P2 — AI & Sponsor Integrations (owner: ______)
-**Owns:** `quantswarm/agents/`, `quantswarm/audit/`, `scripts/ingest_alpaca.py`, `.env.example`, `docs/DATA_SOURCES.md`, `docs/INTEGRATIONS.md`
+**Owns:** `hellabandz/agents/`, `hellabandz/audit/`, `scripts/ingest_alpaca.py`, `.env.example`, `docs/DATA_SOURCES.md`, `docs/INTEGRATIONS.md`
 **Runbook:** `docs/INTEGRATIONS.md`. **Status check:** `make check-integrations`.
 
 Done (branch `p2-integrations`):
@@ -60,7 +60,7 @@ Needs your keys/funding (code is ready; each item takes a few minutes):
 **Done when:** each integration works with a key and still falls back cleanly without one.
 
 ### P3 — Core Performance & Submission (owner: ______)
-**Owns:** `quantswarm/ledger/`, `quantswarm/execution/`, `benchmarks/`, `tests/`, `docs/` (except DATA_SOURCES)
+**Owns:** `hellabandz/ledger/`, `hellabandz/execution/`, `benchmarks/`, `tests/`, `docs/` (except DATA_SOURCES)
 
 - [x] Incremental per-agent exposure and reservation sums in `apply_event` (removes the O(open orders) scan in risk checks); add a test that compares them to the full recomputation
 - [x] Recovery checkpoints: snapshot state + digest every N events, replay only the suffix on startup; keep the digest check
@@ -76,7 +76,7 @@ see `docs/SUBMISSION.md`.
 **Done when:** benchmarks are re-measured on the final code and the Devpost page is submitted.
 
 ### Coordination notes
-- `quantswarm/api/app.py` is shared: P1 (UI needs) and P2 (`/v1/ask`, `/v1/speak`) may both touch it. Keep those edits small and merge often.
+- `hellabandz/api/app.py` is shared: P1 (UI needs) and P2 (`/v1/ask`, `/v1/speak`) may both touch it. Keep those edits small and merge often.
 - P3's engine changes affect benchmark numbers and recovery behavior. Tell P1 before merging so the demo is rehearsed on the final code.
 - Never commit `.env` or `data/solana/` (both are gitignored).
 

@@ -2,9 +2,9 @@
 from fastapi.testclient import TestClient
 from solders.signature import Signature
 
-from quantswarm.api import app as gateway
-from quantswarm.audit import solana
-from quantswarm.ledger import canonical, sha256_hex
+from hellabandz.api import app as gateway
+from hellabandz.audit import solana
+from hellabandz.ledger import canonical, sha256_hex
 
 
 def test_solana_receipt_persistence_verification_and_mismatch(monkeypatch):

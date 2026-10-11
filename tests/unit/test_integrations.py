@@ -13,8 +13,8 @@ from pathlib import Path
 
 import pytest
 
-from quantswarm.agents import llm, session, tournament
-from quantswarm.config import load_env
+from hellabandz.agents import llm, session, tournament
+from hellabandz.config import load_env
 
 ROOT = Path(__file__).resolve().parents[2]
 SUMMARY = {"symbols": {s: {} for s in ["AAPL", "MSFT", "NVDA", "QQQ", "SPY"]}}
@@ -126,7 +126,7 @@ def test_crisis_decision_validated_and_clamped(fake_llm):
 
 
 def test_ask_uses_llm_only_to_phrase_facts(fake_llm):
-    from quantswarm.agents.ask import answer
+    from hellabandz.agents.ask import answer
     queue, calls = fake_llm
     queue.append({"answer": "Equity is $10,000."})
     ctx = {"portfolio": {"state": {"cash": 10_000_000_000, "market_value": 0, "positions": {}, "orders": {}},
@@ -261,9 +261,10 @@ def test_alpaca_bad_credentials_message(monkeypatch):
 
 
 def test_speak_endpoint(monkeypatch):
+    monkeypatch.setenv("QS_AUTH_DISABLED", "true")  # Provider-only test; secure API access is tested separately.
     from fastapi.testclient import TestClient
 
-    from quantswarm.api import app as api_mod
+    from hellabandz.api import app as api_mod
     client = TestClient(api_mod.app)  # no lifespan: endpoint does not touch the DB
     monkeypatch.delenv("ELEVENLABS_API_KEY", raising=False)
     assert client.post("/v1/speak", json={"text": "hi"}).status_code == 501
@@ -293,7 +294,7 @@ def test_solana_commit_builds_signed_memo_and_verify_reads_it(tmp_path, monkeypa
     from solders.hash import Hash
     from solders.transaction import Transaction
 
-    from quantswarm.audit import solana as sol
+    from hellabandz.audit import solana as sol
     monkeypatch.setattr(sol, "KEYPAIR", tmp_path / "kp.json")
     sent = {}
 
@@ -332,7 +333,7 @@ def test_solana_commit_builds_signed_memo_and_verify_reads_it(tmp_path, monkeypa
 
 def test_solana_commit_reports_api_failure_and_keeps_receipt(tmp_path, monkeypatch):
     import httpx
-    from quantswarm.audit import solana as sol
+    from hellabandz.audit import solana as sol
     path = tmp_path / "T-api.json"
     path.write_text(json.dumps({"run_id": "T-api"}))
     h, _ = sol.manifest_hash_file(path)

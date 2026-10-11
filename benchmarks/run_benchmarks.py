@@ -30,8 +30,8 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from quantswarm.backtester import SnapshotProvider, Slot, run_backtest  # noqa: E402
-from quantswarm.contracts import (  # noqa: E402
+from hellabandz.backtester import SnapshotProvider, Slot, run_backtest  # noqa: E402
+from hellabandz.contracts import (  # noqa: E402
     MICROS,
     ApplyBar,
     Bar,
@@ -41,8 +41,8 @@ from quantswarm.contracts import (  # noqa: E402
     StrategySpec,
     SubmitOrder,
 )
-from quantswarm.ingestion.dataset import load_snapshot  # noqa: E402
-from quantswarm.ledger import EngineConfig, PortfolioState, evaluate_order, process, replay  # noqa: E402
+from hellabandz.ingestion.dataset import load_snapshot  # noqa: E402
+from hellabandz.ledger import EngineConfig, PortfolioState, evaluate_order, process, replay  # noqa: E402
 
 RESULTS = ROOT / "benchmarks/results"
 BINANCE_SNAPSHOT = ROOT / "data/snapshots/binance-btcusdt-1m-2024-01-2024-03-lot-v2"
@@ -83,7 +83,7 @@ def environment() -> dict:
            "operator_auth_required": os.getenv("QS_AUTH_REQUIRED", "1") != "0",
            "transactional_audit_journal": True}
     env["git_revision"] = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
-    sources = sorted([*ROOT.glob("quantswarm/**/*.py"), *ROOT.glob("quantswarm/**/*.sql"),
+    sources = sorted([*ROOT.glob("hellabandz/**/*.py"), *ROOT.glob("hellabandz/**/*.sql"),
                       *ROOT.glob("benchmarks/*.py"), ROOT / "Dockerfile", ROOT / "docker-compose.yml",
                       ROOT / "pyproject.toml", ROOT / "uv.lock"])
     h = hashlib.sha256()
@@ -272,7 +272,7 @@ def bench_engine() -> dict:
 def _events_for(p: SnapshotProvider, spec: StrategySpec, start: int, end: int,
                 boundaries: list[int] | None = None) -> list[dict]:
     """Produce a realistic event log by running the engine (captures events as the worker would store them)."""
-    import quantswarm.backtester as bt
+    import hellabandz.backtester as bt
     captured: list[dict] = []
     orig = bt.process
 
@@ -301,7 +301,7 @@ def compose(*args: str, check=True, capture=False):
 def start_bench_worker(portfolio: str, batch: int) -> str:
     name = f"qsbench-{portfolio}"
     subprocess.run(["docker", "rm", "-f", name], capture_output=True)
-    compose("run", "-d", "--rm", "--name", name, "worker", "python", "-m", "quantswarm.execution.worker",
+    compose("run", "-d", "--rm", "--name", name, "worker", "python", "-m", "hellabandz.execution.worker",
             "--portfolio", portfolio, "--batch-size", str(batch), capture=True)
     return name
 
@@ -324,7 +324,7 @@ async def drive(api: str, portfolio: str, orders: list[dict], concurrency: int) 
     Uses aiohttp: an earlier httpx-based client capped out near 250 req/s at 50 connections and
     was measuring itself, not the system (see docs/PERFORMANCE.md)."""
     import aiohttp
-    from quantswarm.api.client import api_headers
+    from hellabandz.api.client import api_headers
     lat: list[float] = []
     statuses: dict[str, int] = {}
     sem = asyncio.Semaphore(concurrency)
@@ -353,8 +353,8 @@ async def drive(api: str, portfolio: str, orders: list[dict], concurrency: int) 
 def bench_db(n_orders: int, levels: list[int], reps: int, batches: list[int]) -> dict:
     import httpx
     import psycopg
-    from quantswarm.api.client import api_headers
-    from quantswarm.execution.db import database_url
+    from hellabandz.api.client import api_headers
+    from hellabandz.execution.db import database_url
     api = "http://localhost:8000"
     compose("up", "-d", "db", "api")
     for _ in range(100):
@@ -409,8 +409,8 @@ def bench_recovery(sizes: list[int], reps: int) -> dict:
     import psycopg
     from psycopg.types.json import Jsonb
 
-    from quantswarm.execution.worker import Worker, public_state
-    from quantswarm.execution.db import database_url
+    from hellabandz.execution.worker import Worker, public_state
+    from hellabandz.execution.db import database_url
     compose("up", "-d", "db")
     compose("stop", "worker", check=False)
     url = database_url()
@@ -492,7 +492,7 @@ def drive_cli(api: str, pid: str, n: int, c: int, seed: int) -> None:
 
 
 if __name__ == "__main__":
-    from quantswarm.config import load_env
+    from hellabandz.config import load_env
     load_env()
     if len(sys.argv) > 1 and sys.argv[1] == "drive":
         dp = argparse.ArgumentParser()

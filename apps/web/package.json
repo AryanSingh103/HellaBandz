@@ -1,5 +1,5 @@
 {
-  "name": "quantswarm-web",
+  "name": "hellabandz-web",
   "private": true,
   "version": "0.1.0",
   "scripts": {
@@ -8,6 +8,7 @@
     "start": "next start -p 3000"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.117.3",
     "lucide-react": "^1.55.0",
     "next": "15.5.26",
     "react": "19.2.0",

@@ -1,5 +1,5 @@
 # Resource limits are part of the benchmark methodology (docs/PERFORMANCE.md).
-name: quantswarm
+name: quantswarm  # Docker project name kept: renaming it starts fresh containers and empty volumes
 services:
   db:
     image: timescale/timescaledb:2.17.2-pg16
@@ -20,7 +20,7 @@ services:
 
   worker:
     build: .
-    command: ["python", "-m", "quantswarm.execution.worker"]
+    command: ["python", "-m", "hellabandz.execution.worker"]
     environment:
       DATABASE_URL: ${QS_DATABASE_URL:-postgresql://quantswarm:quantswarm@db:5432/quantswarm}
     depends_on: { db: { condition: service_healthy } }
@@ -30,7 +30,7 @@ services:
 
   api:
     build: .
-    command: ["uvicorn", "quantswarm.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+    command: ["uvicorn", "hellabandz.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
     environment:
       DATABASE_URL: ${QS_DATABASE_URL:-postgresql://quantswarm:quantswarm@db:5432/quantswarm}
       QS_API_POOL: ${QS_API_POOL:-20}
@@ -45,6 +45,14 @@ services:
       ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID:-onwK4e9ZLuTAKqWW03F9}
       QS_OPENAI_MODEL: ${QS_OPENAI_MODEL:-gpt-4.1-mini}
       SOLANA_RPC: ${SOLANA_RPC:-https://api.devnet.solana.com}
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
+      QS_AUTH_DISABLED: ${QS_AUTH_DISABLED:-false}
+      QS_AUTH_MODE: ${QS_AUTH_MODE:-accounts}
+      QS_INTERNAL_SIGNING_KEY: ${QS_INTERNAL_SIGNING_KEY:-}
+      QS_CREDENTIAL_ENCRYPTION_KEY: ${QS_CREDENTIAL_ENCRYPTION_KEY:-}
+      QS_KALSHI_DEMO_ORDERS_ENABLED: ${QS_KALSHI_DEMO_ORDERS_ENABLED:-false}
     ports: ["127.0.0.1:8000:8000"]
     depends_on: { db: { condition: service_healthy } }
     healthcheck:
@@ -61,12 +69,15 @@ services:
     build: .
     init: true
     stop_grace_period: 45s
-    command: ["python", "-m", "quantswarm.execution.manager"]
+    command: ["python", "-m", "hellabandz.execution.manager"]
     environment:
       DATABASE_URL: ${QS_DATABASE_URL:-postgresql://quantswarm:quantswarm@db:5432/quantswarm}
       QS_API: http://api:8000
       QS_API_TOKEN: ${QS_API_TOKEN:-}
+      QS_AUTH_MODE: ${QS_AUTH_MODE:-accounts}
       QS_TOURNAMENT_PROCS: 2
+      QS_AUTH_DISABLED: ${QS_AUTH_DISABLED:-false}
+      QS_INTERNAL_SIGNING_KEY: ${QS_INTERNAL_SIGNING_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       QS_OPENAI_MODEL: ${QS_OPENAI_MODEL:-gpt-4.1-mini}
     volumes:
@@ -83,6 +94,9 @@ services:
       context: apps/web
       args:
         NEXT_PUBLIC_API: ${NEXT_PUBLIC_API:-http://localhost:8000}
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:-}
+        NEXT_PUBLIC_QS_AUTH_DISABLED: ${NEXT_PUBLIC_QS_AUTH_DISABLED:-false}
     ports: ["127.0.0.1:3000:3000"]
     depends_on: { api: { condition: service_healthy } }
     cpus: 1
@@ -102,7 +116,7 @@ services:
     # Only this service receives the Devnet private key. API/worker/browser never do.
     build: .
     profiles: ["audit"]
-    command: ["python", "-m", "quantswarm.audit.traces", "service"]
+    command: ["python", "-m", "hellabandz.audit.traces", "service"]
     environment:
       DATABASE_URL: ${QS_DATABASE_URL:-postgresql://quantswarm:quantswarm@db:5432/quantswarm}
       SOLANA_RPC: ${SOLANA_RPC:-https://api.devnet.solana.com}

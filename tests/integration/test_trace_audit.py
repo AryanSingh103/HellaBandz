@@ -6,7 +6,7 @@ import pytest
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
-from quantswarm.audit import traces, solana
+from hellabandz.audit import traces, solana
 
 PUBLIC = "A6fBZioMv4L9ob4jS7tCuhLgE3Z4bVECBpMTUToPLK4"
 
@@ -117,7 +117,7 @@ def test_trace_marketplace_and_agent_http_writes_are_reconstructed(stack, monkey
     import httpx
     monkeypatch.setenv("QS_AUDIT_SIGNER", PUBLIC)
     token = "isolated-operator-" + "x" * 40
-    stack.start_api(QS_AUTH_REQUIRED="1", QS_API_TOKEN=token)
+    stack.start_api(QS_AUTH_MODE="operator", QS_AUTH_REQUIRED="1", QS_API_TOKEN=token)
     with httpx.Client(base_url=stack.base, headers={"Authorization": "Bearer " + token}) as c:
         baseline = traces.make_manifest(*snapshot(stack))
         body = {"request_id": "audit-buy", "listing_id": "Lnike-review-radar-v1", "quantity": 1, "account_id": "demo-buyer"}

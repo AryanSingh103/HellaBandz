@@ -34,7 +34,7 @@ def main() -> None:
     e, d, rc = load("engine"), load("db_throughput"), load("recovery")
     blocks = [b for b in (e, d, rc) if b]
     hashes = {b["environment"].get("source_sha256") for b in blocks}
-    sources = sorted([*ROOT.glob("quantswarm/**/*.py"), *ROOT.glob("quantswarm/**/*.sql"),
+    sources = sorted([*ROOT.glob("hellabandz/**/*.py"), *ROOT.glob("hellabandz/**/*.sql"),
                       *ROOT.glob("benchmarks/*.py"), ROOT / "Dockerfile", ROOT / "docker-compose.yml",
                       ROOT / "pyproject.toml", ROOT / "uv.lock"])
     current = hashlib.sha256()

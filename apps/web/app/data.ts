@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { accessToken } from "./auth-client";
 import { ApiError, errorText, request, id, post, url, Event, HistoryPage } from "./model";
 
 export function useResource<T>(path: string | null, params: Record<string, string | number | undefined> = {}, interval = 0, revision = 0, nullable = false) {
@@ -65,7 +66,7 @@ export function useEventStream(pid: string) {
     const connect=()=>{
       if(!active)return;
       const u=new URL(url("/v1/stream",{portfolio_id:pid,after_seq:last}));u.protocol=u.protocol==="https:"?"wss:":"ws:";
-      socket=new WebSocket(u);socket.onopen=()=>{if(active)setState(old=>({pid,status:"connected",events:old.pid===pid?old.events:[]}));};
+      socket=new WebSocket(u);socket.onopen=()=>{const opened=socket;void accessToken().then(token=>{if(active&&opened?.readyState===WebSocket.OPEN){opened.send(JSON.stringify({access_token:token}));setState(old=>({pid,status:"connected",events:old.pid===pid?old.events:[]}));}}).catch(()=>opened?.close());};
       socket.onmessage=e=>{try{const m=JSON.parse(e.data);if(m.type==="events"&&Array.isArray(m.events))merge(m.events);}catch{if(active)setState(old=>({...old,status:"invalid stream response"}));}};
       socket.onerror=()=>{if(active)setState(old=>({...old,status:"disconnected"}));};
       socket.onclose=()=>{if(active){setState(old=>({...old,status:"reconnecting"}));timer=setTimeout(connect,2000);}};

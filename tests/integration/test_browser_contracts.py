@@ -6,10 +6,10 @@ import httpx
 import psycopg
 import pytest
 
-from quantswarm.contracts import ApplyBar, Bar, CancelOrder, OpenPortfolio, OrderRequest, SetAllocation, SubmitOrder
-from quantswarm.execution.db import apply_schema
-from quantswarm.execution.worker import Worker
-from quantswarm.ledger import canonical, sha256_hex
+from hellabandz.contracts import ApplyBar, Bar, CancelOrder, OpenPortfolio, OrderRequest, SetAllocation, SubmitOrder
+from hellabandz.execution.db import apply_schema
+from hellabandz.execution.worker import Worker
+from hellabandz.ledger import canonical, sha256_hex
 from tests.conftest import enqueue
 
 pytestmark = pytest.mark.db
