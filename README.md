@@ -78,7 +78,7 @@ make solana-commit verify-solana # optional: manifest hash → Solana Devnet mem
 ```
 
 Optional keys in `.env` (see `.env.example` and [INTEGRATIONS](docs/INTEGRATIONS.md); `make check-integrations` shows status): `OPENAI_API_KEY` (live LLM agents instead of recorded
-proposals), `ELEVENLABS_API_KEY` (spoken answers), `ALPACA_API_KEY_ID/SECRET` (real equity bars).
+proposals), `ALPACA_API_KEY_ID/SECRET` (real equity bars).
 
 ## Demo script (5 minutes)
 
@@ -133,7 +133,6 @@ the synthetic dataset generator, the schema, the docs, and the recorded fixture 
 | pytest, Hypothesis | tests, property-based testing |
 | httpx, aiohttp | HTTP clients (aiohttp in the optional bench dependency group for load generation) |
 | solders + Solana JSON-RPC, SPL Memo program (Devnet) | manifest commitments |
-| ElevenLabs TTS API (optional), browser Web Speech API | voice |
 | Next.js 15, React 19 | trading terminal |
 | Data: Binance public archive (data.binance.vision), Alpaca Market Data API (script), synthetic generator | see [DATA_SOURCES](docs/DATA_SOURCES.md) |
 

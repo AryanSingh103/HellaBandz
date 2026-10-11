@@ -77,8 +77,7 @@ What follows separates **demonstrated** behavior (tests and benchmarks in this r
   re-running the research step will give different proposals.
 - Without `OPENAI_API_KEY`, agents use recorded fixture proposals and a deterministic supervisor/crisis policy;
   manifests mark this with `source: fixture` / `fallback`.
-- `/v1/ask` is read-only and grounded in database rows. Voice uses the browser's speech recognition, and
-  ElevenLabs TTS when a key is configured.
+- `/v1/ask` is read-only and grounded in database rows.
 
 ## Sponsor integrations
 

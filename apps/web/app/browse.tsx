@@ -111,7 +111,7 @@ export function Sidebar({ manifest, strategies, port, events, currency, go, open
     </button>
 
     {manifest && <div className="card list-card">
-      <button className="list-head" onClick={() => go("research")}><h3>Trending strategies</h3><ChevronRight size={18} /></button>
+      <button className="list-head" onClick={() => go("research")}><h3>Ranked strategies</h3><ChevronRight size={18} /></button>
       {strategies.slice(0, 5).map(s => {
         const w = manifest.allocations.by_strategy[s.strategy_id]?.weight ?? 0;
         return <button key={s.strategy_id} className="list-row-k" onClick={() => open(s.strategy_id)}>

@@ -8,20 +8,21 @@ import { CoordinatorView } from "./coordinator";
 import { PortfolioView, AuditView, AnalyticsView } from "./portfolio";
 import { OrdersView } from "./orders";
 import { ResearchView, RunView } from "./research";
-import { Ask } from "./voice";
+import { Ask } from "./ask";
 import { MarketplaceView } from "./marketplace";
 import { Hero, Pillars, Sidebar, StrategyCard, useLiveEquity } from "./browse";
 import { GuideToggle, HintsProvider, HowItWorks, PageIntro } from "./help";
 import { AccessGate, SignOut } from "./access";
 
 const views: View[] = ["browse", "marketplace", "portfolio", "orders", "research", "audit", "analytics", "coordinator", "run"];
-const categories = ["All strategies", "Momentum", "Reversion", "Volatility", "Equities", "Crypto"];
+const categories = ["All strategies", "Momentum", "Reversion", "Volatility"];
 function readRoute(): Route {
   const q = new URLSearchParams(location.search), route = { ...initialRoute };
   for (const k of Object.keys(route) as (keyof Route)[]) if (q.has(k)) Object.assign(route, { [k]: q.get(k) || "" });
   if (!validId(route.p)) route.p = "main";
   if (route.run && !validId(route.run)) route.run = "";
   if (!views.includes(route.view)) route.view = "browse";
+  if (!categories.includes(route.category)) route.category = "All strategies";
   return route;
 }
 export default function Page(){return <AccessGate><Terminal/></AccessGate>;}
@@ -60,9 +61,9 @@ function Terminal() {
   const scope = `${route.p}:${manifest?.run_id || "unassociated"}`;
   const visible = (manifest?.ranked || []).filter(s => {
     const universe = manifest?.fitted.find(f => f.spec.strategy_id === s.strategy_id)?.spec.universe || [];
-    const c = route.category, crypto = universe.some(u => /BTC|ETH|USDT|USD$/.test(u));
+    const c = route.category;
     return (!route.dataset || manifest?.dataset.dataset_id === route.dataset) &&
-      (c === "All strategies" || c === "Momentum" && /momentum|crossover|breakout/.test(s.family + s.agent_id) || c === "Reversion" && /reversion/.test(s.family) || c === "Volatility" && /vol/.test(s.family) || c === "Equities" && !crypto || c === "Crypto" && crypto) &&
+      (c === "All strategies" || c === "Momentum" && /momentum|crossover|breakout/.test(s.family + s.agent_id) || c === "Reversion" && /reversion/.test(s.family) || c === "Volatility" && /vol/.test(s.family)) &&
       matchesSearch(route.q, familyName(s.family), s.family, s.strategy_id, s.agent_id, ...universe);
   }).sort((a,b) => route.sort === "return" ? comparePerformance(a.validation, b.validation, "net_return") : route.sort === "risk" ? comparePerformance(a.validation, b.validation, "max_drawdown") : route.sort === "name" ? familyName(a.family).localeCompare(familyName(b.family)) : b.score - a.score);
   const detail = manifest?.ranked.find(s => s.strategy_id === strategy);
@@ -73,12 +74,12 @@ function Terminal() {
       <a className="wordmark" href="/" onClick={e => { e.preventDefault(); navigate({ view: "browse" }); }}aria-label="HellaBandz home"><span className="wm-hella">Hella</span><span className="wm-bandz">Band<span className="wm-z">z</span></span></a>
       <nav aria-label="Main navigation">{views.map(v => <a key={v} href={`/?view=${v}&p=${encodeURIComponent(route.p)}`} aria-current={route.view === v ? "page" : undefined} onClick={e => { e.preventDefault(); navigate({ view: v, order: "" }); }}>{v === "browse" ? "Markets" : v}{v === "orders" && decisionsCount > 0 && <span className="nav-count">{decisionsCount}</span>}</a>)}
         <span className={`nav-live ${live ? "on" : ""}`}><i />Live</span></nav>
-      <div className="header-search"><Search size={17} /><input aria-label="Search strategies" placeholder="Trade on any strategy" value={route.q} onChange={e => navigate({ q: e.target.value, view: "browse" })} /></div>
+      <div className="header-search"><Search size={17} /><input aria-label="Search strategies" placeholder="Search strategies" value={route.q} onChange={e => navigate({ q: e.target.value, view: "browse" })} /></div>
       <GuideToggle />
       <SignOut />
       <button className="ghost-pill" onClick={() => setAskOpen(!askOpen)}><Activity size={15} />Ask</button>
       <button className="cta-pill" onClick={() => navigate({ view: "run" })}>Run research</button>
-    </div><div className="category-inner"><nav aria-label="Strategy categories">{categories.map(c => <a key={c} href={`/?category=${encodeURIComponent(c)}`} className={route.category === c && route.view === "browse" ? "selected" : ""} onClick={e => { e.preventDefault(); navigate({ category: c, view: "browse" }); }}>{c === "All strategies" ? "Trending" : c}</a>)}</nav><span className="simulation"><span className={`status-dot ${connected ? "online" : ""}`} />Simulated · paper trading</span></div></header>
+    </div><div className="category-inner"><nav aria-label="Strategy categories">{categories.map(c => <a key={c} href={`/?category=${encodeURIComponent(c)}`} className={route.category === c && route.view === "browse" ? "selected" : ""} onClick={e => { e.preventDefault(); navigate({ category: c, view: "browse" }); }}>{c}</a>)}</nav><span className="simulation"><span className={`status-dot ${connected ? "online" : ""}`} />Simulated · paper trading</span></div></header>
     <main>
       <div className="scopebar"><div className="row"><span className={`status-dot ${connected ? "online" : ""}`} /><span>{connected ? "API connected" : (observing ? runtime.loading : health.loading) ? "Connecting" : "API unavailable"}</span><span className="scope-divider">/</span><label className="inline">Portfolio<select aria-label="Portfolio" value={route.p} onChange={e => { setPortfolioInput(e.target.value); navigate({ p: e.target.value, run: "", order: "" }); }}>{!portfolios.data?.some(p => p.portfolio_id === route.p) && <option>{route.p}</option>}{portfolios.data?.map(p => <option key={p.portfolio_id}>{p.portfolio_id}</option>)}</select></label></div><div className="row"><span>Stream {stream.status}</span><span className="scope-divider">/</span><span>Worker {!observing ? "not observed" : connected ? runtime.data?.intentional_down ? "intentionally down" : runtime.data?.worker_alive ? "healthy" : "down" : "unknown"}</span><span className="scope-divider">/</span><span className="muted">{observing && connected ? `${runtime.data?.pending_commands} queued` : "Queue not observed"}</span><button className="icon" title="Refresh data" aria-label="Refresh data" onClick={() => refresh(n => n + 1)}><RefreshCw size={14} /></button></div></div>
       {(runtime.error || port.error || context.error || runs.error) && <Notice error>Data unavailable: {runtime.error || port.error || context.error || runs.error}. {port.time ? `Last portfolio update ${new Date(port.time).toLocaleTimeString()} (stale).` : "Retry when the API is available."}</Notice>}

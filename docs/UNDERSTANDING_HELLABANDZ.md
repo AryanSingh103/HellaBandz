@@ -20,7 +20,7 @@ trading strategy *would have* performed. We do that. We also do more:
 | **AI research agents** | Several agents each suggest a strategy and its settings. Plain code tests the suggestions, keeps the ones that earned it and freezes them. | Built on top. |
 | **Coordinated trading** | Several strategies share one account. A coordinator merges their wishes into one order per stock, so they never trade against each other or spend the same dollar twice. | Built on top. This is the "collab" part. |
 | **Paper exchange (CLOB)** | A small internal stock exchange with an order book. Orders can be matched here instead of filled from price bars. | Built on top. |
-| **Extras** | Strategy marketplace, Nike review research lab, Solana audit seal, voice Q&A. | No. Don't lead with these. |
+| **Extras** | Strategy marketplace, Nike review research lab, Solana audit seal, read-only Ask panel. | No. Don't lead with these. |
 
 **So is it backtesting or collaboration?** Both, stacked:
 
@@ -395,7 +395,7 @@ built a lot around the engine. Present the extras as extras.
 | Strategy marketplace | Buy and resell strategy licenses with virtual credits. Uses atomic transfers. | "A side demo. It never touches trading cash." |
 | Nike Review Radar | An AI classifies dated customer reviews as alternative data. | "A research lab. It's unbacktested and places no trades." |
 | Solana Devnet seal | Hashes of 16 record sets committed on-chain. | "Makes later edits to the database detectable by an outsider. It doesn't make trades happen on-chain." |
-| Voice Q&A | Answers built from database rows. The AI only rephrases them. | "Accessibility. The AI can't invent facts." |
+| Ask panel | Typed questions answered from database rows. The AI only rephrases them. | "A read-only helper. The AI can't invent facts or trade." |
 
 **How the AI is fenced in** (the guide explicitly values this):
 

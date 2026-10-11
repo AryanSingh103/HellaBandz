@@ -59,7 +59,7 @@ boundary, not the model.
 | Agents | `hellabandz/agents/` | Fixed research pipeline, live session client, grounded Q&A | Nondeterministic, so kept strictly upstream of the command log |
 | Local manager | `hellabandz/execution/manager.py` | Durable research/session jobs and explicitly owned execution children | API stays responsive; workers retain independent single-writer locks |
 | Browser workflows | `hellabandz/api/workflows.py` | Registered datasets, jobs, runtime controls, paged history, read-only selected-event replay and ledger analytics | Financial mutations still use the command queue |
-| Terminal | `apps/web/` | Strategy browsing, historical runs, manual simulated orders, history and voice Q&A | Uses the public API; provider keys stay server-side |
+| Terminal | `apps/web/` | Strategy browsing, historical runs, manual simulated orders, history and read-only Q&A | Uses the public API; provider keys stay server-side |
 
 ## Data flow of one order
 

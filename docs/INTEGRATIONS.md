@@ -1,7 +1,7 @@
 # Integrations runbook (P2)
 
 All integrations are optional. Without keys the system runs offline: recorded agent proposals,
-a deterministic supervisor and crisis policy, browser speech, the synthetic dataset, and offline
+a deterministic supervisor and crisis policy, the synthetic dataset, and offline
 manifest verification. Every live path is unit-tested against mocked services
 (`tests/unit/test_integrations.py`), so adding a key should work on first use.
 
@@ -16,7 +16,6 @@ restart the API after editing it: `docker compose up -d api`.
 | Integration | Key(s) | Verify | Then |
 |---|---|---|---|
 | OpenAI | `OPENAI_API_KEY`, optional `QS_OPENAI_MODEL` (default `gpt-4.1-mini`) | `make check-integrations` → `OK OpenAI` | `make tournament`: the summary table's `src` column should say `llm`; `make session` crisis messages say `source: llm` |
-| ElevenLabs | `ELEVENLABS_API_KEY`, optional `ELEVENLABS_VOICE_ID`, `ELEVENLABS_MODEL` | `OK ElevenLabs … bytes of audio` | Ask panel in the terminal speaks through `/v1/speak` |
 | Alpaca | `ALPACA_API_KEY_ID`, `ALPACA_API_SECRET_KEY` (free Basic plan) | `OK Alpaca sip: ok` (or `WARN` ⇒ use `--feed iex`) | see "Real-data tournament" below |
 | Solana Devnet | none (keypair auto-created in `data/solana/`, gitignored) | `TODO` until funded, then `OK` | `make solana-commit && make verify-solana` |
 | Tiger Cloud | `DATABASE_URL` (host) **and** `QS_DATABASE_URL` (containers), same service URL with `?sslmode=require` | `OK … Tiger Cloud: timescaledb …` | `docker compose up -d worker api` (skip `db`), then `make tournament session` |

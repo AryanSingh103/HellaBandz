@@ -135,7 +135,7 @@ function intros(manifest: Manifest | null): Record<View | "ask", Intro> {
       more: ["Agents send intents (how much they want to hold), never orders.", "Opposite requests are netted between agents without trading; only the net difference goes to the paper order book.", "Fills here are simulated against a synthetic liquidity ladder built from price bars. They are not exchange fills."] },
     run: { icon: <Play size={18} />, line: "Start your own experiment: pick a dataset, let the AI agents research it, then replay the market with them trading.",
       more: ["Step 1: Launch research. Three agents propose strategies; the best get funded (about a minute).", "Step 2: Launch a session from that research. The final-exam period replays like a live market, optionally with a crash.", "Each session uses a fresh portfolio, so nothing you did before is overwritten."] },
-    ask: { icon: <MessageCircle size={18} />, line: "Ask anything about what's happening, by typing or voice. Answers come from the real records, not guesses.",
+    ask: { icon: <MessageCircle size={18} />, line: "Ask anything about what's happening. Answers come from the real records, not guesses.",
       more: ["Try: \"Why was the last order rejected?\" or \"Which agent performed best?\"", "This can only read; it can't place or change trades."] },
   };
 }

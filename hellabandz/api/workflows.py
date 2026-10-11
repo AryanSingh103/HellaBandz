@@ -31,7 +31,6 @@ async def datasets():
 async def capabilities():
     return {"execution": "historical simulated, long-only, cash-funded", "initial_capital": 10000,
             "research_provider": "OpenAI" if os.environ.get("OPENAI_API_KEY") else "labeled fixture/fallback",
-            "speech_provider": "ElevenLabs" if os.environ.get("ELEVENLABS_API_KEY") else "browser fallback",
             "live_observation": False}
 
 

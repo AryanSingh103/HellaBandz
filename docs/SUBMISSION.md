@@ -8,7 +8,7 @@ This is not yet a claim that the HackRU submission is complete.
 
 The `p3-core` working tree removes the retired external account/exchange integrations, dead
 interfaces and graph dependencies. Six parallel research agents, simulated execution, the
-strategy marketplace, Nike review lab, voice and Solana audit trail remain. UI requests now
+strategy marketplace, Nike review lab and Solana audit trail remain; voice Q&A was removed. UI requests now
 follow the active view, charts and performance helpers are shared, and dataset validation
 uses a file-version cache.
 

@@ -3,7 +3,7 @@
     uv run python scripts/check_integrations.py          # or: make check-integrations
 
 Reads keys from the environment or `.env`. Nothing here places orders or spends real money
-(OpenAI/ElevenLabs calls are a few tokens/characters; Solana is Devnet).
+(OpenAI calls are a few tokens; Solana is Devnet).
 """
 
 from __future__ import annotations
@@ -30,19 +30,6 @@ def check_openai() -> tuple[str, str]:
     t = time.perf_counter()
     out, meta = llm.chat_json("Reply with JSON.", 'Return {"ok": true}.', timeout=30)
     return ("OK" if out.get("ok") is True else "WARN"), f"model {meta['model']}, {time.perf_counter() - t:.1f}s"
-
-
-def check_elevenlabs() -> tuple[str, str]:
-    key = os.environ.get("ELEVENLABS_API_KEY")
-    if not key:
-        return "SKIP", "ELEVENLABS_API_KEY not set (browser speech fallback)"
-    voice = os.environ.get("ELEVENLABS_VOICE_ID", "onwK4e9ZLuTAKqWW03F9")
-    r = httpx.post(f"https://api.elevenlabs.io/v1/text-to-speech/{voice}", timeout=30,
-                   headers={"xi-api-key": key, "accept": "audio/mpeg"},
-                   json={"text": "HellaBandz online.", "model_id": os.environ.get("ELEVENLABS_MODEL", "eleven_flash_v2_5")})
-    if r.status_code != 200:
-        return "FAIL", f"HTTP {r.status_code}: {r.text[:160]}"
-    return "OK", f"{len(r.content):,} bytes of audio"
 
 
 def check_alpaca() -> tuple[str, str]:
@@ -85,7 +72,7 @@ def check_database() -> tuple[str, str]:
 def main() -> int:
     rows = []
     for name, fn in [("TimescaleDB / Tiger Data", check_database), ("OpenAI", check_openai),
-                     ("ElevenLabs", check_elevenlabs), ("Alpaca", check_alpaca), ("Solana Devnet", check_solana)]:
+                     ("Alpaca", check_alpaca), ("Solana Devnet", check_solana)]:
         try:
             status, detail = fn()
         except Exception as e:

@@ -36,7 +36,7 @@ against the retained records. This proves sealed record integrity, not trading p
 
 The no-key path uses a synthetic dataset and recorded agent proposals. Historical Binance bars support
 the replay benchmark. Combined verification also exercised live OpenAI research/supervisor/crisis/Q&A,
-ElevenLabs audio, Alpaca ingestion and a real-data tournament/session, and verified an existing Solana
+Alpaca ingestion and a real-data tournament/session, and verified an existing Solana
 Devnet commitment. These integrations stay outside the deterministic execution path. There are no real
 orders, funds or brokerage connections. See [VERIFICATION](VERIFICATION.md) for exact run evidence.
 
