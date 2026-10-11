@@ -1,0 +1,315 @@
+{
+ "dataset_id": "alpaca-sip-1hour-2023-01-03-2026-09-30",
+ "dataset_sha256": "733b700631cb91676aedd3c014fe4ddd7bccf193e0e904f7818256eceaa7c5e1",
+ "holdout_views": 1,
+ "holdout_untouched": true,
+ "research": {
+  "dataset_id": "alpaca-sip-1hour-2023-01-03-2026-09-30",
+  "dataset_sha256": "733b700631cb91676aedd3c014fe4ddd7bccf193e0e904f7818256eceaa7c5e1",
+  "universe": [
+   "AAPL",
+   "MSFT",
+   "NVDA",
+   "QQQ",
+   "SPY"
+  ],
+  "roles": [
+   {
+    "role": "trend",
+    "version": "1db2332a04297177",
+    "family": "sma_crossover",
+    "params": {
+     "fast": 20.0,
+     "slow": 100.0
+    },
+    "accepted": false,
+    "weight": 0.0,
+    "reasons": [
+     "NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE",
+     "EDGE_BELOW_ONE_STANDARD_ERROR"
+    ],
+    "metrics": {
+     "train_block_excess": [
+      -0.290734,
+      -0.225551,
+      -0.055967
+     ],
+     "walk_forward_excess": [
+      -0.225551,
+      -0.055967
+     ],
+     "out_of_sample_excess": -0.444128,
+     "validation_excess": -0.16261,
+     "validation_return": 0.112277,
+     "core_validation_return": 0.274887,
+     "validation_turnover_per_year": 18.02,
+     "evidence": {
+      "excess_t": -2.03415,
+      "alpha_t": 0.008128,
+      "beta": 0.421094,
+      "weight": 0.0
+     },
+     "candidates_tested": 4,
+     "strength_t": -2.0341
+    }
+   },
+   {
+    "role": "mean_reversion",
+    "version": "260ae27c350a3215",
+    "family": "zscore_reversion",
+    "params": {
+     "entry_z": 2.5,
+     "exit_z": 0.5,
+     "lookback": 120.0
+    },
+    "accepted": false,
+    "weight": 0.0,
+    "reasons": [
+     "NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE",
+     "EDGE_BELOW_ONE_STANDARD_ERROR"
+    ],
+    "metrics": {
+     "train_block_excess": [
+      -0.492566,
+      -0.450303,
+      0.148395
+     ],
+     "walk_forward_excess": [
+      -0.460875,
+      0.029384
+     ],
+     "out_of_sample_excess": -0.623826,
+     "validation_excess": -0.192334,
+     "validation_return": 0.082553,
+     "core_validation_return": 0.274887,
+     "validation_turnover_per_year": 6.84,
+     "evidence": {
+      "excess_t": -2.542631,
+      "alpha_t": -0.905731,
+      "beta": 0.358534,
+      "weight": 0.0
+     },
+     "candidates_tested": 4,
+     "strength_t": -2.5426
+    }
+   },
+   {
+    "role": "defensive",
+    "version": "650f759094852026",
+    "family": "regime_reversion",
+    "params": {
+     "lookback": 60.0,
+     "min_reversion": 0.025,
+     "rebuy_z": -0.5,
+     "regime_lookback": 300.0,
+     "sell_z": 1.5
+    },
+    "accepted": false,
+    "weight": 0.0,
+    "reasons": [
+     "NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE",
+     "EDGE_BELOW_ONE_STANDARD_ERROR"
+    ],
+    "metrics": {
+     "train_block_excess": [
+      -0.112972,
+      -0.1211,
+      0.041156
+     ],
+     "walk_forward_excess": [
+      -0.1211,
+      0.041156
+     ],
+     "out_of_sample_excess": -0.149798,
+     "validation_excess": -0.069854,
+     "validation_return": 0.205034,
+     "core_validation_return": 0.274887,
+     "validation_turnover_per_year": 16.88,
+     "evidence": {
+      "excess_t": -1.357951,
+      "alpha_t": -0.20716,
+      "beta": 0.862635,
+      "weight": 0.0
+     },
+     "candidates_tested": 5,
+     "strength_t": -1.358
+    }
+   }
+  ],
+  "seconds": 37.2
+ },
+ "sleeves": [
+  [
+   "core",
+   "b2436aa1f6b36ad8",
+   9000.0
+  ]
+ ],
+ "rows": {
+  "cash": {
+   "label": "cash",
+   "net_return": 0.0,
+   "max_drawdown": 0.0,
+   "sharpe": 0.0,
+   "turnover_x_capital": 0.0
+  },
+  "baseline_passive_core": {
+   "label": "passive core (baseline)",
+   "net_return": 0.124204,
+   "max_drawdown": 0.100467,
+   "sharpe": 1.194,
+   "turnover_x_capital": 0.735,
+   "fees": 0.11,
+   "slippage": 4.01,
+   "mean_exposure_pct": 74.1,
+   "orders": 5,
+   "fills": 5,
+   "ledger_rejections": 0,
+   "fill_rate": 1.0,
+   "intent_outcomes": {
+    "accepted": 6555,
+    "reduced": 0,
+    "netted": 0,
+    "deferred": 20,
+    "rejected": 0
+   },
+   "ledger_digest": "a9d96894314b5f72bf2fb1f2d40f6981bd0bb3bf3024b6127b80fe8ce9f1ab1f"
+  },
+  "alone:trend": {
+   "label": "trend alone (sma_crossover)",
+   "net_return": 0.043662,
+   "max_drawdown": 0.086514,
+   "sharpe": 0.678,
+   "turnover_x_capital": 15.869,
+   "fees": 2.355,
+   "slippage": 83.9557,
+   "mean_exposure_pct": 40.3,
+   "orders": 152,
+   "fills": 152,
+   "ledger_rejections": 0,
+   "fill_rate": 1.0,
+   "intent_outcomes": {
+    "accepted": 6343,
+    "reduced": 7,
+    "netted": 0,
+    "deferred": 225,
+    "rejected": 0
+   },
+   "ledger_digest": "8be933b89213be480560c4943e6e6019dac22fadb8e06c1773afe8a392364c78",
+   "funded": false,
+   "weight": 0.0
+  },
+  "alone:mean_reversion": {
+   "label": "mean_reversion alone (zscore_reversion)",
+   "net_return": 0.07785,
+   "max_drawdown": 0.036775,
+   "sharpe": 1.669,
+   "turnover_x_capital": 8.126,
+   "fees": 1.07,
+   "slippage": 42.75,
+   "mean_exposure_pct": 16.3,
+   "orders": 84,
+   "fills": 84,
+   "ledger_rejections": 0,
+   "fill_rate": 1.0,
+   "intent_outcomes": {
+    "accepted": 6547,
+    "reduced": 1,
+    "netted": 0,
+    "deferred": 27,
+    "rejected": 0
+   },
+   "ledger_digest": "8ed545895c65f1179d6cc412c710de1b3f5bdbf59041144fbe6fbcda6ebe3ada",
+   "funded": false,
+   "weight": 0.0
+  },
+  "alone:defensive": {
+   "label": "defensive alone (regime_reversion)",
+   "net_return": 0.158308,
+   "max_drawdown": 0.090736,
+   "sharpe": 1.537,
+   "turnover_x_capital": 9.21,
+   "fees": 1.27,
+   "slippage": 48.5634,
+   "mean_exposure_pct": 69.5,
+   "orders": 61,
+   "fills": 61,
+   "ledger_rejections": 0,
+   "fill_rate": 1.0,
+   "intent_outcomes": {
+    "accepted": 6216,
+    "reduced": 3,
+    "netted": 0,
+    "deferred": 356,
+    "rejected": 0
+   },
+   "ledger_digest": "08bab01b036928cb46acd24ba0149b5472d43f6c8cf7a74d3006ff2741f57e91",
+   "funded": false,
+   "weight": 0.0
+  },
+  "coordinated_portfolio": {
+   "label": "coordinated portfolio",
+   "net_return": 0.124204,
+   "max_drawdown": 0.100467,
+   "sharpe": 1.194,
+   "turnover_x_capital": 0.735,
+   "fees": 0.11,
+   "slippage": 4.01,
+   "mean_exposure_pct": 74.1,
+   "orders": 5,
+   "fills": 5,
+   "ledger_rejections": 0,
+   "fill_rate": 1.0,
+   "intent_outcomes": {
+    "accepted": 6555,
+    "reduced": 0,
+    "netted": 0,
+    "deferred": 20,
+    "rejected": 0
+   },
+   "ledger_digest": "a9d96894314b5f72bf2fb1f2d40f6981bd0bb3bf3024b6127b80fe8ce9f1ab1f"
+  }
+ },
+ "excess_vs_baseline": 0.0,
+ "sharpe_diff": 0.0,
+ "periods": [
+  {
+   "from": 1767193200,
+   "to": 1775060400,
+   "regime": "down -8.7%, normal vol 20%",
+   "portfolio": -0.064918,
+   "baseline": -0.064918,
+   "excess": 0.0
+  },
+  {
+   "from": 1775060400,
+   "to": 1782927600,
+   "regime": "up +14.3%, normal vol 19%",
+   "portfolio": 0.101219,
+   "baseline": 0.101219,
+   "excess": 0.0
+  },
+  {
+   "from": 1782927600,
+   "to": 1790794801,
+   "regime": "up +13.1%, normal vol 17%",
+   "portfolio": 0.091746,
+   "baseline": 0.091746,
+   "excess": 0.0
+  }
+ ],
+ "example_decisions": [
+  "1 agent requested a change in AAPL (core +6 lots); it approved one aggregate BUY of 6 at a limit of 271.97 within the portfolio budget.",
+  "1 agent requested a change in MSFT (core +3 lots); it approved one aggregate BUY of 3 at a limit of 483.08 within the portfolio budget.",
+  "1 agent requested a change in NVDA (core +9 lots); it approved one aggregate BUY of 9 at a limit of 188.43 within the portfolio budget.",
+  "1 agent requested a change in QQQ (core +2 lots); it approved one aggregate BUY of 2 at a limit of 616.50 within the portfolio budget.",
+  "1 agent requested a change in SPY (core +2 lots); it approved one aggregate BUY of 2 at a limit of 681.03 within the portfolio budget."
+ ],
+ "critic": [
+  "trend was not funded (NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE, EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+  "mean_reversion was not funded (NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE, EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+  "defensive was not funded (NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE, EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+  "Nothing was funded, so the portfolio held the passive core and matched the baseline exactly.",
+  "Ahead of the baseline in 0 of 3 sub-periods: down -8.7%, normal vol 20%: +0.00%; up +14.3%, normal vol 19%: +0.00%; up +13.1%, normal vol 17%: +0.00%"
+ ]
+}

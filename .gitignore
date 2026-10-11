@@ -22,3 +22,6 @@ data/solana/
 data/manifests/job-logs/
 data/archives/
 artifacts/browser-smoke/
+
+# Persistent coordinator strategy registry
+data/registry/

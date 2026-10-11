@@ -12,14 +12,16 @@ from dataclasses import asdict, dataclass
 
 from hellabandz.contracts import (
     ApplyBar,
+    ApplyVenueFill,
     CancelOrder,
     OpenPortfolio,
     OrderRequest,
     SetAllocation,
     SetKillSwitch,
     SubmitOrder,
+    SubmitVenueOrder,
 )
-from hellabandz.ledger.state import PortfolioState, append, canonical, sha256_hex
+from hellabandz.ledger.state import BAR_SIM, PortfolioState, append, canonical, sha256_hex, venue_fill_key
 
 BPS = 10_000
 
@@ -152,9 +154,11 @@ def process(s: PortfolioState, cmd, cfg: EngineConfig) -> tuple[list[dict], dict
     def emit(e: dict) -> None:
         ev.append(append(s, e))
 
-    if isinstance(cmd, SubmitOrder):
+    if isinstance(cmd, (SubmitOrder, SubmitVenueOrder)):
         o = cmd.order
-        h = _payload_hash(o)
+        venue = cmd.venue if isinstance(cmd, SubmitVenueOrder) else None
+        # venue orders hash order + venue, so the same id cannot be replayed as a bar-sim order
+        h = _payload_hash(o) if venue is None else sha256_hex(canonical({"venue": venue, "order": o.model_dump(mode="json")}))
         prior = s.decisions.get(o.client_order_id)
         if prior is not None:
             if prior["h"] != h:
@@ -162,8 +166,12 @@ def process(s: PortfolioState, cmd, cfg: EngineConfig) -> tuple[list[dict], dict
             return ev, {"status": "duplicate", "outcome": prior["outcome"],
                         "approved_qty": prior["approved_qty"], "rules": prior["rules"]}
         approved, rules, reserve = evaluate_order(s, o, cfg)
+        if venue is not None and o.order_type != "LMT":
+            approved, rules, reserve = 0, ["R6_VENUE_REQUIRES_LIMIT"], 0
         base = {"order_id": o.client_order_id, "agent_id": o.agent_id, "symbol": o.symbol,
                 "side": o.side.value, "requested_qty": o.qty, "rules": rules, "payload_hash": h}
+        if venue is not None:
+            base["venue"] = venue
         if approved <= 0:
             emit({"type": "OrderRejected", **base})
             return ev, {"status": "rejected", "outcome": "REJECT", "approved_qty": 0, "rules": rules}
@@ -183,7 +191,9 @@ def process(s: PortfolioState, cmd, cfg: EngineConfig) -> tuple[list[dict], dict
             return ev, {"status": "rejected", "reason": "BAR_OUT_OF_ORDER"}
         emit({"type": "BarApplied", "symbol": b.symbol, "ts": ts, "close": b.close})
         n_fills = 0
-        for o in sorted((o for o in s.orders.values() if o.symbol == b.symbol), key=lambda o: o.created_seq):
+        # venue orders are filled only by venue reports (ApplyVenueFill) and expire only when the venue says so
+        for o in sorted((o for o in s.orders.values() if o.symbol == b.symbol and o.venue == BAR_SIM),
+                        key=lambda o: o.created_seq):
             f = fill_for_bar(o, b, cfg)
             if f is not None:
                 q, px, slip_cost = f
@@ -199,6 +209,9 @@ def process(s: PortfolioState, cmd, cfg: EngineConfig) -> tuple[list[dict], dict
             if s.equity() * BPS <= s.peak_equity * (BPS - cfg.kill_drawdown_bps):
                 _trip_kill_switch(s, "drawdown", emit)
         return ev, {"status": "applied", "fills": n_fills}
+
+    if isinstance(cmd, ApplyVenueFill):
+        return _venue_fill(s, cmd, cfg, emit, ev)
 
     if isinstance(cmd, CancelOrder):
         o = s.orders.get(cmd.client_order_id)
@@ -230,6 +243,45 @@ def process(s: PortfolioState, cmd, cfg: EngineConfig) -> tuple[list[dict], dict
         return ev, {"status": "ok"}
 
     raise TypeError(f"unsupported command {type(cmd).__name__}")
+
+
+def _venue_fill(s: PortfolioState, f: ApplyVenueFill, cfg: EngineConfig, emit, ev: list) -> tuple[list[dict], dict]:
+    """Apply one venue-reported fill. The ledger re-checks everything the venue claims: the order
+    exists on that venue, the quantity is still working, the price honors the limit, and a buy never
+    costs more than the cash reserved for it. A fill that fails is recorded (VenueFillRejected), not dropped."""
+    h = sha256_hex(canonical(f.model_dump(mode="json")))
+    key = venue_fill_key(f.venue, f.trade_id)
+    prior = s.decisions.get(key)
+    if prior is not None:
+        if prior["h"] != h:
+            return ev, {"status": "conflict", "rules": ["R8_DUPLICATE_ID_DIFFERENT_PAYLOAD"]}
+        return ev, {"status": "duplicate", "rejected": prior.get("rejected")}
+    o = s.orders.get(f.order_id)
+    fee = f.qty * cfg.fee_per_share
+    reason = None
+    if o is None or o.venue != f.venue:
+        reason = "VENUE_FILL_UNKNOWN_ORDER"
+    elif f.qty <= 0 or f.qty > o.remaining:
+        reason = "VENUE_FILL_QTY"
+    elif f.px <= 0 or (o.side == "BUY" and f.px > o.limit_px) or (o.side == "SELL" and f.px < o.limit_px):
+        reason = "VENUE_FILL_PRICE_OUTSIDE_LIMIT"
+    elif o.side == "BUY" and f.qty * f.px + fee > o.reserved_cash:
+        reason = "VENUE_FILL_EXCEEDS_RESERVATION"
+    elif o.side == "SELL" and f.px <= cfg.fee_per_share:
+        reason = "VENUE_FILL_PRICE_BELOW_FEE"
+    elif int(f.ts.timestamp()) < o.signal_ts:
+        reason = "VENUE_FILL_BEFORE_DECISION"
+    if reason is not None:
+        emit({"type": "VenueFillRejected", "venue": f.venue, "trade_id": f.trade_id, "order_id": f.order_id,
+              "reason": reason, "fill_hash": h})
+        return ev, {"status": "rejected", "reason": reason}
+    emit({"type": "OrderFilled", "order_id": o.order_id, "agent_id": o.agent_id, "symbol": o.symbol,
+          "side": o.side, "qty": f.qty, "px": f.px, "fee": fee, "slippage": f.qty * abs(f.px - f.reference_px),
+          "bar_ts": int(f.ts.timestamp()), "venue": f.venue, "trade_id": f.trade_id, "liquidity": f.liquidity,
+          "fill_hash": h})
+    if o.remaining == 0:
+        emit({"type": "OrderClosed", "order_id": o.order_id, "reason": "filled"})
+    return ev, {"status": "filled", "qty": f.qty, "remaining": o.remaining if o.order_id in s.orders else 0}
 
 
 def _trip_kill_switch(s: PortfolioState, reason: str, emit) -> None:

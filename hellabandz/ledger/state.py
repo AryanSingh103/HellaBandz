@@ -50,6 +50,22 @@ class OpenOrder:
     signal_ts: int  # epoch seconds of the bar the decision was based on
     created_seq: int
     bars_seen: int = 0
+    venue: str = "bar_sim"  # bar_sim orders fill from bars; venue orders fill only from venue reports
+
+
+BAR_SIM = "bar_sim"
+
+
+def venue_fill_key(venue: str, trade_id: str) -> str:
+    """Idempotency key for a venue fill. '#' and '/' cannot appear in a client order id."""
+    return f"#vfill/{venue}/{trade_id}"
+
+
+def _order_snapshot(o: OpenOrder) -> dict:
+    d = asdict(o)
+    if d["venue"] == BAR_SIM:  # keeps snapshots and digests of pre-venue ledgers byte-identical
+        d.pop("venue")
+    return d
 
 
 @dataclass
@@ -101,7 +117,7 @@ class PortfolioState:
         d["allocations"] = dict(self.allocations)
         d["last_bar"] = {k: list(v) for k, v in self.last_bar.items()}
         d["positions"] = {k: asdict(v) for k, v in sorted(self.positions.items()) if v.qty or v.reserved or v.basis}
-        d["orders"] = {k: asdict(v) for k, v in sorted(self.orders.items())}
+        d["orders"] = {k: _order_snapshot(v) for k, v in sorted(self.orders.items())}
         if include_decisions:
             d["decisions"] = deepcopy(self.decisions)
         return d
@@ -194,7 +210,7 @@ def apply_event(s: PortfolioState, ev: dict) -> None:
             order_id=ev["order_id"], agent_id=ev["agent_id"], symbol=ev["symbol"],
             side=ev["side"], order_type=ev["order_type"], limit_px=ev["limit_px"],
             qty=ev["qty"], remaining=ev["qty"], reserved_cash=ev["reserved_cash"],
-            signal_ts=ev["signal_ts"], created_seq=s.seq,
+            signal_ts=ev["signal_ts"], created_seq=s.seq, venue=ev.get("venue", BAR_SIM),
         )
         if ev["side"] == "BUY":
             s.reserved_cash += ev["reserved_cash"]
@@ -235,6 +251,10 @@ def apply_event(s: PortfolioState, ev: dict) -> None:
         o.remaining -= q
         s.fees_paid += fee
         s.slippage_cost += ev["slippage"]
+        if "trade_id" in ev:
+            s.decisions[venue_fill_key(ev["venue"], ev["trade_id"])] = {"h": ev["fill_hash"], "order_id": o.order_id}
+    elif t == "VenueFillRejected":
+        s.decisions[venue_fill_key(ev["venue"], ev["trade_id"])] = {"h": ev["fill_hash"], "rejected": ev["reason"]}
     elif t == "OrderClosed":
         o = s.orders.pop(ev["order_id"])
         s.reserved_cash -= o.reserved_cash

@@ -4,6 +4,7 @@ import { Search, SlidersHorizontal, ArrowUpRight, RefreshCw, Activity, ChevronDo
 import { Context, Dataset, initialRoute, Portfolio, PortfolioChoice, Route, Runtime, Tournament, View, Job, crashBand, comparePerformance, matchesSearch, familyName, pct, money, validId } from "./model";
 import { useEventStream, useResource } from "./data";
 import { Empty, Metric, Modal, Notice, JsonView } from "./ui";
+import { CoordinatorView } from "./coordinator";
 import { PortfolioView, AuditView, AnalyticsView } from "./portfolio";
 import { OrdersView } from "./orders";
 import { ResearchView, RunView } from "./research";
@@ -13,7 +14,7 @@ import { Hero, Pillars, Sidebar, StrategyCard, useLiveEquity } from "./browse";
 import { GuideToggle, HintsProvider, HowItWorks, PageIntro } from "./help";
 import { AccessGate, SignOut } from "./access";
 
-const views: View[] = ["browse", "marketplace", "portfolio", "orders", "research", "audit", "analytics", "run"];
+const views: View[] = ["browse", "marketplace", "portfolio", "orders", "research", "audit", "analytics", "coordinator", "run"];
 const categories = ["All strategies", "Momentum", "Reversion", "Volatility", "Equities", "Crypto"];
 function readRoute(): Route {
   const q = new URLSearchParams(location.search), route = { ...initialRoute };
@@ -101,6 +102,7 @@ function Terminal() {
       </div>}
       {route.view !== "browse" && <div className="view"><PageIntro view={route.view} manifest={manifest} />
       {route.view === "marketplace" && <MarketplaceView />}
+      {route.view === "coordinator" && <CoordinatorView key={scope} pid={route.p} />}
       {route.view === "portfolio" && <PortfolioView key={scope} crash={crash} pid={route.p} port={port.data} runtime={connected ? runtime.data : undefined} dataset={portfolioDataset} refresh={() => refresh(n=>n+1)} onSelect={p => { setPortfolioInput(p); navigate({ p, run: "", order: "" }); }} />}
       {route.view === "orders" && <OrdersView key={scope} pid={route.p} port={port.data} dataset={portfolioDataset} orderId={route.order} selectOrder={order => navigate({ order })} refresh={() => refresh(n=>n+1)} />}
       {route.view === "research" && <ResearchView key={scope} pid={route.p} manifest={manifest} explicit={!!route.run} runs={runs.data || []} selected={route.run} select={run => navigate({ run })} />}

@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS fills (
     PRIMARY KEY (portfolio_id, event_seq, bar_ts)
 );
 SELECT create_hypertable('fills', 'bar_ts', if_not_exists => TRUE, migrate_data => TRUE);
+-- Fill venue/liquidity are carried by the immutable ledger event, preserving sealed fill rows.
 
 CREATE TABLE IF NOT EXISTS equity_points (
     ts            TIMESTAMPTZ NOT NULL,
@@ -194,6 +195,9 @@ CREATE TABLE IF NOT EXISTS jobs (
 CREATE UNIQUE INDEX IF NOT EXISTS jobs_active_portfolio ON jobs (portfolio_id)
     WHERE kind = 'session' AND status IN ('queued', 'running');
 CREATE INDEX IF NOT EXISTS jobs_queue ON jobs (created_at) WHERE status = 'queued';
+-- Coordinated multi-strategy sessions (hellabandz.trading) are a third job kind.
+ALTER TABLE jobs DROP CONSTRAINT IF EXISTS jobs_kind_check;
+ALTER TABLE jobs ADD CONSTRAINT jobs_kind_check CHECK (kind IN ('research', 'session', 'coordinated'));
 -- Cleared jobs are hidden from the job list but kept, so request IDs stay unique and session settings stay readable.
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS cleared_at TIMESTAMPTZ;
 

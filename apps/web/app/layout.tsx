@@ -1,6 +1,7 @@
 import "./globals.css";
 import "./guide.css";
 import "./marketplace.css";
+import "./coordinator.css";
 import type { ReactNode } from "react";
 
 export const metadata = {
