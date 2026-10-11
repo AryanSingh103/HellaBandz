@@ -2,6 +2,7 @@
 import { ReactNode, useEffect, useRef } from "react";
 import { Inbox, X } from "lucide-react";
 import { money } from "./model";
+import { Term } from "./help";
 
 export function Empty({ children }: { children: ReactNode }) { return <div className="empty"><Inbox size={25} aria-hidden="true" /><div>{children}</div></div>; }
 export function JsonView({ value, label = "Recorded details" }: { value: unknown; label?: string }) {
@@ -21,7 +22,7 @@ export function Modal({ title, close, children }: { title: string; close: () => 
   }}>
     <div className="section-title"><h2>{title}</h2><button autoFocus className="icon" title="Close details" aria-label="Close details" onClick={close}><X size={20} /></button></div>{children}</section></div>;
 }
-export function Metric({ label, value }: { label: string; value: ReactNode }) { return <div className="metric"><span>{label}</span><strong className={typeof value === "string" && /^-[$\d]/.test(value) ? "neg" : undefined}>{value}</strong></div>; }
+export function Metric({ label, value }: { label: string; value: ReactNode }) { return <div className="metric"><span><Term k={label}>{label}</Term></span><strong className={typeof value === "string" && /^-[$\d]/.test(value) ? "neg" : undefined}>{value}</strong></div>; }
 export function Chart({ series, currency = "USD" }: { series: { name: string; color: string; values: [number, number][] }[]; currency?: string }) {
   const all = series.flatMap(s => s.values).filter(p => Number.isFinite(p[0]) && Number.isFinite(p[1]));
   if (!all.length) return <Empty>No recorded samples in this context.</Empty>;

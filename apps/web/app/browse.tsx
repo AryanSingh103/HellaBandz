@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, ArrowUpRight, ShieldCheck, Link2, Scale, Activity, TrendingUp, Waves, Repeat2, Radio } from "lucide-react";
 import { Event, Manifest, Portfolio, Ranked, View, familyName, money, pct } from "./model";
 import { useResource } from "./data";
+import { Term, ruleText, useHints } from "./help";
 
 type Go = (view: View) => void;
 
@@ -95,25 +96,25 @@ export function Hero({ manifest, strategies, currency, live, equity, open }: {
       </div>
       <h1 className="hero-title">{familyName(s.family)}</h1>
       <div className="hero-status">
-        {live ? <><span className="live-dot" /><span className="live-text">LIVE</span><span className="muted">paper session streaming</span></>
-          : <><span className="frozen-dot" /><span className="frozen-text">FROZEN</span><span className="muted">held-out evaluated once</span></>}
+        {live ? <><span className="live-dot" /><span className="live-text"><Term k="live">LIVE</Term></span><span className="muted">paper session streaming</span></>
+          : <><span className="frozen-dot" /><span className="frozen-text"><Term k="frozen">FROZEN</Term></span><span className="muted">held-out evaluated once</span></>}
       </div>
       <div className="outcomes">
-        <div className="outcome"><span className="seed">T</span><span className="o-name">Training<i className="underline blue" /></span><span className="o-box">SR {s.train.sharpe.toFixed(2)}</span><span className={`pill ${s.train.net_return < 0 ? "neg" : ""}`}>{signed(s.train.net_return)}</span></div>
-        <div className="outcome"><span className="seed">V</span><span className="o-name">Validation<i className="underline rose" /></span><span className="o-box">SR {s.validation.sharpe.toFixed(2)}</span><span className={`pill ${s.validation.net_return < 0 ? "neg" : ""}`}>{signed(s.validation.net_return)}</span></div>
+        <div className="outcome"><span className="seed">T</span><span className="o-name"><Term k="training">Training</Term><i className="underline blue" /></span><span className="o-box"><Term k="sr">SR</Term> {s.train.sharpe.toFixed(2)}</span><span className={`pill ${s.train.net_return < 0 ? "neg" : ""}`}>{signed(s.train.net_return)}</span></div>
+        <div className="outcome"><span className="seed">V</span><span className="o-name"><Term k="validation">Validation</Term><i className="underline rose" /></span><span className="o-box"><Term k="sr">SR</Term> {s.validation.sharpe.toFixed(2)}</span><span className={`pill ${s.validation.net_return < 0 ? "neg" : ""}`}>{signed(s.validation.net_return)}</span></div>
       </div>
-      <div className="hero-meta"><span>{money(alloc?.capital_micros, currency)} allocated · {pct(alloc?.weight)}</span><button className="text-link" onClick={() => open(s.strategy_id)}>Parameters & gates</button></div>
+      <div className="hero-meta"><span>{money(alloc?.capital_micros, currency)} <Term k="allocated">allocated</Term> · {pct(alloc?.weight)}</span><button className="text-link" onClick={() => open(s.strategy_id)}>Parameters & gates</button></div>
       <div className="tickers">{universeOf(manifest, s.strategy_id).map(u => <Ticker key={u} symbol={u} />)}</div>
       <p className="news"><b>AI thesis</b> · {prop?.proposal.rationale || "No rationale recorded."}</p>
     </div>
     <div className="hero-right">
       <div className="legend">
-        <span><i style={{ background: "#28d49b" }} />Held-out <b>{signed(test.net_return)}</b></span>
+        <span><i style={{ background: "#28d49b" }} /><Term k="held-out">Held-out</Term> <b>{signed(test.net_return)}</b></span>
         {liveRet !== undefined && <span><i style={{ background: "#ff4d7d" }} />Live <b>{signed(liveRet)}</b></span>}
         <span className="brand">QuantSwarm</span>
       </div>
       <KChart lines={lines} />
-      <div className="chart-foot"><span>Sharpe <b>{test.sharpe.toFixed(2)}</b></span><span>Max DD <b>{pct(test.max_drawdown)}</b></span><span>Fills <b>{test.n_fills}</b></span></div>
+      <div className="chart-foot"><span><Term k="sharpe">Sharpe</Term> <b>{test.sharpe.toFixed(2)}</b></span><span><Term k="max drawdown">Max DD</Term> <b>{pct(test.max_drawdown)}</b></span><span><Term k="fills">Fills</Term> <b>{test.n_fills}</b></span></div>
     </div>
   </article>;
 }
@@ -156,7 +157,7 @@ export function Sidebar({ manifest, strategies, port, events, currency, go, open
         const ev = e as Event & { outcome?: string; requested_qty?: number };
         const outcome = e.type === "OrderRejected" ? "REJECT" : ev.outcome || "APPROVE";
         return <div key={e.seq} className="list-row-k static">
-          <span><b>{e.side} {ev.requested_qty ?? e.qty} {e.symbol}</b><small>{e.agent_id?.replaceAll("_", " ")}{e.rules?.length ? ` · ${e.rules[0]}` : ""}</small></span>
+          <span><b>{e.side} {ev.requested_qty ?? e.qty} {e.symbol}</b><small title={e.rules?.[0]}>{e.agent_id?.replaceAll("_", " ")}{e.rules?.length ? ` · ${ruleText(e.rules[0])}` : ""}</small></span>
           <span className={`decision ${outcome.toLowerCase()}`}>{outcome}</span>
         </div>;
       })}
@@ -167,6 +168,8 @@ export function Sidebar({ manifest, strategies, port, events, currency, go, open
 /* ------------------------------------------------------------------ feature row */
 
 export function Pillars({ go }: { go: Go }) {
+  const { on, dismissed } = useHints();
+  if (on && !dismissed.includes("how")) return null; // "How it works" covers the same ground
   const items = [
     { icon: <Scale size={20} />, t: "Deterministic risk", d: "Ten rules no AI can override", v: "orders" as View },
     { icon: <ShieldCheck size={20} />, t: "Provable ledger", d: "Replay and verify every cent", v: "audit" as View },
@@ -187,10 +190,10 @@ export function StrategyCard({ manifest, s, open }: { manifest: Manifest; s: Ran
     <div className="sc-top"><FamilyIcon family={s.family} /><span className="eyebrow">{s.agent_id.replaceAll("_", " ")}</span><span className={`src ${source}`}>{source === "llm" ? "AI" : source}</span></div>
     <h2>{familyName(s.family)}</h2>
     <div className="tickers">{universeOf(manifest, s.strategy_id).map(u => <Ticker key={u} symbol={u} />)}</div>
-    <div className="sc-row"><span>Training</span><span className="muted">SR {s.train.sharpe.toFixed(2)}</span><span className={`pill sm ${t < 0 ? "neg" : ""}`}>{signed(t)}</span></div>
-    <div className="sc-row"><span>Validation</span><span className="muted">SR {s.validation.sharpe.toFixed(2)}</span><span className={`pill sm ${v < 0 ? "neg" : ""}`}>{signed(v)}</span></div>
+    <div className="sc-row"><span><Term k="training">Training</Term></span><span className="muted">SR {s.train.sharpe.toFixed(2)}</span><span className={`pill sm ${t < 0 ? "neg" : ""}`}>{signed(t)}</span></div>
+    <div className="sc-row"><span><Term k="validation">Validation</Term></span><span className="muted">SR {s.validation.sharpe.toFixed(2)}</span><span className={`pill sm ${v < 0 ? "neg" : ""}`}>{signed(v)}</span></div>
     <div className="meter"><i style={{ width: `${Math.abs(t) / total * 100}%` }} className="blue" /><i style={{ width: `${Math.abs(v) / total * 100}%` }} className="rose" /></div>
-    <footer><span>{pct(allocation?.weight)} allocated</span><span className={s.gates.length ? "neg" : "pos"}>{s.gates.length ? `${s.gates.length} gate${s.gates.length > 1 ? "s" : ""} failed` : "Gates passed"}<ArrowUpRight size={13} /></span></footer>
+    <footer><span>{pct(allocation?.weight)} <Term k="allocated">allocated</Term></span><span className={s.gates.length ? "neg" : "pos"}><Term k="gates">{s.gates.length ? `${s.gates.length} gate${s.gates.length > 1 ? "s" : ""} failed` : "Gates passed"}</Term><ArrowUpRight size={13} /></span></footer>
   </button>;
 }
 

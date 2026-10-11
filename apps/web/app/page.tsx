@@ -9,6 +9,7 @@ import { OrdersView } from "./orders";
 import { ResearchView, RunView } from "./research";
 import { Ask } from "./voice";
 import { Hero, Pillars, Sidebar, StrategyCard, useLiveEquity } from "./browse";
+import { GuideToggle, HintsProvider, HowItWorks, PageIntro } from "./help";
 
 const views: View[] = ["browse", "portfolio", "orders", "research", "audit", "analytics", "run"];
 const categories = ["All strategies", "Momentum", "Reversion", "Volatility", "Equities", "Crypto"];
@@ -57,12 +58,13 @@ export default function Page() {
   const detail = manifest?.ranked.find(s => s.strategy_id === strategy);
   const live = connected && !!runtime.data?.worker_alive && !!port.data && Date.now() - Date.parse(port.data.updated_at) < 20000 && stream.events.some(e => e.type === "BarApplied");
   const decisionsCount = stream.events.filter(e => e.type === "OrderAccepted" || e.type === "OrderRejected").length;
-  return <>
+  return <HintsProvider>
     <header className="site-header"><div className="header-inner">
       <a className="wordmark" href="/" onClick={e => { e.preventDefault(); navigate({ view: "browse" }); }}>Quant<span>Swarm</span></a>
       <nav aria-label="Main navigation">{views.map(v => <a key={v} href={`/?view=${v}&p=${encodeURIComponent(route.p)}`} aria-current={route.view === v ? "page" : undefined} onClick={e => { e.preventDefault(); navigate({ view: v, order: "" }); }}>{v === "browse" ? "Markets" : v}{v === "orders" && decisionsCount > 0 && <span className="nav-count">{decisionsCount}</span>}</a>)}
         <span className={`nav-live ${live ? "on" : ""}`}><i />Live</span></nav>
       <div className="header-search"><Search size={17} /><input aria-label="Search strategies" placeholder="Trade on any strategy" value={route.q} onChange={e => navigate({ q: e.target.value, view: "browse" })} /></div>
+      <GuideToggle />
       <button className="ghost-pill" onClick={() => setAskOpen(!askOpen)}><Activity size={15} />Ask</button>
       <button className="cta-pill" onClick={() => navigate({ view: "run" })}>Run research</button>
     </div><div className="category-inner"><nav aria-label="Strategy categories">{categories.map(c => <a key={c} href={`/?category=${encodeURIComponent(c)}`} className={route.category === c && route.view === "browse" ? "selected" : ""} onClick={e => { e.preventDefault(); navigate({ category: c, view: "browse" }); }}>{c === "All strategies" ? "Trending" : c}</a>)}</nav><span className="simulation"><span className={`status-dot ${connected ? "online" : ""}`} />Simulated · paper trading</span></div></header>
@@ -70,8 +72,10 @@ export default function Page() {
       <div className="scopebar"><div className="row"><span className={`status-dot ${connected ? "online" : ""}`} /><span>{connected ? "API connected" : runtime.loading ? "Connecting" : "API unavailable"}</span><span className="scope-divider">/</span><label className="inline">Portfolio<select aria-label="Portfolio" value={route.p} onChange={e => { setPortfolioInput(e.target.value); navigate({ p: e.target.value, run: "", order: "" }); }}>{!portfolios.data?.some(p => p.portfolio_id === route.p) && <option>{route.p}</option>}{portfolios.data?.map(p => <option key={p.portfolio_id}>{p.portfolio_id}</option>)}</select></label></div><div className="row"><span>Stream {stream.status}</span><span className="scope-divider">/</span><span>Worker {connected ? runtime.data?.intentional_down ? "intentionally down" : runtime.data?.worker_alive ? "healthy" : "down" : "unknown"}</span><span className="scope-divider">/</span><span className="muted">{connected ? `${runtime.data?.pending_commands} queued` : "Queue unknown"}</span><button className="icon" title="Refresh data" aria-label="Refresh data" onClick={() => refresh(n => n + 1)}><RefreshCw size={14} /></button></div></div>
       {(runtime.error || port.error || context.error || runs.error) && <Notice error>Data unavailable: {runtime.error || port.error || context.error || runs.error}. {port.time ? `Last portfolio update ${new Date(port.time).toLocaleTimeString()} (stale).` : "Retry when the API is available."}</Notice>}
       {route.view === "browse" && <div className="home-grid"><div className="home-main">
+        <PageIntro view="browse" manifest={manifest} />
         {!manifest ? <div className="card"><Empty>{context.loading || runs.loading ? "Loading research context..." : "No research associated with this portfolio."}<div className="row centered"><button className="cta-pill" onClick={() => navigate({ view: "run" })}>Run research <ArrowUpRight size={15} /></button>{!!runs.data?.length && <button onClick={() => navigate({ run: runs.data![0].run_id })}>Browse latest research</button>}</div></Empty></div>
           : visible.length ? <Hero manifest={manifest} strategies={visible} currency={currency} live={live} equity={equity.data || undefined} open={setStrategy} /> : null}
+        <HowItWorks go={v => navigate({ view: v })} />
         <Pillars go={v => navigate({ view: v })} />
         <div className="browse-title"><h2 className="section-h">{route.category === "All strategies" ? "All strategies" : route.category}</h2><div className="filters">
           <label className="select-wrap"><span className="sr-only">Research run</span><select aria-label="Research run" value={route.run} onChange={e => navigate({ run: e.target.value, dataset: "" })}><option value="">{context.data?.run_id ? `Associated: ${context.data.run_id}` : "Portfolio: unassociated"}</option>{runs.data?.map(t => <option key={t.run_id} value={t.run_id}>{t.run_id}</option>)}</select><ChevronDown size={14} /></label>
@@ -85,15 +89,16 @@ export default function Page() {
       </div>
       <Sidebar manifest={manifest} strategies={visible} port={port.data} events={stream.events} currency={currency} go={v => navigate({ view: v })} open={setStrategy} />
       </div>}
+      {route.view !== "browse" && <div className="view"><PageIntro view={route.view} manifest={manifest} />
       {route.view === "portfolio" && <PortfolioView key={scope} pid={route.p} port={port.data} runtime={connected ? runtime.data : undefined} dataset={portfolioDataset} refresh={() => refresh(n=>n+1)} onSelect={p => { setPortfolioInput(p); navigate({ p, run: "", order: "" }); }} />}
       {route.view === "orders" && <OrdersView key={scope} pid={route.p} port={port.data} dataset={portfolioDataset} orderId={route.order} selectOrder={order => navigate({ order })} refresh={() => refresh(n=>n+1)} />}
       {route.view === "research" && <ResearchView key={scope} pid={route.p} manifest={manifest} explicit={!!route.run} runs={runs.data || []} selected={route.run} select={run => navigate({ run })} />}
       {route.view === "audit" && <AuditView key={scope} pid={route.p} port={port.data} events={stream.events} streamStatus={stream.status} />}
       {route.view === "analytics" && <AnalyticsView key={scope} pid={route.p} currency={portfolioDataset?.quote_currency || "USD"} />}
-      {route.view === "run" && <RunView key={route.p}datasets={datasets.data || []} runs={runs.data || []} selectedRun={manifest?.run_id || ""} onSelect={p => { setPortfolioInput(p); navigate({ p, run: "", view: "portfolio" }); }} refresh={() => refresh(n=>n+1)} />}
+      {route.view === "run" && <RunView key={route.p}datasets={datasets.data || []} runs={runs.data || []} selectedRun={manifest?.run_id || ""} onSelect={p => { setPortfolioInput(p); navigate({ p, run: "", view: "portfolio" }); }} refresh={() => refresh(n=>n+1)} />}</div>}
       <footer className="site-footer"><span>QuantSwarm <span className="muted">/ Historical simulation. Long-only. Cash-funded.</span></span><form className="row" onSubmit={e => { e.preventDefault(); if (!validId(portfolioInput)) { setIdError("Use 1-96 letters, digits, underscore, dot, colon or hyphen."); return; } setIdError(""); navigate({ p: portfolioInput, run: "", order: "" }); }}><input aria-label="Portfolio ID" value={portfolioInput} onChange={e => setPortfolioInput(e.target.value)} placeholder="Portfolio ID" /><button type="submit" className="icon" title="Select portfolio" aria-label="Select portfolio"><ArrowUpRight size={17} /></button></form>{idError && <Notice error>{idError}</Notice>}</footer>
     </main>
     {detail && manifest && <Modal title={familyName(detail.family)} close={() => setStrategy("")}><p className="muted">{detail.strategy_id}</p><div className="metrics"><Metric label="Allocated capital" value={money(manifest.allocations.by_strategy[detail.strategy_id]?.capital_micros, currency)} /><Metric label="Validation return" value={pct(detail.validation.net_return)} /></div><p>{manifest.proposals.find(p=>p.agent_id===detail.agent_id)?.proposal.rationale}</p><JsonView label="Full proposal and evidence" value={manifest.proposals.find(p=>p.agent_id===detail.agent_id)} /><JsonView label="Parameters, gates and metrics" value={detail} /><button className="cta-pill" onClick={() => navigate({ view: "research" })}>Open research <ArrowUpRight size={16} /></button></Modal>}
-    {askOpen && <Modal title={`Ask QuantSwarm / ${route.p}`} close={() => setAskOpen(false)}><Ask key={route.p}pid={route.p} /></Modal>}
-  </>;
+    {askOpen && <Modal title={`Ask QuantSwarm / ${route.p}`} close={() => setAskOpen(false)}><PageIntro view="ask" manifest={manifest} /><Ask key={route.p}pid={route.p} /></Modal>}
+  </HintsProvider>;
 }
