@@ -1,0 +1,90 @@
+{
+  "anchor_id": "3e8f9cb473834b11bcc5bc5169b412d7",
+  "manifest": {
+    "version": 1,
+    "anchor_id": "3e8f9cb473834b11bcc5bc5169b412d7",
+    "created_at": "2026-10-11T02:34:27.836982+00:00",
+    "cluster": "devnet",
+    "signer": "A6fBZioMv4L9ob4jS7tCuhLgE3Z4bVECBpMTUToPLK4",
+    "previous": null,
+    "tables": {
+      "commands": {
+        "count": 3836,
+        "sha256": "0c0eec01dc6c503d7b59d4c70adf74e88d51a7540821e8ba020430cfc4217bda"
+      },
+      "ledger_events": {
+        "count": 4340,
+        "sha256": "35efbc073cd137e094556eeab97eda8dd6590593b64a611c83af4aeaf0c86cae"
+      },
+      "portfolio_state": {
+        "count": 2,
+        "sha256": "72c23134d1ee4eae3108037ee7ffcabee34517a2588c9924a7a68d31db40355b"
+      },
+      "orders": {
+        "count": 326,
+        "sha256": "c42236316c33a540509951ae66ccf9acc9f0d1881f9a04c3d3159bf4d1f165c9"
+      },
+      "fills": {
+        "count": 251,
+        "sha256": "02f6eb6a4bc75bce4f5248611b2c1dc7ee5bf231aaf68dce64523681b1e06d84"
+      },
+      "equity_points": {
+        "count": 700,
+        "sha256": "63809c9cda33b13dd610d4be80cc7ee75528c5aa35ba8b048db0fad90f1b19d4"
+      },
+      "agent_messages": {
+        "count": 106,
+        "sha256": "6917b77ef45fa8b163530817be306574f7e4d1c610ba72fe166699141f46528c"
+      },
+      "tournaments": {
+        "count": 4,
+        "sha256": "ac5d0999b80fd1440a8e2f6e74adb1c54c94c641f77eb7d1fb6c48904c7abcde"
+      },
+      "portfolio_context": {
+        "count": 2,
+        "sha256": "39b30dff7e989b1c387bc2265f7c6f1276a0c2ecee6aeb1bb4b48a11b280ed74"
+      },
+      "jobs": {
+        "count": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "strategy_accounts": {
+        "count": 3,
+        "sha256": "8752fb1976d140d3590aacecddb311240ef2f40710494703ba22b35b2a887f9d"
+      },
+      "strategy_assets": {
+        "count": 13,
+        "sha256": "e5662a108ba5dcef9e3f74faecd0f043ce936fbffdc2f5b455ab321c9a2609d3"
+      },
+      "strategy_holdings": {
+        "count": 2,
+        "sha256": "1240bb5ab63d07404e8a60b046471422e330ae21ad4febf89f54fce7119e7477"
+      },
+      "strategy_listings": {
+        "count": 14,
+        "sha256": "078c4dfdc62586e9cbd258ede1cac4925a75e6cae878903d709a46b8e2ceefab"
+      },
+      "strategy_trades": {
+        "count": 2,
+        "sha256": "b7a231e0a312eb89cfca3656f8b3ef8ceae474ab7b0385fd8231b96e4e53707e"
+      },
+      "review_analyses": {
+        "count": 2,
+        "sha256": "7507109da60cc9fa4e2f41b6274153ab6ff4b97912b1f99e68e3e31231857319"
+      }
+    },
+    "journal": {
+      "count": 9603,
+      "sha256": "3967ff0742a3cfb9c693bdac482d2c0cb41e50bf30e8b06cef7347fc2eb67c37",
+      "ranges": [
+        [
+          1,
+          9603
+        ]
+      ]
+    }
+  },
+  "manifest_hash": "7f671102f015f90b7b6315758e4c70eb3d6978b41b808b7080997d7be2c752d2",
+  "signature": "4A6j35zFwq8PN9uKvKkQqyeBrH11mp3CMjj1xngkRWVWegx3CxeK6Yn6a3LzEdg941QztcrMdFtX5VJQRxM6zgY9",
+  "explorer": "https://explorer.solana.com/tx/4A6j35zFwq8PN9uKvKkQqyeBrH11mp3CMjj1xngkRWVWegx3CxeK6Yn6a3LzEdg941QztcrMdFtX5VJQRxM6zgY9?cluster=devnet"
+}

@@ -15,7 +15,7 @@ import json
 import logging
 import os
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 import httpx
@@ -105,7 +105,9 @@ class Session:
     def __init__(self, api: str, manifest: dict, dataset_dir: Path, portfolio: str = "main",
                  stop_requested=lambda: False, progress=lambda *args: None, api_headers: dict | None = None):
         TypeAdapter(Ident).validate_python(portfolio)
-        self.c = httpx.Client(base_url=api, timeout=60, params={"portfolio_id": portfolio}, headers=api_headers,
+        from hellabandz.api.client import api_headers as operator_headers
+        headers = api_headers if api_headers is not None else operator_headers()
+        self.c = httpx.Client(base_url=api, timeout=60, params={"portfolio_id": portfolio}, headers=headers,
                              event_hooks={"response": [lambda r: r.raise_for_status()]})
         self.m = manifest
         self.run_id = manifest["run_id"]

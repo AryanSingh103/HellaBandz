@@ -31,6 +31,12 @@ ROOT = Path(__file__).resolve().parents[2]
 RPC = os.environ.get("SOLANA_RPC", "https://api.devnet.solana.com")
 MEMO_PROGRAM = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
 KEYPAIR = ROOT / "data/solana/devnet-keypair.json"
+DEVNET_GENESIS = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG"
+
+
+def require_devnet():
+    if rpc("getGenesisHash", []) != DEVNET_GENESIS:
+        raise RuntimeError("Refusing non-Devnet RPC: test SOL only")
 
 
 def manifest_hash_file(path: Path) -> tuple[str, dict]:
@@ -75,7 +81,7 @@ def ensure_funded(kp, min_lamports: int = 1_000_000) -> int:
                 break
             time.sleep(1)
     except Exception as e:
-        raise SystemExit(f"Devnet airdrop failed ({e}). Fund {kp.pubkey()} with test SOL at https://faucet.solana.com "
+        raise RuntimeError(f"Devnet airdrop failed ({e}). Fund {kp.pubkey()} with test SOL at https://faucet.solana.com "
                          "and re-run.")
     return rpc("getBalance", [str(kp.pubkey())])["value"]
 
@@ -87,6 +93,7 @@ def send_memo(memo: str) -> str:
     from solders.pubkey import Pubkey
     from solders.transaction import Transaction
 
+    require_devnet()
     kp = load_keypair()
     ensure_funded(kp)
     bh = rpc("getLatestBlockhash", [{"commitment": "confirmed"}])["value"]["blockhash"]
@@ -109,6 +116,8 @@ def onchain_memo(sig: str) -> str | None:
         tx = rpc("getTransaction", [sig, {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0,
                                           "commitment": "confirmed"}])
         if tx:
+            if tx.get("meta", {}).get("err"):
+                return None
             for ix in tx["transaction"]["message"]["instructions"]:
                 if ix.get("programId") == MEMO_PROGRAM:
                     return ix.get("parsed")
@@ -124,13 +133,22 @@ def explorer(sig: str) -> str:
 def commit(path: Path, api: str | None = None) -> dict:
     h, m = manifest_hash_file(path)
     memo = memo_for(m["run_id"], h)
-    sig = send_memo(memo)
+    record_path = path.with_suffix(".solana.json")
+    previous = json.loads(record_path.read_text()) if record_path.exists() else {}
+    # Reuse a confirmed matching receipt if publishing to the API previously failed.
+    sig = previous.get("signature") if previous.get("manifest_sha256") == h else None
+    if not sig or onchain_memo(sig) != memo:
+        sig = send_memo(memo)
+    if onchain_memo(sig) != memo:
+        raise RuntimeError("confirmed transaction does not contain the expected manifest memo")
     rec = {"run_id": m["run_id"], "manifest_sha256": h, "memo": memo, "signature": sig, "cluster": "devnet",
            "explorer": explorer(sig)}
-    path.with_suffix(".solana.json").write_text(json.dumps(rec, indent=1))
+    record_path.write_text(json.dumps(rec, indent=1))
     if api:
-        httpx.post(f"{api}/v1/tournaments", json={"run_id": m["run_id"], "manifest": m, "manifest_hash": h,
-                                                   "solana_sig": sig}, timeout=30)
+        from hellabandz.api.client import api_headers
+        response = httpx.post(f"{api}/v1/tournaments", json={"run_id": m["run_id"], "manifest": m, "manifest_hash": h,
+                                                           "solana_sig": sig}, timeout=90, headers=api_headers())
+        response.raise_for_status()
     return rec
 
 

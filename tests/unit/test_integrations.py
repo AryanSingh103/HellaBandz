@@ -261,7 +261,7 @@ def test_alpaca_bad_credentials_message(monkeypatch):
 
 
 def test_speak_endpoint(monkeypatch):
-    monkeypatch.setenv("QS_AUTH_DISABLED", "true")  # Provider-only test; secure API access is tested separately.
+    monkeypatch.setenv("QS_AUTH_REQUIRED", "0")  # Provider-only test; secure API access is tested separately.
     from fastapi.testclient import TestClient
 
     from hellabandz.api import app as api_mod
@@ -299,6 +299,8 @@ def test_solana_commit_builds_signed_memo_and_verify_reads_it(tmp_path, monkeypa
     sent = {}
 
     def rpc(method, params):
+        if method == "getGenesisHash":
+            return sol.DEVNET_GENESIS
         if method == "getBalance":
             return {"value": 10**9}
         if method == "getLatestBlockhash":
@@ -322,6 +324,22 @@ def test_solana_commit_builds_signed_memo_and_verify_reads_it(tmp_path, monkeypa
     assert str(tx.message.account_keys[tx.message.instructions[0].program_id_index]) == sol.MEMO_PROGRAM
     assert rec["memo"] == f"quantswarm:v1:T-x:{rec['manifest_sha256']}"
     assert sol.verify(manifest)["ok"]
+    monkeypatch.setattr(sol, "send_memo", lambda memo: pytest.fail("must reuse the verified receipt"))
+    assert sol.commit(manifest)["signature"] == rec["signature"]
     manifest.write_text(json.dumps({"run_id": "T-x", "allocations": {"a": 0.5}}))
     out = sol.verify(manifest)
     assert not out["ok"] and out["onchain_memo"] == rec["memo"]
+
+
+def test_solana_commit_reports_api_failure_and_keeps_receipt(tmp_path, monkeypatch):
+    import httpx
+    from hellabandz.audit import solana as sol
+    path = tmp_path / "T-api.json"
+    path.write_text(json.dumps({"run_id": "T-api"}))
+    h, _ = sol.manifest_hash_file(path)
+    monkeypatch.setattr(sol, "send_memo", lambda memo: "saved-signature")
+    monkeypatch.setattr(sol, "onchain_memo", lambda sig: sol.memo_for("T-api", h))
+    monkeypatch.setattr(sol.httpx, "post", lambda *a, **kw: httpx.Response(503, request=httpx.Request("POST", a[0])))
+    with pytest.raises(httpx.HTTPStatusError):
+        sol.commit(path, "http://localhost:8000")
+    assert json.loads(path.with_suffix(".solana.json").read_text())["signature"] == "saved-signature"

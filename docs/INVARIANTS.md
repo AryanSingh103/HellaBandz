@@ -19,6 +19,7 @@ Run `make prove` to execute every test and print this table with live pass/fail 
 | I-09 | **Causality.** No strategy or backtest observes data after its decision time | Strategies are causal functions (truncation-invariant); backtests only load history `< end_ts`; R7 rejects future/stale signals; fills only on later bars | `test_signals_are_causal_under_truncation` (4 families × 25 random cuts), `test_signals_ignore_future_perturbation`, `test_backtest_does_not_read_data_after_split_end` (poisoned future data ⇒ identical result) |
 | I-10 | **Audit integrity.** Altering a dataset, event, or tournament manifest is detected | Content hash on snapshots, SHA-256 event chain, canonical manifest validation and immutable finalized runs | `test_tampered_snapshot_refused`, `test_event_chain_detects_tampering`, `test_manifest_hash_run_identity_and_immutable_retries` |
 | I-11 | **Ordering.** Equal-timestamp events follow a documented order; input row order is irrelevant; out-of-order/duplicate bars are rejected without effect | `(ts, symbol)` sort; per-symbol monotonic `last_bar` check | `test_input_row_order_does_not_change_results`, `test_out_of_order_and_duplicate_bars_rejected_without_effect` |
+| I-12 | **Operator access.** Unauthenticated HTTP/streams and untrusted browser origins cannot read or mutate workspace records | Bearer key or expiring HttpOnly session; explicit origins; startup validation; revocation and throttling | `tests/unit/test_access.py`, authenticated real-API marketplace/audit integration tests |
 
 The property test (`tests/property/test_ledger_properties.py`) generates up to 150 random commands per case:
 buys/sells/limit orders from four agents (one unallocated), quantities including ≤ 0, exact retries,
@@ -28,6 +29,12 @@ sanity check it was run against two deliberately broken engines (fills not cappe
 cost-basis removal); both were caught.
 
 ## Risk rules
+
+I-12 covers operator HTTP/WebSocket access, trusted browser origins, session revocation/expiry,
+fail-closed configuration and sign-in throttling (`tests/unit/test_access.py`). I-10 additionally
+covers 16-table external trace commitments, atomic append-only journals, concurrent commit gaps,
+snapshot reconstruction, rewritten immutable facts, privileged edits, missing latest anchors and
+Devnet/signer checks (`tests/integration/test_trace_audit.py`). See [SECURITY](SECURITY.md).
 
 P3 adds `test_incremental_totals_match_full_recomputation_after_every_event`, random-command cache
 comparisons, and `test_risk_check_does_not_scan_open_orders` for I-02/I-04/I-07. Checkpoint roundtrip,

@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS fills (
     PRIMARY KEY (portfolio_id, event_seq, bar_ts)
 );
 SELECT create_hypertable('fills', 'bar_ts', if_not_exists => TRUE, migrate_data => TRUE);
+-- Fill venue/liquidity are carried by the immutable ledger event, preserving sealed fill rows.
 
 CREATE TABLE IF NOT EXISTS equity_points (
     ts            TIMESTAMPTZ NOT NULL,
@@ -194,6 +195,9 @@ CREATE TABLE IF NOT EXISTS jobs (
 CREATE UNIQUE INDEX IF NOT EXISTS jobs_active_portfolio ON jobs (portfolio_id)
     WHERE kind = 'session' AND status IN ('queued', 'running');
 CREATE INDEX IF NOT EXISTS jobs_queue ON jobs (created_at) WHERE status = 'queued';
+-- Coordinated multi-strategy sessions (hellabandz.trading) are a third job kind.
+ALTER TABLE jobs DROP CONSTRAINT IF EXISTS jobs_kind_check;
+ALTER TABLE jobs ADD CONSTRAINT jobs_kind_check CHECK (kind IN ('research', 'session', 'coordinated'));
 -- Cleared jobs are hidden from the job list but kept, so request IDs stay unique and session settings stay readable.
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS cleared_at TIMESTAMPTZ;
 
@@ -241,4 +245,65 @@ CREATE TABLE IF NOT EXISTS strategy_trades (
     price BIGINT NOT NULL CHECK (price > 0),
     total BIGINT NOT NULL CHECK (total = quantity * price),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Atomic before/after images let a sealed snapshot be checked while trading continues.
+-- Sequence gaps and out-of-order transaction commits are handled by the verifier's
+-- explicit sealed ID ranges, rather than assuming MAX(id) means a committed prefix.
+CREATE TABLE IF NOT EXISTS audit_changes (
+    id BIGSERIAL PRIMARY KEY,
+    table_name TEXT NOT NULL,
+    operation TEXT NOT NULL,
+    before_row JSONB,
+    after_row JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
+);
+CREATE OR REPLACE FUNCTION qs_record_change() RETURNS trigger LANGUAGE plpgsql SET timezone='UTC' AS $$
+BEGIN
+    IF TG_OP = 'UPDATE' AND to_jsonb(OLD) = to_jsonb(NEW) THEN RETURN NEW; END IF;
+    INSERT INTO audit_changes(table_name, operation, before_row, after_row)
+    VALUES (TG_ARGV[0], TG_OP,
+            CASE WHEN TG_OP <> 'INSERT' THEN to_jsonb(OLD) END,
+            CASE WHEN TG_OP <> 'DELETE' THEN to_jsonb(NEW) END);
+    RETURN NULL;
+END $$;
+CREATE OR REPLACE FUNCTION qs_deny_audit_rewrite() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    RAISE EXCEPTION 'audit history cannot be rewritten or truncated';
+END $$;
+DROP TRIGGER IF EXISTS qs_audit_immutable ON audit_changes;
+CREATE TRIGGER qs_audit_immutable BEFORE UPDATE OR DELETE OR TRUNCATE ON audit_changes
+FOR EACH STATEMENT EXECUTE FUNCTION qs_deny_audit_rewrite();
+DO $$ DECLARE t TEXT; BEGIN
+    FOREACH t IN ARRAY ARRAY['commands','ledger_events','portfolio_state','orders','fills',
+        'equity_points','agent_messages','tournaments','portfolio_context','jobs',
+        'strategy_accounts','strategy_assets','strategy_holdings','strategy_listings',
+        'strategy_trades','review_analyses'] LOOP
+        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = t::regclass AND tgname = 'qs_audit_change') THEN
+            EXECUTE format('CREATE TRIGGER qs_audit_change AFTER INSERT OR UPDATE OR DELETE ON %I
+                            FOR EACH ROW EXECUTE FUNCTION qs_record_change(%L)', t, t);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = t::regclass AND tgname = 'qs_audit_no_truncate') THEN
+            EXECUTE format('CREATE TRIGGER qs_audit_no_truncate BEFORE TRUNCATE ON %I
+                            FOR EACH STATEMENT EXECUTE FUNCTION qs_deny_audit_rewrite()', t);
+        END IF;
+    END LOOP;
+END $$;
+CREATE TABLE IF NOT EXISTS audit_anchors (
+    anchor_id TEXT PRIMARY KEY,
+    manifest JSONB NOT NULL,
+    manifest_hash TEXT NOT NULL,
+    signature TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS audit_requests (
+    request_id TEXT PRIMARY KEY,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    completed_at TIMESTAMPTZ,
+    error TEXT
+);
+CREATE TABLE IF NOT EXISTS audit_service_state (
+    id INTEGER PRIMARY KEY CHECK (id=1),
+    heartbeat TIMESTAMPTZ NOT NULL,
+    error TEXT
 );

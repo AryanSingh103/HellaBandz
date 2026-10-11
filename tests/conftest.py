@@ -15,7 +15,13 @@ import psycopg
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-ADMIN_URL = os.environ.get("QS_TEST_ADMIN_URL", "postgresql://quantswarm:quantswarm@localhost:5432/postgres")
+ADMIN_URL = os.environ.get("QS_TEST_ADMIN_URL", "postgresql://quantswarm:quantswarm@127.0.0.1:5432/postgres")
+
+
+@pytest.fixture(autouse=True)
+def isolated_test_auth(monkeypatch):
+    # Disposable test stacks explicitly opt out; auth tests override this to exercise fail-closed access.
+    monkeypatch.setenv("QS_AUTH_REQUIRED", "0")
 
 
 def _db_available() -> bool:
@@ -41,9 +47,9 @@ class Stack:
         self.base = f"http://127.0.0.1:{self.port}"
 
     def env(self, **extra: str) -> dict:
-        # Infrastructure tests intentionally exercise the legacy offline API.
-        # Account-security tests separately run the default fail-closed mode.
-        return {**os.environ, "QS_AUTH_DISABLED": "true", "DATABASE_URL": self.url, "PYTHONUNBUFFERED": "1", **extra}
+        # Infrastructure tests use disposable stacks without operator auth.
+        # Access-control tests explicitly enable the default fail-closed mode.
+        return {**os.environ, "DATABASE_URL": self.url, "PYTHONUNBUFFERED": "1", **extra}
 
     def start_worker(self, **extra: str) -> subprocess.Popen:
         self.worker = subprocess.Popen([sys.executable, "-m", "hellabandz.execution.worker"], cwd=ROOT,
@@ -77,7 +83,7 @@ class Stack:
                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         for _ in range(200):
             try:
-                if httpx.get(self.base + "/v1/health", timeout=1).status_code == 200:
+                if httpx.get(self.base + "/healthz", timeout=1).status_code == 200:
                     return
             except httpx.HTTPError:
                 pass

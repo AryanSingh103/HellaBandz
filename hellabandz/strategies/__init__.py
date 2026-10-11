@@ -197,10 +197,6 @@ def validate_params(family: StrategyFamily, params: dict[str, float]) -> None:
         raise ValueError("rebuy_z must be < sell_z")
 
 
-def max_lookback(family: StrategyFamily, params: dict[str, float]) -> int:
-    return int(max(params.get(k, 0) for k in ("slow", "lookback", "vol_lookback", "trend_lookback", "regime_lookback"))) + 1
-
-
 def signal(family: StrategyFamily, params: dict[str, float], s: Series) -> np.ndarray:
     validate_params(family, params)
     return FAMILIES[family][0](s, **params)

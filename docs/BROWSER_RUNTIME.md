@@ -3,7 +3,7 @@
 `make up` starts TimescaleDB, the external `main` worker, API, dedicated local manager and web app.
 `make backend` rebuilds only db/worker/api/manager. Both preserve the existing `pgdata` volume. Never
 use `make reset` or `docker compose down -v` when retaining history. URLs: http://localhost:3000 and
-http://localhost:8000/docs. The local API is unauthenticated and is intended for this local demonstration.
+http://localhost:8000/docs. Sign in through the terminal with QS_API_TOKEN from ignored .env. API routes and streams require operator access; see [SECURITY](SECURITY.md).
 
 The API and manager share `data/snapshots` read-only and `data/manifests` read-write. The committed
 synthetic fixture is included in the root Docker image. `/v1/datasets` returns registered IDs, source,
@@ -64,6 +64,23 @@ include a session's optional crash overlay or a shorter session's steps. Legacy 
 reported unavailable; they can be derived separately without rewriting the manifest.
 
 Validation: `docker compose run --rm prove` executes the complete Linux suite against disposable test
-databases. Browser contracts, composite-key migration, crypto accounting, owned-worker crash/restart,
+databases. API/browser contracts, composite-key migration, crypto accounting, owned-worker crash/restart,
 session stop and manager reconciliation have focused regressions in `tests/integration` and `tests/unit`.
 The graceful-manager restart regression is POSIX-only and is exercised by the Linux proof.
+
+
+## Lightweight UI verification and storage cleanup
+
+After installing web dependencies, `node scripts/web/browser-check.cjs` checks a running
+instance without creating orders or research jobs. It uses installed Chrome or `QS_CHROMIUM`;
+`QS_WEB_URL`, `QS_API_URL` and `QS_PORTFOLIO_ID` override local defaults. Authentication uses
+`QS_API_TOKEN` from the environment or ignored root `.env`. Screenshots and results stay in
+ignored `artifacts/browser-smoke/`. The full proof suite is a separate, explicit workflow.
+
+The local historical benchmark database and abandoned test databases can be archived outside
+Git under `data/archives/`. Custom PostgreSQL dumps have SHA-256 metadata and restore tables
+of contents. Use the matching TimescaleDB image, create an empty database, create the TimescaleDB
+extension, run `timescaledb_pre_restore()`, restore with `pg_restore`, then run
+`timescaledb_post_restore()`. Never drop the configured judge database, truncate sealed tables,
+or delete signing keys/receipts to reclaim space. The Docker project/volume names remain
+`quantswarm` so normal rebuilds retain the existing demo data.

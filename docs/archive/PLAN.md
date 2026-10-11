@@ -1,3 +1,5 @@
+> Historical planning/presentation material, archived October 11, 2026. Details and counts below may be outdated. Use [README](../../README.md) and [submission status](../SUBMISSION.md) for the current scope.
+
 # HellaBandz — Refined Build Plan (HackRU Fall 2026, Lucera primary)
 
 This is the original design plan, retained for context. The implemented interfaces, risk rules and

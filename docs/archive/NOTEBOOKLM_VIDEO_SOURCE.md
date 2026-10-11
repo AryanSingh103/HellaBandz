@@ -1,3 +1,5 @@
+> Historical planning/presentation material, archived October 11, 2026. Details and counts below may be outdated. Use [README](../../README.md) and [submission status](../SUBMISSION.md) for the current scope.
+
 # HellaBandz: Source Document for a Video Explanation
 
 > **How to use this file with NotebookLM**
@@ -241,7 +243,7 @@ changing one allocation weight by 1% makes it fail.
 - One engine per portfolio is deliberately the throughput ceiling for that portfolio; scaling means more
   portfolios and more engines, not more locks.
 - AI answers aren't repeatable, so reproducibility starts from the *recorded* AI proposals in the sealed manifest.
-- No user authentication: it's a local demo.
+- Operator authentication protects the workspace; marketplace identities remain shared demo labels.
 
 ### 12. The closing idea
 

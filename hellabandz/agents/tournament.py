@@ -1,6 +1,6 @@
-"""Strategy tournament orchestrated with LangGraph.
+"""Strategy tournament with parallel research and a fixed deterministic pipeline.
 
-    summarize(train only) -> momentum | mean_reversion | volatility   (LLM, parallel)
+    summarize(train only) -> six independent researchers (LLM, parallel)
         -> fit (deterministic grid search on train)
         -> rank (deterministic validation backtests + stability folds + gates)
         -> supervisor (LLM suggests weights, bounded)
@@ -18,16 +18,14 @@ import itertools
 import json
 import logging
 import math
-import operator
 import os
 import subprocess
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Annotated, Any, TypedDict
+from typing import Any, TypedDict
 
 import numpy as np
-from langgraph.graph import END, START, StateGraph
 from pydantic import ValidationError
 
 from hellabandz.agents import llm
@@ -192,24 +190,6 @@ def expand_grid(prop: StrategyProposal) -> list[dict[str, float]]:
     return combos[:MAX_COMBOS]
 
 
-def train_objective(m: dict) -> float:
-    if m["n_fills"] < MIN_FILLS:
-        return -1e9  # finite sentinel: manifests must be strict JSON (Postgres JSONB rejects Infinity)
-    return m["sharpe"] * (1 - m["max_drawdown"])
-
-
-def score(val: dict, stability: float) -> tuple[float, list[str]]:
-    gates = []
-    if val["n_fills"] < MIN_FILLS:
-        gates.append(f"n_fills {val['n_fills']} < {MIN_FILLS}")
-    if val["max_drawdown"] > MAX_DD:
-        gates.append(f"max_drawdown {val['max_drawdown']:.3f} > {MAX_DD}")
-    s = val["sharpe"] * (1 - val["max_drawdown"]) * stability
-    if gates or s <= 0:
-        return 0.0, gates or ["non-positive risk-adjusted score"]
-    return round(s, 6), []
-
-
 def allocate(scores: dict[str, float], supervisor: dict[str, float] | None) -> tuple[dict[str, float], dict]:
     """Deterministic allocator. Supervisor can only move each weight within +/- SUPERVISOR_BAND
     of the score-proportional weight; caps and the cash reserve always apply."""
@@ -336,7 +316,7 @@ class TState(TypedDict, total=False):
     dataset_dir: str
     manifest_in: dict
     summary: dict
-    proposals: Annotated[list[dict], operator.add]
+    proposals: list[dict]
     fitted: list[dict]
     walk_forward: dict
     core_walk_forward: list
@@ -348,7 +328,7 @@ class TState(TypedDict, total=False):
     manifest: dict
 
 
-def build_graph(emit=lambda *a: None):
+def run_pipeline(state: TState, emit=lambda *a: None) -> TState:
     def summarize(st: TState) -> TState:
         p = SnapshotProvider(load_snapshot(Path(st["dataset_dir"]))[0])
         summ = train_summary(p, st["manifest_in"]["splits"]["train"][1], st["manifest_in"])
@@ -526,23 +506,15 @@ def build_graph(emit=lambda *a: None):
         }
         return {"manifest": m}
 
-    g = StateGraph(TState)
-    g.add_node("summarize", summarize)
-    for a in AGENTS:
-        g.add_node(a, make_researcher(a))
-        g.add_edge("summarize", a)
-    for name, fn in [("fit", fit), ("rank", rank), ("supervisor", supervisor), ("allocate", allocate_node),
-                     ("held_out_test", held_out), ("manifest", manifest)]:
-        g.add_node(name, fn)
-    g.add_edge(START, "summarize")
-    g.add_edge(list(AGENTS), "fit")
-    g.add_edge("fit", "rank")
-    g.add_edge("rank", "supervisor")
-    g.add_edge("supervisor", "allocate")
-    g.add_edge("allocate", "held_out_test")
-    g.add_edge("held_out_test", "manifest")
-    g.add_edge("manifest", END)
-    return g.compile()
+    state.update(summarize(state))
+    # Research sees the same train-only summary. Merge results in agent order;
+    # completion timing cannot change the deterministic downstream inputs.
+    with ThreadPoolExecutor(max_workers=len(AGENTS)) as executor:
+        results = executor.map(lambda agent: make_researcher(agent)(state), AGENTS)
+        state["proposals"] = [proposal for result in results for proposal in result["proposals"]]
+    for stage in (fit, rank, supervisor, allocate_node, held_out, manifest):
+        state.update(stage(state))
+    return state
 
 
 def _pool_map(dataset_dir: str, jobs: list) -> list[dict]:
@@ -564,6 +536,9 @@ def manifest_hash(m: dict) -> str:
 
 def run(dataset_dir: Path = DEFAULT_DATASET, run_id: str | None = None, api: str | None = None,
         progress=lambda *args: None, api_headers: dict | None = None) -> dict:
+    from hellabandz.api.client import api_headers as operator_headers
+    if api_headers is None:
+        api_headers = operator_headers()
     _, dm = load_snapshot(dataset_dir)
     run_id = run_id or "T" + datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     msgs: list[tuple] = []
@@ -581,8 +556,8 @@ def run(dataset_dir: Path = DEFAULT_DATASET, run_id: str | None = None, api: str
             except Exception:
                 log.warning("could not publish agent message to API")
 
-    out = build_graph(emit).invoke({"run_id": run_id, "dataset_dir": str(dataset_dir), "manifest_in": dm,
-                                    "proposals": []})
+    out = run_pipeline({"run_id": run_id, "dataset_dir": str(dataset_dir), "manifest_in": dm,
+                        "proposals": []}, emit)
     m = out["manifest"]
     h = manifest_hash(m)
     from hellabandz.ingestion.registry import MANIFESTS

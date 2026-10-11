@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { accessToken } from "./auth-client";
 import { ApiError, errorText, request, id, post, url, Event, HistoryPage } from "./model";
 
 export function useResource<T>(path: string | null, params: Record<string, string | number | undefined> = {}, interval = 0, revision = 0, nullable = false) {
@@ -51,10 +50,11 @@ export function useCommand(pid?: string) {
   return { send, pending, error, result };
 }
 
-export function useEventStream(pid: string) {
-  const [state,setState]=useState<{pid:string;status:string;events:Event[]}>({pid,status:"connecting",events:[]});
+export function useEventStream(pid: string | null) {
+  const [state,setState]=useState<{pid:string|null;status:string;events:Event[]}>({pid,status:"connecting",events:[]});
   useEffect(()=>{
     let active=true, socket:WebSocket|null=null, timer:ReturnType<typeof setTimeout>,last=0;
+    if (!pid) { setState({pid,status:"paused",events:[]}); return; }
     setState({pid,status:"connecting",events:[]});
     const controller=new AbortController();
     const merge=(events:Event[])=>{
@@ -66,7 +66,7 @@ export function useEventStream(pid: string) {
     const connect=()=>{
       if(!active)return;
       const u=new URL(url("/v1/stream",{portfolio_id:pid,after_seq:last}));u.protocol=u.protocol==="https:"?"wss:":"ws:";
-      socket=new WebSocket(u);socket.onopen=()=>{const opened=socket;void accessToken().then(token=>{if(active&&opened?.readyState===WebSocket.OPEN){opened.send(JSON.stringify({access_token:token}));setState(old=>({pid,status:"connected",events:old.pid===pid?old.events:[]}));}}).catch(()=>opened?.close());};
+      socket=new WebSocket(u);socket.onopen=()=>{if(active)setState(old=>({pid,status:"connected",events:old.pid===pid?old.events:[]}));};
       socket.onmessage=e=>{try{const m=JSON.parse(e.data);if(m.type==="events"&&Array.isArray(m.events))merge(m.events);}catch{if(active)setState(old=>({...old,status:"invalid stream response"}));}};
       socket.onerror=()=>{if(active)setState(old=>({...old,status:"disconnected"}));};
       socket.onclose=()=>{if(active){setState(old=>({...old,status:"reconnecting"}));timer=setTimeout(connect,2000);}};

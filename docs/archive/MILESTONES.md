@@ -1,3 +1,5 @@
+> Historical planning/presentation material, archived October 11, 2026. Details and counts below may be outdated. Use [README](../../README.md) and [submission status](../SUBMISSION.md) for the current scope.
+
 # Milestones
 
 Status as of 2026-10-10: P1/P2/P3 code combined on `p1-demo`; 92 tests pass on Windows and Linux.
@@ -5,15 +7,15 @@ See `docs/VERIFICATION.md` for combined evidence and `docs/SUBMISSION.md` for re
 
 ## Done and verified
 
-- [x] Deterministic ledger core (`hellabandz/ledger`): risk rules R0–R9, bar-based fill model, integer money, hash-chained events, invariant checker, replay
+- [x] Deterministic ledger core (`hellabandz/ledger`): risk rules R0â€“R9, bar-based fill model, integer money, hash-chained events, invariant checker, replay
 - [x] Execution worker (single writer, advisory lock, atomic batch commits, startup replay + digest check)
 - [x] FastAPI gateway: idempotent command intake, 409 on payload conflict, 202 when worker down, read models, `/v1/verify`, WebSocket stream, `/v1/ask`, `/v1/speak`
 - [x] TimescaleDB schema (hypertables: fills, equity_points, market_bars, telemetry)
 - [x] Backtester on the same engine (Lucera interfaces), 4 whitelisted causal strategy families
 - [x] Synthetic fixture dataset (committed, hashed); Binance ingestion (checksummed, 131k bars); Alpaca ingestion script
-- [x] LangGraph tournament (3 research agents → train grid search → validation ranking + stability + gates → supervisor → allocator → held-out test once → hashed manifest). Runs offline in ~15 s
+- [x] LangGraph tournament (3 research agents â†’ train grid search â†’ validation ranking + stability + gates â†’ supervisor â†’ allocator â†’ held-out test once â†’ hashed manifest). Runs offline in ~15 s
 - [x] Live session runner (held-out replay via API, crash overlay, agent crisis responses, flaky-client retries)
-- [x] Tests: 92 passing on the combined branch (unit, property, real-Postgres concurrency, SIGKILL recovery, tamper detection); `make prove` and `make prove-docker` → all 11 invariants PROVEN
+- [x] Tests: 92 passing on the combined branch (unit, property, real-Postgres concurrency, SIGKILL recovery, tamper detection); `make prove` and `make prove-docker` â†’ all 11 invariants PROVEN
 - [x] Combined-source benchmarks and generated `docs/PERFORMANCE.md`; all 12 durable runs and eight recovery comparisons match replay
 - [x] Docs: README (Lucera 10 questions, quickstart, demo script, disclosure), ARCHITECTURE, INVARIANTS, DATA_SOURCES, LIMITATIONS
 - [x] Next.js terminal (`apps/web`): builds; panels for portfolio, tournament, agents, orders, adversarial console, ask/voice, event inspector
@@ -25,18 +27,18 @@ Each part owns different folders so the three of you can work in parallel with f
 Work on a branch per part (`p1-demo`, `p2-integrations`, `p3-core`) and open PRs into `main`.
 Before merging anything, run `make prove` (all tests must stay green).
 
-### P1 — Demo & Terminal (owner: ______)
+### P1 â€” Demo & Terminal (owner: ______)
 **Owns:** `apps/web/`, `docker-compose.yml`, `Makefile`, `README.md` demo section
 
 - [x] Fresh clone on a clean machine: `make setup && make up && make tournament && make session`. Fix anything that breaks (the session was last run against a host API, before order ids were scoped per portfolio)
 - [x] Open http://localhost:3000 during a session and fix UI issues (only `next build` was checked; it has not been visually tested)
 - [x] Add the web app to `docker-compose.yml` so `make up` starts everything
-- [x] Rehearse the chaos demo: `make crash-worker` mid-session → `make restart-worker` → "Replay & verify" in the UI
+- [x] Rehearse the chaos demo: `make crash-worker` mid-session â†’ `make restart-worker` â†’ "Replay & verify" in the UI
 
 
 **Done when:** a teammate who did not build it can run the whole demo from the README without help.
 
-### P2 — AI & Sponsor Integrations (owner: ______)
+### P2 â€” AI & Sponsor Integrations (owner: ______)
 **Owns:** `hellabandz/agents/`, `hellabandz/audit/`, `scripts/ingest_alpaca.py`, `.env.example`, `docs/DATA_SOURCES.md`, `docs/INTEGRATIONS.md`
 **Runbook:** `docs/INTEGRATIONS.md`. **Status check:** `make check-integrations`.
 
@@ -53,13 +55,13 @@ Done (branch `p2-integrations`):
 Needs your keys/funding (code is ready; each item takes a few minutes):
 - [x] OpenAI: live agents, supervisor, crisis responses and `/v1/ask` verified (gpt-4.1-mini)
 - [x] ElevenLabs: `/v1/speak` returns audio (default voice switched to premade "Daniel"; free plans can't use library voices via API)
-- [x] Solana: tournament T20261010194733 committed on Devnet and verified (tx 5uJFSVSQ…gamXE, see data/manifests/T20261010194733.solana.json)
+- [x] Solana: tournament T20261010194733 committed on Devnet and verified (tx 5uJFSVSQâ€¦gamXE, see data/manifests/T20261010194733.solana.json)
 - [x] Alpaca: real SIP data ingested (32,865 bars), LLM tournament + live session on it, results in `docs/DATA_SOURCES.md`
-- [ ] Optional: Tiger Cloud service URL → rerun the demo
+- [ ] Optional: Tiger Cloud service URL â†’ rerun the demo
 
 **Done when:** each integration works with a key and still falls back cleanly without one.
 
-### P3 — Core Performance & Submission (owner: ______)
+### P3 â€” Core Performance & Submission (owner: ______)
 **Owns:** `hellabandz/ledger/`, `hellabandz/execution/`, `benchmarks/`, `tests/`, `docs/` (except DATA_SOURCES)
 
 - [x] Incremental per-agent exposure and reservation sums in `apply_event` (removes the O(open orders) scan in risk checks); add a test that compares them to the full recomputation
@@ -82,5 +84,4 @@ see `docs/SUBMISSION.md`.
 
 ### Stretch (only if all three parts are done)
 - [ ] Anchor-based on-chain strategy registry (Solana)
-- [ ] Kalshi read-only market discovery
 - [ ] Per-agent API authentication

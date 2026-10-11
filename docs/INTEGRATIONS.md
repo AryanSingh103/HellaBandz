@@ -5,6 +5,10 @@ a deterministic supervisor and crisis policy, browser speech, the synthetic data
 manifest verification. Every live path is unit-tested against mocked services
 (`tests/unit/test_integrations.py`), so adding a key should work on first use.
 
+Operator access is required by default even offline. `make auth-init` generates the local key;
+sign in with `QS_API_TOKEN` from ignored `.env`. Use the same hostname for the terminal and API
+because browser sessions are SameSite cookies. See [SECURITY](SECURITY.md).
+
 **Start here:** `cp .env.example .env`, fill in what you have, then run `make check-integrations`.
 Host scripts read `.env` automatically. Docker Compose also reads it for `${...}` substitution;
 restart the API after editing it: `docker compose up -d api`.
@@ -29,7 +33,7 @@ restart the API after editing it: `docker compose up -d api`.
 - Crisis responses must be one of `buy_dip | reduce | hold` with `fraction` clamped to [0, 1]; anything else
   falls back. The resulting orders still go through the risk engine.
 - Reasoning models (`o1`, `o3`, `o4`, `gpt-5*`) are called without `temperature`.
-- Cost: one tournament makes 4 small calls (3 research agents + supervisor), a session makes 3 more (crisis), each a few
+- Cost: one tournament makes 7 small calls (6 research agents + supervisor), a session makes 3 more (crisis), each a few
   hundred tokens.
 
 ## Solana
@@ -41,7 +45,20 @@ restart the API after editing it: `docker compose up -d api`.
    one SPL Memo transaction `quantswarm:v1:<run_id>:<sha256>`, writes `data/manifests/<run>.solana.json`,
    and stores the signature with the tournament so the terminal shows the explorer link.
 4. `make verify-solana`: recomputes the hash from the local file and compares it with the memo read back
-   from chain. Edit any byte of the manifest and it fails (exit code 1).
+   from chain. Changing manifest content fails verification (exit code 1); JSON formatting does not affect the canonical hash.
+
+Select a specific run with `make solana-commit RUN=data/manifests/<run>.json`. A retry reuses a saved,
+confirmed matching transaction, including when API publication previously failed. API errors are reported
+instead of silently ignored. The API validates the confirmed memo before storing the signature;
+signature-free research retries retain the saved proof. Research shows an Explorer link and a
+**Verify on-chain fingerprint** button, backed by `GET /v1/tournaments/<run>/solana`.
+An unsigned run is shown as uncommitted, and a mismatching or failed transaction never verifies.
+
+Full workspace trace sealing is separate from individual tournament fingerprints. Run
+`make audit-init`, fund that pinned Devnet wallet with free test SOL, then `make backend audit-up`.
+The isolated signer batches commitments over 16 durable record sets. `make audit-verify` or
+Audit's **Verify blockchain & records** checks the latest finalized proof and reports later
+provisional changes. `make audit-seal` creates an immediate seal. Only the auditor mounts the key.
 
 ## Real-data tournament (Alpaca)
 

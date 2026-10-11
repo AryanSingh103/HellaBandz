@@ -1,0 +1,563 @@
+{
+ "generated_at": "2026-10-11T04:20:40+00:00",
+ "summary": {
+  "markets": 10,
+  "mean_excess": -0.007456,
+  "standard_error": 0.008319,
+  "ahead_in": 1,
+  "equal_in": 7
+ },
+ "datasets": [
+  {
+   "dataset_id": "alpaca-sip-1hour-2023-01-03-2026-09-30",
+   "excess_vs_baseline": 0.0,
+   "holdout_untouched": true,
+   "holdout_views": 1,
+   "rows": {
+    "cash": {
+     "label": "cash",
+     "net_return": 0.0,
+     "max_drawdown": 0.0,
+     "sharpe": 0.0,
+     "turnover_x_capital": 0.0
+    },
+    "baseline_passive_core": {
+     "label": "passive core (baseline)",
+     "net_return": 0.124204,
+     "max_drawdown": 0.100467,
+     "sharpe": 1.194,
+     "turnover_x_capital": 0.735,
+     "fees": 0.11,
+     "slippage": 4.01,
+     "mean_exposure_pct": 74.1,
+     "orders": 5,
+     "fills": 5,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6555,
+      "reduced": 0,
+      "netted": 0,
+      "deferred": 20,
+      "rejected": 0
+     },
+     "ledger_digest": "a9d96894314b5f72bf2fb1f2d40f6981bd0bb3bf3024b6127b80fe8ce9f1ab1f"
+    },
+    "alone:trend": {
+     "label": "trend alone (sma_crossover)",
+     "net_return": 0.043662,
+     "max_drawdown": 0.086514,
+     "sharpe": 0.678,
+     "turnover_x_capital": 15.869,
+     "fees": 2.355,
+     "slippage": 83.9557,
+     "mean_exposure_pct": 40.3,
+     "orders": 152,
+     "fills": 152,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6343,
+      "reduced": 7,
+      "netted": 0,
+      "deferred": 225,
+      "rejected": 0
+     },
+     "ledger_digest": "8be933b89213be480560c4943e6e6019dac22fadb8e06c1773afe8a392364c78",
+     "funded": false,
+     "weight": 0.0
+    },
+    "alone:mean_reversion": {
+     "label": "mean_reversion alone (zscore_reversion)",
+     "net_return": 0.07785,
+     "max_drawdown": 0.036775,
+     "sharpe": 1.669,
+     "turnover_x_capital": 8.126,
+     "fees": 1.07,
+     "slippage": 42.75,
+     "mean_exposure_pct": 16.3,
+     "orders": 84,
+     "fills": 84,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6547,
+      "reduced": 1,
+      "netted": 0,
+      "deferred": 27,
+      "rejected": 0
+     },
+     "ledger_digest": "8ed545895c65f1179d6cc412c710de1b3f5bdbf59041144fbe6fbcda6ebe3ada",
+     "funded": false,
+     "weight": 0.0
+    },
+    "alone:defensive": {
+     "label": "defensive alone (regime_reversion)",
+     "net_return": 0.158308,
+     "max_drawdown": 0.090736,
+     "sharpe": 1.537,
+     "turnover_x_capital": 9.21,
+     "fees": 1.27,
+     "slippage": 48.5634,
+     "mean_exposure_pct": 69.5,
+     "orders": 61,
+     "fills": 61,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6216,
+      "reduced": 3,
+      "netted": 0,
+      "deferred": 356,
+      "rejected": 0
+     },
+     "ledger_digest": "08bab01b036928cb46acd24ba0149b5472d43f6c8cf7a74d3006ff2741f57e91",
+     "funded": false,
+     "weight": 0.0
+    },
+    "coordinated_portfolio": {
+     "label": "coordinated portfolio",
+     "net_return": 0.124204,
+     "max_drawdown": 0.100467,
+     "sharpe": 1.194,
+     "turnover_x_capital": 0.735,
+     "fees": 0.11,
+     "slippage": 4.01,
+     "mean_exposure_pct": 74.1,
+     "orders": 5,
+     "fills": 5,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6555,
+      "reduced": 0,
+      "netted": 0,
+      "deferred": 20,
+      "rejected": 0
+     },
+     "ledger_digest": "a9d96894314b5f72bf2fb1f2d40f6981bd0bb3bf3024b6127b80fe8ce9f1ab1f"
+    }
+   },
+   "critic": [
+    "trend was not funded (NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE, EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "mean_reversion was not funded (NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE, EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "defensive was not funded (NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE, EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "Nothing was funded, so the portfolio held the passive core and matched the baseline exactly.",
+    "Ahead of the baseline in 0 of 3 sub-periods: down -8.7%, normal vol 20%: +0.00%; up +14.3%, normal vol 19%: +0.00%; up +13.1%, normal vol 17%: +0.00%"
+   ]
+  },
+  {
+   "dataset_id": "synthetic-1h-seed103",
+   "excess_vs_baseline": -0.077946,
+   "holdout_untouched": true,
+   "holdout_views": 1,
+   "rows": {
+    "cash": {
+     "label": "cash",
+     "net_return": 0.0,
+     "max_drawdown": 0.0,
+     "sharpe": 0.0,
+     "turnover_x_capital": 0.0
+    },
+    "baseline_passive_core": {
+     "label": "passive core (baseline)",
+     "net_return": 0.059395,
+     "max_drawdown": 0.196626,
+     "sharpe": 0.504,
+     "turnover_x_capital": 0.792,
+     "fees": 1.83,
+     "slippage": 10.17,
+     "mean_exposure_pct": 77.1,
+     "orders": 7,
+     "fills": 7,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 5472,
+      "reduced": 3,
+      "netted": 0,
+      "deferred": 1365,
+      "rejected": 0
+     },
+     "ledger_digest": "53c9946e862b8dd058ce6199c66ac1b62899fc45d75cb58139db7e9d2896aa2b"
+    },
+    "alone:trend": {
+     "label": "trend alone (sma_crossover)",
+     "net_return": 0.160287,
+     "max_drawdown": 0.076269,
+     "sharpe": 1.611,
+     "turnover_x_capital": 2.401,
+     "fees": 4.625,
+     "slippage": 25.07,
+     "mean_exposure_pct": 36.9,
+     "orders": 42,
+     "fills": 42,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6484,
+      "reduced": 9,
+      "netted": 0,
+      "deferred": 347,
+      "rejected": 0
+     },
+     "ledger_digest": "f57cbcdff1623d40f74a928651df9ae41fec1ef0bae21c906f8acbb0d21c32af",
+     "funded": false,
+     "weight": 0.0
+    },
+    "alone:mean_reversion": {
+     "label": "mean_reversion alone (zscore_reversion)",
+     "net_return": -0.021147,
+     "max_drawdown": 0.102347,
+     "sharpe": -0.281,
+     "turnover_x_capital": 30.163,
+     "fees": 71.98,
+     "slippage": 327.23,
+     "mean_exposure_pct": 22.8,
+     "orders": 206,
+     "fills": 206,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6679,
+      "reduced": 18,
+      "netted": 0,
+      "deferred": 143,
+      "rejected": 0
+     },
+     "ledger_digest": "30b2043f505dbb0aabbbf505b1d73e74dc03422713fdc031dcf653b6c5a05fdf",
+     "funded": true,
+     "weight": 0.1918
+    },
+    "alone:defensive": {
+     "label": "defensive alone (regime_reversion)",
+     "net_return": -0.13025,
+     "max_drawdown": 0.173869,
+     "sharpe": -2.024,
+     "turnover_x_capital": 1.455,
+     "fees": 3.66,
+     "slippage": 16.35,
+     "mean_exposure_pct": 19.3,
+     "orders": 12,
+     "fills": 12,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 2643,
+      "reduced": 3,
+      "netted": 0,
+      "deferred": 4194,
+      "rejected": 0
+     },
+     "ledger_digest": "e7de1bd717059533da0c30d3f332ae3baa03f48100e07c6c0ed01dca13c73865",
+     "funded": true,
+     "weight": 0.3
+    },
+    "coordinated_portfolio": {
+     "label": "coordinated portfolio",
+     "net_return": -0.018551,
+     "max_drawdown": 0.160454,
+     "sharpe": -0.148,
+     "turnover_x_capital": 2.249,
+     "fees": 6.485,
+     "slippage": 28.1,
+     "mean_exposure_pct": 48.8,
+     "orders": 74,
+     "fills": 74,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 15391,
+      "reduced": 15,
+      "netted": 2,
+      "deferred": 5112,
+      "rejected": 0
+     },
+     "ledger_digest": "c54897375e8c7f6f870ff35d4d58b4d02ccbd08e09baa26738a1b5a570a79f80"
+    }
+   },
+   "critic": [
+    "trend was not funded (EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "mean_reversion trades 27.32x capital a year; a wider rebalance band may keep the edge at lower cost.",
+    "The coordinated portfolio trailed the passive core by -7.79% on the held-out period.",
+    "Ahead of the baseline in 1 of 3 sub-periods: down -16.6%, normal vol 22%: +1.37%; up +9.8%, normal vol 24%: -3.35%; up +20.6%, normal vol 24%: -6.73%"
+   ]
+  },
+  {
+   "dataset_id": "synthetic-1h-seed106",
+   "excess_vs_baseline": -0.017057,
+   "holdout_untouched": true,
+   "holdout_views": 1,
+   "rows": {
+    "cash": {
+     "label": "cash",
+     "net_return": 0.0,
+     "max_drawdown": 0.0,
+     "sharpe": 0.0,
+     "turnover_x_capital": 0.0
+    },
+    "baseline_passive_core": {
+     "label": "passive core (baseline)",
+     "net_return": 0.486417,
+     "max_drawdown": 0.120248,
+     "sharpe": 2.765,
+     "turnover_x_capital": 0.734,
+     "fees": 0.615,
+     "slippage": 5.14,
+     "mean_exposure_pct": 76.6,
+     "orders": 6,
+     "fills": 6,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 5472,
+      "reduced": 2,
+      "netted": 0,
+      "deferred": 1366,
+      "rejected": 0
+     },
+     "ledger_digest": "b75ff2206658c66fb27f90e111209d6c734aa2fbdaf042fb654e0184f1a31134"
+    },
+    "alone:trend": {
+     "label": "trend alone (sma_crossover)",
+     "net_return": 0.371278,
+     "max_drawdown": 0.060169,
+     "sharpe": 2.76,
+     "turnover_x_capital": 3.592,
+     "fees": 2.25,
+     "slippage": 23.16,
+     "mean_exposure_pct": 60.1,
+     "orders": 70,
+     "fills": 70,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6549,
+      "reduced": 3,
+      "netted": 0,
+      "deferred": 288,
+      "rejected": 0
+     },
+     "ledger_digest": "4a4c9c72d3dd1c75d7b55f1c31b48b958c3571f4b055a2dacd0ce1cdd9657a86",
+     "funded": false,
+     "weight": 0.0
+    },
+    "alone:mean_reversion": {
+     "label": "mean_reversion alone (zscore_reversion)",
+     "net_return": 0.126076,
+     "max_drawdown": 0.043899,
+     "sharpe": 2.263,
+     "turnover_x_capital": 27.72,
+     "fees": 20.015,
+     "slippage": 186.91,
+     "mean_exposure_pct": 15.4,
+     "orders": 186,
+     "fills": 186,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6750,
+      "reduced": 9,
+      "netted": 0,
+      "deferred": 81,
+      "rejected": 0
+     },
+     "ledger_digest": "204c4c6fa5f07ba8e342678e8649bebc8cc94b42bd59be26f841a68848653bea",
+     "funded": false,
+     "weight": 0.0
+    },
+    "alone:defensive": {
+     "label": "defensive alone (regime_reversion)",
+     "net_return": 0.41745,
+     "max_drawdown": 0.062114,
+     "sharpe": 2.991,
+     "turnover_x_capital": 22.94,
+     "fees": 15.085,
+     "slippage": 151.69,
+     "mean_exposure_pct": 57.5,
+     "orders": 147,
+     "fills": 147,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6402,
+      "reduced": 8,
+      "netted": 0,
+      "deferred": 430,
+      "rejected": 0
+     },
+     "ledger_digest": "6978ffac2e2cfb2501766c063b067a4164fe9933fa0fdec5dd99fcd09a3b54a5",
+     "funded": true,
+     "weight": 0.3
+    },
+    "coordinated_portfolio": {
+     "label": "coordinated portfolio",
+     "net_return": 0.469359,
+     "max_drawdown": 0.101773,
+     "sharpe": 2.931,
+     "turnover_x_capital": 3.599,
+     "fees": 2.625,
+     "slippage": 23.89,
+     "mean_exposure_pct": 71.8,
+     "orders": 93,
+     "fills": 93,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 11419,
+      "reduced": 25,
+      "netted": 0,
+      "deferred": 2236,
+      "rejected": 0
+     },
+     "ledger_digest": "2b51f43f744c24f954bf91452d1b0ca7ae97e0233c6e8fb686c1d0ee91313562"
+    }
+   },
+   "critic": [
+    "trend was not funded (NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE, EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "mean_reversion was not funded (EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "defensive trades 22.55x capital a year; a wider rebalance band may keep the edge at lower cost.",
+    "The coordinated portfolio trailed the passive core by -1.71% on the held-out period.",
+    "Ahead of the baseline in 2 of 3 sub-periods: up +14.8%, normal vol 24%: +0.02%; up +2.3%, normal vol 23%: +0.92%; up +42.3%, normal vol 24%: -2.73%"
+   ]
+  },
+  {
+   "dataset_id": "synthetic-1h-seed110",
+   "excess_vs_baseline": 0.02044,
+   "holdout_untouched": true,
+   "holdout_views": 1,
+   "rows": {
+    "cash": {
+     "label": "cash",
+     "net_return": 0.0,
+     "max_drawdown": 0.0,
+     "sharpe": 0.0,
+     "turnover_x_capital": 0.0
+    },
+    "baseline_passive_core": {
+     "label": "passive core (baseline)",
+     "net_return": -0.120684,
+     "max_drawdown": 0.218497,
+     "sharpe": -0.813,
+     "turnover_x_capital": 0.785,
+     "fees": 1.795,
+     "slippage": 10.04,
+     "mean_exposure_pct": 76.0,
+     "orders": 7,
+     "fills": 7,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 4771,
+      "reduced": 2,
+      "netted": 0,
+      "deferred": 2067,
+      "rejected": 0
+     },
+     "ledger_digest": "d5e875758d5bdc4a8106beb3562e5fe8c24bb4194c4f1f03b63ab7701491eba1"
+    },
+    "alone:trend": {
+     "label": "trend alone (sma_crossover)",
+     "net_return": -0.056779,
+     "max_drawdown": 0.099041,
+     "sharpe": -0.65,
+     "turnover_x_capital": 7.495,
+     "fees": 16.43,
+     "slippage": 77.26,
+     "mean_exposure_pct": 31.2,
+     "orders": 87,
+     "fills": 87,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6737,
+      "reduced": 3,
+      "netted": 0,
+      "deferred": 100,
+      "rejected": 0
+     },
+     "ledger_digest": "2514f3e78e4e06ff3fd177cc059e016f36614250a86abcd92ae28e15e1e8133f",
+     "funded": false,
+     "weight": 0.0
+    },
+    "alone:mean_reversion": {
+     "label": "mean_reversion alone (zscore_reversion)",
+     "net_return": 0.003393,
+     "max_drawdown": 0.109808,
+     "sharpe": 0.093,
+     "turnover_x_capital": 21.42,
+     "fees": 42.16,
+     "slippage": 210.26,
+     "mean_exposure_pct": 27.9,
+     "orders": 160,
+     "fills": 160,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 6674,
+      "reduced": 8,
+      "netted": 0,
+      "deferred": 158,
+      "rejected": 0
+     },
+     "ledger_digest": "6cad5f5b608ce10fd21b334c8469979ae14bc01e4f40acb6885e49c0ca8cf481",
+     "funded": true,
+     "weight": 0.1006
+    },
+    "alone:defensive": {
+     "label": "defensive alone (regime_reversion)",
+     "net_return": -0.068852,
+     "max_drawdown": 0.165001,
+     "sharpe": -0.661,
+     "turnover_x_capital": 10.93,
+     "fees": 24.91,
+     "slippage": 114.63,
+     "mean_exposure_pct": 40.1,
+     "orders": 72,
+     "fills": 72,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 4766,
+      "reduced": 8,
+      "netted": 0,
+      "deferred": 2066,
+      "rejected": 0
+     },
+     "ledger_digest": "ec9f60f899c7e9eee65acb99c7f806c5cb630a6dfc14b1a157049499ff71a730",
+     "funded": true,
+     "weight": 0.3
+    },
+    "coordinated_portfolio": {
+     "label": "coordinated portfolio",
+     "net_return": -0.100244,
+     "max_drawdown": 0.179597,
+     "sharpe": -0.872,
+     "turnover_x_capital": 3.822,
+     "fees": 10.27,
+     "slippage": 45.06,
+     "mean_exposure_pct": 58.9,
+     "orders": 94,
+     "fills": 94,
+     "ledger_rejections": 0,
+     "fill_rate": 1.0,
+     "intent_outcomes": {
+      "accepted": 18766,
+      "reduced": 0,
+      "netted": 0,
+      "deferred": 1754,
+      "rejected": 0
+     },
+     "ledger_digest": "d44f0db0afb3b384107e1f20e7bfcb830a82987fd9343afc3c01b3c2aa48735d"
+    }
+   },
+   "critic": [
+    "trend was not funded (NO_OUT_OF_SAMPLE_EXCESS_OVER_CORE, EDGE_BELOW_ONE_STANDARD_ERROR). Experiment: a different family or a longer horizon for this role, judged on validation only.",
+    "mean_reversion trades 29.07x capital a year; a wider rebalance band may keep the edge at lower cost.",
+    "defensive trades 39.52x capital a year; a wider rebalance band may keep the edge at lower cost.",
+    "The portfolio beat the passive core by +2.04% on one held-out period. One period is weak evidence; check it across independent markets (--seeds) before believing it.",
+    "Ahead of the baseline in 2 of 3 sub-periods: down -3.1%, normal vol 24%: +2.21%; down -14.7%, normal vol 22%: +0.86%; up +2.9%, normal vol 24%: -0.92%"
+   ]
+  }
+ ]
+}

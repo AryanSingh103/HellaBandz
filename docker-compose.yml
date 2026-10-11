@@ -7,13 +7,13 @@ services:
       POSTGRES_USER: quantswarm
       POSTGRES_PASSWORD: quantswarm
       POSTGRES_DB: quantswarm
-    ports: ["5432:5432"]
+    ports: ["127.0.0.1:5432:5432"]
     cpus: 2
     mem_limit: 2g
     command: ["postgres", "-c", "shared_buffers=256MB", "-c", "max_connections=200"]
     healthcheck:
       # over TCP: on a fresh volume the image runs a socket-only bootstrap server first, which must not count as healthy
-      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U quantswarm -d quantswarm"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U quantswarm -d postgres"]
       interval: 2s
       retries: 30
     volumes: [pgdata:/var/lib/postgresql/data]
@@ -34,21 +34,18 @@ services:
     environment:
       DATABASE_URL: ${QS_DATABASE_URL:-postgresql://quantswarm:quantswarm@db:5432/quantswarm}
       QS_API_POOL: ${QS_API_POOL:-20}
+      QS_AUTH_REQUIRED: ${QS_AUTH_REQUIRED:-1}
+      QS_API_TOKEN: ${QS_API_TOKEN:-}
+      QS_ALLOWED_ORIGINS: ${QS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001}
+      QS_AUDIT_SIGNER: ${QS_AUDIT_SIGNER:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       QS_ANTHROPIC_MODEL: ${QS_ANTHROPIC_MODEL:-claude-sonnet-4-6}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
       ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID:-onwK4e9ZLuTAKqWW03F9}
       QS_OPENAI_MODEL: ${QS_OPENAI_MODEL:-gpt-4.1-mini}
-      SUPABASE_URL: ${SUPABASE_URL:-}
-      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
-      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
-      QS_AUTH_DISABLED: ${QS_AUTH_DISABLED:-false}
-      QS_ALLOWED_ORIGINS: ${QS_ALLOWED_ORIGINS:-http://localhost:3000}
-      QS_INTERNAL_SIGNING_KEY: ${QS_INTERNAL_SIGNING_KEY:-}
-      QS_CREDENTIAL_ENCRYPTION_KEY: ${QS_CREDENTIAL_ENCRYPTION_KEY:-}
-      QS_KALSHI_DEMO_ORDERS_ENABLED: ${QS_KALSHI_DEMO_ORDERS_ENABLED:-false}
-    ports: ["8000:8000"]
+      SOLANA_RPC: ${SOLANA_RPC:-https://api.devnet.solana.com}
+    ports: ["127.0.0.1:8000:8000"]
     depends_on: { db: { condition: service_healthy } }
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)"]
@@ -68,14 +65,14 @@ services:
     environment:
       DATABASE_URL: ${QS_DATABASE_URL:-postgresql://quantswarm:quantswarm@db:5432/quantswarm}
       QS_API: http://api:8000
+      QS_API_TOKEN: ${QS_API_TOKEN:-}
       QS_TOURNAMENT_PROCS: 2
-      QS_AUTH_DISABLED: ${QS_AUTH_DISABLED:-false}
-      QS_INTERNAL_SIGNING_KEY: ${QS_INTERNAL_SIGNING_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       QS_OPENAI_MODEL: ${QS_OPENAI_MODEL:-gpt-4.1-mini}
     volumes:
       - ./data/snapshots:/app/data/snapshots:ro
       - ./data/manifests:/app/data/manifests
+      - ./data/registry:/app/data/registry
     depends_on: { api: { condition: service_healthy } }
     cpus: 2
     mem_limit: 1g
@@ -87,22 +84,41 @@ services:
       context: apps/web
       args:
         NEXT_PUBLIC_API: ${NEXT_PUBLIC_API:-http://localhost:8000}
-        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
-        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:-}
-        NEXT_PUBLIC_QS_AUTH_DISABLED: ${NEXT_PUBLIC_QS_AUTH_DISABLED:-false}
-    ports: ["3000:3000"]
+    ports: ["127.0.0.1:3000:3000"]
     depends_on: { api: { condition: service_healthy } }
     cpus: 1
     mem_limit: 512m
 
   bench:
     # load client for benchmarks/run_benchmarks.py db (runs inside the compose network)
-    build: .
+    build:
+      context: .
+      args:
+        QS_INSTALL_BENCH: "1"
     profiles: ["bench"]
     environment:
-      DATABASE_URL: postgresql://quantswarm:quantswarm@db:5432/quantswarm
+      DATABASE_URL: ${QS_DATABASE_URL:-postgresql://quantswarm:quantswarm@db:5432/quantswarm}
+      QS_API_TOKEN: ${QS_API_TOKEN:-}
     cpus: 1
     mem_limit: 512m
+
+  auditor:
+    # Only this service receives the Devnet private key. API/worker/browser never do.
+    build: .
+    profiles: ["audit"]
+    command: ["python", "-m", "hellabandz.audit.traces", "service"]
+    environment:
+      DATABASE_URL: ${QS_DATABASE_URL:-postgresql://quantswarm:quantswarm@db:5432/quantswarm}
+      SOLANA_RPC: ${SOLANA_RPC:-https://api.devnet.solana.com}
+      QS_AUDIT_SIGNER: ${QS_AUDIT_SIGNER:-}
+      QS_AUDIT_INTERVAL: ${QS_AUDIT_INTERVAL:-300}
+    volumes:
+      - ./data/solana/devnet-keypair.json:/app/data/solana/devnet-keypair.json:ro
+      - ./data/audits:/app/data/audits
+    depends_on: { api: { condition: service_healthy } }
+    cpus: 1
+    mem_limit: 2g
+    restart: unless-stopped
 
   prove:
     # `make prove-docker`: the test suite on Linux against this stack's Postgres (the process tests need POSIX signals)

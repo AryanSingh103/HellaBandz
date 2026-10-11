@@ -1,9 +1,9 @@
 """Reproducible, resource-bounded benchmarks. See docs/PERFORMANCE.md for methodology.
 
-    uv run python benchmarks/run_benchmarks.py engine      # in-process: risk latency, command latency, replay speed
-    uv run python benchmarks/run_benchmarks.py db          # API + worker + TimescaleDB in Docker with CPU/mem limits
-    uv run python benchmarks/run_benchmarks.py recovery    # restart/replay time vs ledger size
-    uv run python benchmarks/report.py                     # regenerate docs/PERFORMANCE.md
+    uv run --group bench python benchmarks/run_benchmarks.py engine      # in-process: risk latency, command latency, replay speed
+    uv run --group bench python benchmarks/run_benchmarks.py db          # API + worker + TimescaleDB in Docker with CPU/mem limits
+    uv run --group bench python benchmarks/run_benchmarks.py recovery    # restart/replay time vs ledger size
+    uv run --group bench python benchmarks/report.py                     # regenerate docs/PERFORMANCE.md
 
 LLM latency and data download time are never included in these numbers.
 """
@@ -45,6 +45,7 @@ from hellabandz.ingestion.dataset import load_snapshot  # noqa: E402
 from hellabandz.ledger import EngineConfig, PortfolioState, evaluate_order, process, replay  # noqa: E402
 
 RESULTS = ROOT / "benchmarks/results"
+BINANCE_SNAPSHOT = ROOT / "data/snapshots/binance-btcusdt-1m-2024-01-2024-03-lot-v2"
 WARMUP, REPS = 3, 5
 SYMS = ["SPY", "QQQ", "AAPL", "MSFT", "NVDA"]
 PX = {"SPY": 500, "QQQ": 420, "AAPL": 190, "MSFT": 410, "NVDA": 120}
@@ -78,7 +79,9 @@ def summarize_reps(reps: list[dict]) -> dict:
 
 def environment() -> dict:
     env = {"python": platform.python_version(), "platform": platform.platform(), "machine": platform.machine(),
-           "captured_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+           "captured_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+           "operator_auth_required": os.getenv("QS_AUTH_REQUIRED", "1") != "0",
+           "transactional_audit_journal": True}
     env["git_revision"] = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     sources = sorted([*ROOT.glob("hellabandz/**/*.py"), *ROOT.glob("hellabandz/**/*.sql"),
                       *ROOT.glob("benchmarks/*.py"), ROOT / "Dockerfile", ROOT / "docker-compose.yml",
@@ -226,10 +229,11 @@ def bench_engine() -> dict:
     syn, sm = load_snapshot(ROOT / "data/fixtures/synthetic_1h")
     load_syn = time.perf_counter() - t0
     datasets = [("synthetic_10k_bars", syn, 10_000), ("synthetic_34k_bars", syn, None)]
-    bpath = ROOT / "data/snapshots/binance-btcusdt-1m-2024-01-2024-03"
+    bpath = BINANCE_SNAPSHOT
     if bpath.exists():
         t0 = time.perf_counter()
         bt, bm = load_snapshot(bpath)
+        res["binance_snapshot"] = {k: bm[k] for k in ("dataset_id", "content_sha256", "unit_version")}
         datasets.append(("binance_btcusdt_131k_bars", bt, None))
         res["binance_load_s"] = time.perf_counter() - t0
     res["synthetic_load_s"] = load_syn
@@ -320,11 +324,12 @@ async def drive(api: str, portfolio: str, orders: list[dict], concurrency: int) 
     Uses aiohttp: an earlier httpx-based client capped out near 250 req/s at 50 connections and
     was measuring itself, not the system (see docs/PERFORMANCE.md)."""
     import aiohttp
+    from hellabandz.api.client import api_headers
     lat: list[float] = []
     statuses: dict[str, int] = {}
     sem = asyncio.Semaphore(concurrency)
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=concurrency + 2),
-                                     timeout=aiohttp.ClientTimeout(total=60)) as c:
+                                     timeout=aiohttp.ClientTimeout(total=60), headers=api_headers()) as c:
         async def one(o):
             async with sem:
                 t = time.perf_counter()
@@ -348,16 +353,18 @@ async def drive(api: str, portfolio: str, orders: list[dict], concurrency: int) 
 def bench_db(n_orders: int, levels: list[int], reps: int, batches: list[int]) -> dict:
     import httpx
     import psycopg
+    from hellabandz.api.client import api_headers
+    from hellabandz.execution.db import database_url
     api = "http://localhost:8000"
     compose("up", "-d", "db", "api")
     for _ in range(100):
         try:
-            if httpx.get(api + "/v1/health", timeout=2).status_code == 200:
+            if httpx.get(api + "/v1/health", timeout=2, headers=api_headers()).status_code == 200:
                 break
         except httpx.HTTPError:
             time.sleep(0.3)
     compose("stop", "worker", check=False)
-    db = psycopg.connect("postgresql://quantswarm:quantswarm@localhost:5432/quantswarm", autocommit=True)
+    db = psycopg.connect(database_url(), autocommit=True, connect_timeout=10)
     agents = AGENTS_DB
     out: dict = {"environment": environment(), "limits": {"db": "2 vCPU / 2 GiB", "api": "1 vCPU / 512 MiB",
                                                           "worker": "1 vCPU / 512 MiB",
@@ -372,7 +379,7 @@ def bench_db(n_orders: int, levels: list[int], reps: int, batches: list[int]) ->
                 after = datetime.now(timezone.utc)
                 name = start_bench_worker(pid, batch)
                 wait_recovered(db, pid, after)
-                h = httpx.Client(base_url=api, timeout=30)
+                h = httpx.Client(base_url=api, timeout=30, headers=api_headers())
                 h.post(f"/v1/admin/portfolio?portfolio_id={pid}", json={"initial_cash_usd": "1000000000"})
                 for a in agents:
                     h.post(f"/v1/admin/allocations?portfolio_id={pid}", json={"agent_id": a, "capital_usd": "150000000"},
@@ -403,12 +410,13 @@ def bench_recovery(sizes: list[int], reps: int) -> dict:
     from psycopg.types.json import Jsonb
 
     from hellabandz.execution.worker import Worker, public_state
+    from hellabandz.execution.db import database_url
     compose("up", "-d", "db")
     compose("stop", "worker", check=False)
-    url = "postgresql://quantswarm:quantswarm@localhost:5432/quantswarm"
-    db = psycopg.connect(url, autocommit=True)
-    bpath = ROOT / "data/snapshots/binance-btcusdt-1m-2024-01-2024-03"
-    src = load_snapshot(bpath)[0] if bpath.exists() else load_snapshot(ROOT / "data/fixtures/synthetic_1h")[0]
+    url = database_url()
+    db = psycopg.connect(url, autocommit=True, connect_timeout=10)
+    bpath = BINANCE_SNAPSHOT
+    src, source_manifest = load_snapshot(bpath) if bpath.exists() else load_snapshot(ROOT / "data/fixtures/synthetic_1h")
     p = SnapshotProvider(src)
     spec = StrategySpec(strategy_id="rec", agent_id="rec", family="sma_crossover", params={"fast": 5, "slow": 20},
                         universe=p.symbols())
@@ -417,7 +425,9 @@ def bench_recovery(sizes: list[int], reps: int) -> dict:
     out: dict = {"environment": environment(), "runs": [], "source_events": len(all_events),
                  "checkpoint_interval": 10_000, "reps": reps, "requested_sizes": sizes,
                  "unavailable_sizes": [n for n in sizes if n > len(all_events)],
-                 "dataset": "binance_btcusdt_131k_bars" if bpath.exists() else "synthetic_34k_bars"}
+                 "dataset": "binance_btcusdt_131k_bars" if bpath.exists() else "synthetic_34k_bars",
+                 "dataset_id": source_manifest["dataset_id"], "content_sha256": source_manifest["content_sha256"],
+                 "unit_version": source_manifest.get("unit_version", "shares-v1")}
     sizes = [n for n in sizes if n <= len(all_events)]
     if not sizes:
         raise RuntimeError("no requested recovery sizes fit the dataset")
@@ -482,6 +492,8 @@ def drive_cli(api: str, pid: str, n: int, c: int, seed: int) -> None:
 
 
 if __name__ == "__main__":
+    from hellabandz.config import load_env
+    load_env()
     if len(sys.argv) > 1 and sys.argv[1] == "drive":
         dp = argparse.ArgumentParser()
         dp.add_argument("cmd")

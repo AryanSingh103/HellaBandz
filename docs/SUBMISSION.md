@@ -1,10 +1,31 @@
 # Submission status
 
-P1, P2 and P3 implementation work is combined on `main` and `p1-demo`. The combined checkout
+The historical P1/P2/P3 combined checkout
 `45e51e701ea64d7fc3bdf2898a179c34278bcf6e` was verified on October 10, 2026.
 This is not yet a claim that the HackRU submission is complete.
 
-## Combined verification
+## Current cleanup (October 11)
+
+The `p3-core` working tree removes the retired external account/exchange integrations, dead
+interfaces and graph dependencies. Six parallel research agents, simulated execution, the
+strategy marketplace, Nike review lab, voice and Solana audit trail remain. UI requests now
+follow the active view, charts and performance helpers are shared, and dataset validation
+uses a file-version cache. Historical planning and presentation notes live in `docs/archive/`.
+
+The cleaned production frontend and four backend services were rebuilt and restarted. All eight
+UI views loaded. Main-portfolio replay verified **2,177 events**; the browser's independent
+blockchain check verified **9,603 sealed records**, with zero later changes awaiting a seal.
+The judge database, marketplace holdings, wallet and public receipts were retained. Four
+obsolete databases were archived to checksummed, fully readable custom dumps before removal;
+three empty retired-provider tables were dropped. Old build folders and legacy bytecode were
+moved to a recoverable temporary folder outside the repo.
+
+Focused validation of the cache and research changes passed **22 tests**. This cleanup does
+not rerun the full proof or benchmark suites. The measured headlines below and in
+[PERFORMANCE](PERFORMANCE.md) remain historical; fresh submission-commit measurements,
+judge access and Devpost publication are still separate submission gates.
+
+## Historical combined verification (October 10)
 
 - `make setup` and `make up` passed; API, worker, database and production terminal started.
 - `make prove` on Windows and `make prove-docker` on Linux each passed **92 tests**, with zero
@@ -26,14 +47,20 @@ gitignored. Raw Alpaca/Binance snapshots are not redistributed.
 
 ## Remaining gates
 
+- **Current performance evidence:** the complete baseline predates authentication and the full-trace
+  journal. The security-build rerun was stopped to prioritize functional verification; run `make bench`
+  before submitting current throughput claims. Partial runs are not a completed report.
 - **Judge access:** the repository is private. The authenticated collaborator has push access but no
   admin/maintain access. The owner must make it public or grant judges access.
 - **Devpost:** [DEVPOST.md](DEVPOST.md) contains prepared copy; publication/submission has not been verified.
-- **New Solana commitments:** the local Devnet wallet reports zero balance. The automatic airdrop failed;
-  an existing on-chain commitment verifies, but the new tournament hashes have not been committed.
-  A new commitment requires funded Devnet test SOL. It is outside the deterministic execution path.
 
-Tiger Cloud, an Anchor registry, Kalshi and API authentication remain optional/stretch work.
+**Solana funding resolved:** the official faucet supplied 0.5 free Devnet SOL. New commitments for
+`T20261010203045`, `T20261010203316`, and `T20261010203916` were confirmed and independently
+read back; API receipts and the browser verification button now work. See [VERIFICATION.md](VERIFICATION.md).
+This integration remains outside the deterministic execution path.
+
+Tiger Cloud and an Anchor registry remain optional/stretch work.
+Operator API authentication and periodic full-trace Devnet seals are implemented; see [SECURITY](SECURITY.md).
 Combined measurements are recorded in [PERFORMANCE.md](PERFORMANCE.md), with matching Devpost
 headlines. Run the required final `make prove` and `make bench` on the chosen submission commit. Runtime
 changes require fresh measurements. Do not mark the overall submission complete until judge access and Devpost status are verified.

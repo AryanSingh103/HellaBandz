@@ -10,5 +10,6 @@ apps/web
 data/snapshots
 data/raw
 data/solana
+data/archives
 runs
 *.pdf

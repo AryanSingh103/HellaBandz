@@ -1,7 +1,7 @@
 import { authFetch } from "./auth-client";
 export const API = process.env.NEXT_PUBLIC_API || "http://localhost:8000";
 export const validId = (s: string) => /^[A-Za-z0-9_.:\-]{1,96}$/.test(s);
-export type View = "browse" | "marketplace" | "portfolio" | "orders" | "research" | "audit" | "analytics" | "run";
+export type View = "browse" | "marketplace" | "portfolio" | "orders" | "research" | "audit" | "analytics" | "coordinator" | "run";
 export type Route = { p: string; view: View; run: string; category: string; q: string; sort: string; dataset: string; order: string };
 export const initialRoute: Route = { p: "main", view: "browse", run: "", category: "All strategies", q: "", sort: "score", dataset: "", order: "" };
 export function url(path: string, params: Record<string, string | number | boolean | undefined> = {}) {
@@ -13,6 +13,7 @@ export class ApiError extends Error { constructor(public status: number, message
 export async function request<T>(path: string, params: Record<string, string | number | boolean | undefined> = {}, init: RequestInit = {}): Promise<T> {
   const response = await authFetch(url(path, params), { ...init, signal: init.signal || AbortSignal.timeout(45000) });
   const data = await response.json().catch(() => null);
+  if (response.status === 401 && path !== "/v1/auth/session" && typeof window !== "undefined") window.dispatchEvent(new Event("qs-auth-expired"));
   if (!response.ok) throw new ApiError(response.status, typeof data?.detail === "string" ? data.detail :
     Array.isArray(data?.detail) ? data.detail.map((d: { msg: string }) => d.msg).join("; ") : data?.detail ? JSON.stringify(data.detail) : `API request failed (${response.status})`);
   if (data === null) throw new Error("API returned an invalid response");
@@ -53,7 +54,7 @@ export type Manifest = { run_id: string; created_at: string; dataset: { dataset_
   allocations: { by_strategy: Record<string, { weight: number; capital_micros: number }> }; supervisor: { source: string; rationale: string };
   core?: { spec: { strategy_id: string; universe: string[] }; train: Metrics; validation: Metrics };
   held_out_test: { portfolio: { metrics: Metrics }; per_strategy_standalone: Record<string, Metrics>; core_standalone?: Metrics; excess_return_vs_core?: number; equity_curve: { ts: number[]; equity: number[] } }; policy: Record<string, number> };
-export type Tournament = { run_id: string; manifest: Manifest; manifest_hash: string; created_at: string };
+export type Tournament = { run_id: string; manifest: Manifest; manifest_hash: string; created_at: string; solana_sig?: string | null };
 export type Dataset = { dataset_id: string; source: string; content_sha256: string; symbols: string[]; interval_s: number; first_ts: number; last_ts: number; row_count: number;
   splits: Record<string, number[]>; execution_usable: boolean; unavailable_reason?: string; quality: unknown; synthetic: boolean; quote_currency: string; lots_per_base_unit: number; units?: string };
 export type Position = { qty: number; basis: number; reserved: number };
@@ -75,3 +76,14 @@ export type Replay = { event: Event; before: State; after: State; through_seq: n
 export type Point = { seq: number; ts: number; equity: number; exposure: number; agents: Record<string, { pnl: number; exposure: number }> };
 export type Analytics = { points: Point[]; definitions: Record<string, string>; benchmark: { status: string; reason?: string; assumptions?: string; start_ts?: number; end_ts?: number;
   baseline?: { ts: number; equity: number }[]; strategy?: { ts: number[]; equity: number[] }; baseline_metrics?: Metrics; strategy_metrics?: Metrics } };
+
+/** Shared ordering for measured strategy performance; missing results sort last. */
+export function comparePerformance(a: Metrics | null | undefined, b: Metrics | null | undefined, field: "net_return" | "sharpe" | "max_drawdown") {
+  const av = a?.[field], bv = b?.[field];
+  if (av == null || !Number.isFinite(av)) return bv == null || !Number.isFinite(bv) ? 0 : 1;
+  if (bv == null || !Number.isFinite(bv)) return -1;
+  return field === "max_drawdown" ? av - bv : bv - av;
+}
+export function matchesSearch(query: string, ...fields: string[]) {
+  return fields.join(" ").toLowerCase().includes(query.trim().toLowerCase());
+}

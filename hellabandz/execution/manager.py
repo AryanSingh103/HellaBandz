@@ -14,7 +14,6 @@ import signal
 import subprocess
 import sys
 import time
-from pathlib import Path
 
 import psycopg
 from psycopg.rows import dict_row
@@ -66,13 +65,8 @@ def run_job(job_id: str):
                          "total = coalesce(%s,total), updated_at = now() WHERE job_id = %s AND status = 'running'",
                          (stage, value, total, job_id))
         try:
-            from hellabandz.api.auth import disabled, internal_token
-            api_headers = {}
-            if not disabled():
-                owner = conn.execute("SELECT owner_id FROM account_resources WHERE kind='job' AND resource_id=%s", (job_id,)).fetchone()
-                if not owner:
-                    raise RuntimeError("Unowned jobs cannot run with account authentication enabled")
-                api_headers = {"Authorization": "Bearer " + internal_token(str(owner["owner_id"]), job)}
+            from hellabandz.api.client import api_headers as operator_headers
+            api_headers = operator_headers()
             path = resolve(job["dataset_id"])
             if job["kind"] == "research":
                 from hellabandz.agents.tournament import run
@@ -87,6 +81,9 @@ def run_job(job_id: str):
                 save_analytics(result["manifest"], path)
                 progress("benchmark", count + 1, count + 1)
                 result = {"run_id": result["run_id"], "manifest_hash": result["manifest_hash"]}
+            elif job["kind"] == "coordinated":
+                from hellabandz.trading.live import run_coordinated
+                result = run_coordinated(job, path, API, api_headers, progress, stop_requested)
             else:
                 import httpx
                 from hellabandz.agents.session import Session, SessionStopped
