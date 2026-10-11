@@ -1,21 +1,37 @@
 "use client";
 import { useRef, useState } from "react";
+import { authFetch } from "./auth-client";
 import { ArrowUpRight, Download, FlaskConical, Play, Square } from "lucide-react";
-import { Dataset, Job, Manifest, Tournament, familyName, id, money, pct, stamp, url, validId } from "./model";
+import { Dataset, Job, Manifest, Tournament, errorText, familyName, id, money, pct, stamp, url, validId } from "./model";
 import { useCommand, useResource } from "./data";
 import { Chart, Empty, JsonView, Metric, Notice } from "./ui";
 
 type Message = {id:number;agent_id:string;role:string;content:unknown;created_at:string};
 export function ResearchView({pid,manifest,explicit,runs,selected,select}:{pid:string;manifest:Manifest|null;explicit:boolean;runs:Tournament[];selected:string;select:(s:string)=>void}) {
+  const [downloadError, setDownloadError] = useState("");
+  const [downloading, setDownloading] = useState(false);
+  async function downloadManifest() {
+    if (!manifest || downloading) return;
+    setDownloading(true); setDownloadError("");
+    try {
+      const response = await authFetch(url(`/v1/tournaments/${encodeURIComponent(manifest.run_id)}/manifest`), { signal: AbortSignal.timeout(15000) });
+      if (!response.ok) throw new Error(`Manifest download failed (${response.status}).`);
+      const objectUrl = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a"); link.href = objectUrl; link.download = `${manifest.run_id}.json`;
+      document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch (e) { setDownloadError(errorText(e)); }
+    finally { setDownloading(false); }
+  }
   const messages=useResource<Message[]>(manifest?"/v1/agent-messages":null,explicit?{run_id:manifest?.run_id}:{portfolio_id:pid},6000);
   return <><div className="section-title"><h1>Research</h1><select aria-label="Research record" value={selected} onChange={e=>select(e.target.value)}><option value="">Associated portfolio research</option>{runs.map(r=><option key={r.run_id}>{r.run_id}</option>)}</select></div>
     <Notice>{explicit?`Inspecting research ${manifest?.run_id||selected}; portfolio ${pid} association is unchanged.`:`Portfolio ${pid}: ${manifest?manifest.run_id:"unassociated"}.`}</Notice>
     {!manifest?<Empty>No associated research record. Select a recorded run or launch research from Run.</Empty>:<>
-      <div className="section-title"><div><h2>{manifest.run_id}</h2><span className="muted">{stamp(manifest.created_at)} / {manifest.dataset.source}</span></div><a className="button" href={url(`/v1/tournaments/${encodeURIComponent(manifest.run_id)}/manifest`)} download><Download size={16} />Canonical manifest</a></div>
+      <div className="section-title"><div><h2>{manifest.run_id}</h2><span className="muted">{stamp(manifest.created_at)} / {manifest.dataset.source}</span></div><button disabled={downloading} onClick={() => void downloadManifest()}><Download size={16} />{downloading ? "Downloading..." : "Canonical manifest"}</button></div>{downloadError && <Notice error>{downloadError}</Notice>}
       <div className="metrics"><Metric label="Held-out net return" value={pct(manifest.held_out_test.portfolio.metrics.net_return)} /><Metric label="Held-out Sharpe" value={manifest.held_out_test.portfolio.metrics.sharpe.toFixed(3)} /><Metric label="Held-out max drawdown" value={pct(manifest.held_out_test.portfolio.metrics.max_drawdown)} /><Metric label="Held-out fills" value={manifest.held_out_test.portfolio.metrics.n_fills} /></div>
       <JsonView label="Dataset provenance, hash and chronological splits" value={manifest.dataset} />
       <section><h2>Independent proposals & fitted strategies</h2>{manifest.ranked.map(s=>{const proposal=manifest.proposals.find(p=>p.agent_id===s.agent_id),fit=manifest.fitted.find(f=>f.spec.strategy_id===s.strategy_id);return <article className="research-record" key={s.strategy_id}><div className="section-title"><h3>{familyName(s.family)}</h3><span className="badge">{s.agent_id} / {proposal?.source||"source unavailable"}</span></div><p>{proposal?.proposal.rationale}</p><div className="metrics"><Metric label="Training return" value={pct(s.train.net_return)} /><Metric label="Validation return" value={pct(s.validation.net_return)} /><Metric label="Allocation" value={pct(manifest.allocations.by_strategy[s.strategy_id]?.weight)} /><Metric label="Validation fees / slippage" value={`${s.validation.fees_usd.toFixed(2)} / ${s.validation.slippage_usd.toFixed(2)} quote units`} /></div>{s.gates.length>0&&<Notice>{s.gates.join("; ")}</Notice>}<JsonView label="Full proposal, evidence and parameter grid" value={proposal} /><JsonView label="Fitted parameters and training search" value={fit} /><JsonView label="Validation, stability, score and gates" value={s} /><JsonView label="Held-out standalone result" value={manifest.held_out_test.per_strategy_standalone[s.strategy_id]} /></article>;})}</section>
-      <section><h2>Supervisor allocation</h2><p className="muted">Source: {manifest.supervisor.source}</p><p>{manifest.supervisor.rationale}</p><JsonView label="Allocation weights and policy" value={{allocations:manifest.allocations,policy:manifest.policy,supervisor:manifest.supervisor}} /></section>
+      <section><h2>Supervisor allocation</h2><p className="muted">Source: {manifest.supervisor.source}</p><p>{manifest.supervisor.rationale}</p>
+        {manifest.core && <><div className="metrics"><Metric label="Active strategies" value={pct(manifest.ranked.reduce((sum,s)=>sum+(manifest.allocations.by_strategy[s.strategy_id]?.weight||0),0))} /><Metric label="Passive equal-weight core" value={pct(manifest.allocations.by_strategy[manifest.core.spec.strategy_id]?.weight)} /><Metric label="Held-out return, core alone" value={pct(manifest.held_out_test.core_standalone?.net_return)} /><Metric label="Held-out portfolio minus core" value={pct(manifest.held_out_test.excess_return_vs_core)} /></div><p className="muted">A strategy is funded only if it beat the passive core on data it was not fitted on. Capital no strategy earned stays in the core ({manifest.core.spec.universe.join(", ")}), not in cash.</p></>}<JsonView label="Allocation weights and policy" value={{allocations:manifest.allocations,policy:manifest.policy,supervisor:manifest.supervisor}} /></section>
       <section><h2>Held-out evaluation</h2><JsonView label="Complete held-out results" value={manifest.held_out_test} /></section>
       <section><h2>Recorded agent channel</h2>{messages.error&&<Notice error>{messages.error}</Notice>}{messages.data?.length?messages.data.map(m=><article className="message" key={m.id}><div className="row"><b>{m.agent_id}</b><span className="badge">{m.role}</span><span className="muted">{stamp(m.created_at)}</span></div><JsonView value={m.content} label="Recorded message" /></article>):<Empty>No messages recorded for this context.</Empty>}</section>
     </>}

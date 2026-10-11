@@ -11,6 +11,7 @@ from quantswarm.contracts import Command
 from quantswarm.ledger import canonical, sha256_hex
 
 SCHEMA = (Path(__file__).parent / "schema.sql").read_text()
+ACCOUNTS_SCHEMA = (Path(__file__).parent / "accounts.sql").read_text()
 COMMAND_ADAPTER: TypeAdapter = TypeAdapter(Command)
 
 
@@ -33,5 +34,6 @@ def apply_schema(conn) -> None:
     conn.execute("SELECT pg_advisory_lock(424242)")
     try:
         conn.execute(SCHEMA)
+        conn.execute(ACCOUNTS_SCHEMA)
     finally:
         conn.execute("SELECT pg_advisory_unlock(424242)")

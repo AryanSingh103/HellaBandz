@@ -41,7 +41,9 @@ class Stack:
         self.base = f"http://127.0.0.1:{self.port}"
 
     def env(self, **extra: str) -> dict:
-        return {**os.environ, "DATABASE_URL": self.url, "PYTHONUNBUFFERED": "1", **extra}
+        # Infrastructure tests intentionally exercise the legacy offline API.
+        # Account-security tests separately run the default fail-closed mode.
+        return {**os.environ, "QS_AUTH_DISABLED": "true", "DATABASE_URL": self.url, "PYTHONUNBUFFERED": "1", **extra}
 
     def start_worker(self, **extra: str) -> subprocess.Popen:
         self.worker = subprocess.Popen([sys.executable, "-m", "quantswarm.execution.worker"], cwd=ROOT,

@@ -20,6 +20,8 @@ PARAMS = {
     StrategyFamily.BREAKOUT: {"lookback": 40},
     StrategyFamily.ZSCORE_REVERSION: {"lookback": 30, "entry_z": 1.5, "exit_z": 0.0},
     StrategyFamily.VOL_TARGET: {"vol_lookback": 30, "trend_lookback": 100, "target_vol": 0.15},
+    StrategyFamily.REGIME_REVERSION: {"regime_lookback": 60, "min_reversion": 0.02, "lookback": 30, "sell_z": 1.0, "rebuy_z": 0.0},
+    StrategyFamily.BUY_HOLD: {},
 }
 
 

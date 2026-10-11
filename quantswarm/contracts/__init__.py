@@ -160,6 +160,8 @@ class StrategyFamily(StrEnum):
     BREAKOUT = "breakout"
     ZSCORE_REVERSION = "zscore_reversion"
     VOL_TARGET = "vol_target"
+    REGIME_REVERSION = "regime_reversion"
+    BUY_HOLD = "buy_hold"
 
 
 class StrategyProposal(_Frozen):

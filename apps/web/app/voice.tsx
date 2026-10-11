@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { authFetch } from "./auth-client";
 import { Mic, Send, Volume2, Square, RotateCcw } from "lucide-react";
 import { errorText, post, request, url } from "./model";
 import { JsonView, Notice } from "./ui";
@@ -14,7 +15,7 @@ export function Ask({pid}:{pid:string}) {
   async function speak(text:string) {
     stopAudio();setVoiceError("");setPlayback("Preparing speech...");const c=new AbortController();speechRequest.current=c;
     try {
-      const r=await fetch(url("/v1/speak"),post({text:text.slice(0,1200)},AbortSignal.any([c.signal,AbortSignal.timeout(35000)])));
+      const r=await authFetch(url("/v1/speak"),post({text:text.slice(0,1200)},AbortSignal.any([c.signal,AbortSignal.timeout(35000)])));
       if(!active.current||c.signal.aborted)return;
       if(r.status===501){if(!("speechSynthesis"in window))throw new Error("Browser speech is unavailable.");const utterance=new SpeechSynthesisUtterance(text);utterance.onend=()=>{if(active.current)setPlayback("");};utterance.onerror=e=>{if(active.current){setPlayback("");setVoiceError(`Browser speech failed: ${e.error}. Retry playback.`);}};setPlayback("Browser speech fallback");window.speechSynthesis.speak(utterance);return;}
       if(!r.ok)throw new Error(`Speech provider failed (${r.status}). Retry playback.`);

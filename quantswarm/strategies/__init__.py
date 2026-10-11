@@ -99,13 +99,61 @@ def vol_target(s: Series, vol_lookback: float, trend_lookback: float, target_vol
     return _to_bps(w)
 
 
+def reversion_speed(close: np.ndarray, n: int) -> np.ndarray:
+    """Rolling estimate of mean-reversion speed over the trailing n bars: minus the least-squares
+    slope of the next log return on the demeaned log price. About theta for an Ornstein-Uhlenbeck
+    series, and close to its small-sample bias (roughly 5/n) for a random walk."""
+    out = np.full(len(close), np.nan)
+    if n + 1 <= len(close):
+        win = sliding_window_view(np.log(close), n + 1)
+        x = win[:, :-1] - win[:, :-1].mean(axis=1, keepdims=True)
+        den = (x * x).sum(axis=1)
+        out[n:] = np.where(den > 0, -(x * np.diff(win, axis=1)).sum(axis=1) / np.where(den > 0, den, 1.0), np.nan)
+    return out
+
+
+def regime_reversion(s: Series, regime_lookback: float, min_reversion: float, lookback: float,
+                     sell_z: float, rebuy_z: float) -> np.ndarray:
+    """Hold by default. While the trailing mean-reversion speed says the series is range-bound,
+    step aside once price is stretched above its rolling mean and return when it has come back.
+    In a trending or random-walk regime the position is never sold."""
+    n = int(lookback)
+    speed = reversion_speed(s.close, int(regime_lookback))
+    m, sd = _rolling_mean(s.close, n), _rolling_std(s.close, n)
+    z = np.where(sd > 0, (s.close - m) / np.where(sd > 0, sd, 1.0), 0.0)
+    w = np.ones(len(s))
+    rich = False
+    for i in range(len(s)):
+        if not rich and z[i] > sell_z:
+            rich = True
+        elif rich and z[i] < rebuy_z:
+            rich = False
+        if rich and speed[i] > min_reversion:
+            w[i] = 0.0
+    return _to_bps(w)
+
+
+def buy_hold(s: Series) -> np.ndarray:
+    """Passive core: always fully invested."""
+    return _to_bps(np.ones(len(s)))
+
+
 FAMILIES: dict[StrategyFamily, tuple[Callable[..., np.ndarray], dict[str, tuple[float, float]]]] = {
     # family -> (function, allowed parameter bounds)
     StrategyFamily.SMA_CROSSOVER: (sma_crossover, {"fast": (2, 200), "slow": (5, 600)}),
     StrategyFamily.BREAKOUT: (breakout, {"lookback": (5, 400)}),
     StrategyFamily.ZSCORE_REVERSION: (zscore_reversion, {"lookback": (5, 400), "entry_z": (0.25, 4.0), "exit_z": (-2.0, 2.0)}),
     StrategyFamily.VOL_TARGET: (vol_target, {"vol_lookback": (5, 400), "trend_lookback": (5, 800), "target_vol": (0.02, 1.0)}),
+    StrategyFamily.REGIME_REVERSION: (regime_reversion, {"regime_lookback": (30, 600), "min_reversion": (0.0, 0.3),
+                                                         "lookback": (5, 400), "sell_z": (0.25, 4.0), "rebuy_z": (-2.0, 2.0)}),
+    StrategyFamily.BUY_HOLD: (buy_hold, {}),
 }
+
+# Basket families read one signal from the equal-weight index of their universe and apply it to every
+# member, so single-name noise does not drown a market-wide regime.
+BASKET_FAMILIES = frozenset({StrategyFamily.REGIME_REVERSION})
+# Hold families deploy their slot once at cost and are never trimmed while the target stays long.
+HOLD_FAMILIES = frozenset({StrategyFamily.REGIME_REVERSION, StrategyFamily.BUY_HOLD})
 
 
 def validate_params(family: StrategyFamily, params: dict[str, float]) -> None:
@@ -118,12 +166,47 @@ def validate_params(family: StrategyFamily, params: dict[str, float]) -> None:
             raise ValueError(f"{family}.{k}={v} outside [{lo}, {hi}]")
     if family == StrategyFamily.SMA_CROSSOVER and params["fast"] >= params["slow"]:
         raise ValueError("fast must be < slow")
+    if family == StrategyFamily.REGIME_REVERSION and params["rebuy_z"] >= params["sell_z"]:
+        raise ValueError("rebuy_z must be < sell_z")
 
 
 def max_lookback(family: StrategyFamily, params: dict[str, float]) -> int:
-    return int(max(params.get(k, 0) for k in ("slow", "lookback", "vol_lookback", "trend_lookback"))) + 1
+    return int(max(params.get(k, 0) for k in ("slow", "lookback", "vol_lookback", "trend_lookback", "regime_lookback"))) + 1
 
 
 def signal(family: StrategyFamily, params: dict[str, float], s: Series) -> np.ndarray:
     validate_params(family, params)
     return FAMILIES[family][0](s, **params)
+
+
+def basket_index(histories: dict[str, tuple[Series, np.ndarray]]) -> tuple[Series, np.ndarray]:
+    """Equal-weight index of a universe on the union of its timestamps. Each member is rebased to its
+    close at the first timestamp where every member has traded and forward-filled afterwards, so the
+    value at a timestamp depends only on bars at or before it."""
+    ts = np.unique(np.concatenate([t for _, t in histories.values()])) if histories else np.array([], dtype=np.int64)
+    logs = []
+    start = 0
+    for sym in sorted(histories):
+        series, sym_ts = histories[sym]
+        if not len(sym_ts):
+            return Series(np.array([]), np.array([]), np.array([])), ts[:0]
+        idx = np.searchsorted(sym_ts, ts, side="right") - 1  # last bar at or before each timestamp
+        start = max(start, int(np.argmax(idx >= 0)))
+        logs.append(np.log(series.close[np.maximum(idx, 0)]))
+    stacked = np.vstack(logs)[:, start:]
+    level = np.exp((stacked - stacked[:, :1]).mean(axis=0))
+    return Series(level, level, level), ts[start:]
+
+
+def universe_weights(family: StrategyFamily, params: dict[str, float],
+                     histories: dict[str, tuple[Series, np.ndarray]]) -> dict[str, np.ndarray]:
+    """Target weights for every member of a universe, aligned to each member's own timestamps."""
+    if family not in BASKET_FAMILIES:
+        return {sym: signal(family, params, series) for sym, (series, _) in histories.items()}
+    index, index_ts = basket_index(histories)
+    w = signal(family, params, index)
+    out = {}
+    for sym, (series, sym_ts) in histories.items():
+        pos = np.searchsorted(index_ts, sym_ts, side="right") - 1
+        out[sym] = np.where(pos >= 0, w[np.maximum(pos, 0)], 0) if len(w) else np.zeros(len(sym_ts), dtype=np.int64)
+    return out

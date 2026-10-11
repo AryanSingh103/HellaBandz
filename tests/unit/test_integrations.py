@@ -261,6 +261,7 @@ def test_alpaca_bad_credentials_message(monkeypatch):
 
 
 def test_speak_endpoint(monkeypatch):
+    monkeypatch.setenv("QS_AUTH_DISABLED", "true")  # Provider-only test; secure API access is tested separately.
     from fastapi.testclient import TestClient
 
     from quantswarm.api import app as api_mod

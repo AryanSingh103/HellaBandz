@@ -22,12 +22,12 @@ import httpx
 import numpy as np
 
 from quantswarm.agents import llm
-from quantswarm.backtester import SnapshotProvider, rebalance_order
+from quantswarm.backtester import SnapshotProvider, rebalance_order, reentry_capital
 from pydantic import TypeAdapter
-from quantswarm.contracts import MICROS, Bar, Ident, StrategySpec
+from quantswarm.contracts import MICROS, Bar, Ident, StrategyFamily, StrategySpec
 from quantswarm.ingestion.dataset import load_snapshot, unit_context
 from quantswarm.ledger.state import Position
-from quantswarm.strategies import Series, signal
+from quantswarm.strategies import HOLD_FAMILIES, Series, universe_weights
 
 log = logging.getLogger("session")
 ROOT = Path(__file__).resolve().parents[2]
@@ -43,6 +43,7 @@ class ApiState:
     def __init__(self, st: dict):
         self.raw = st
         self.orders = {k: _Obj(v) for k, v in st.get("orders", {}).items()}
+        self.kill_switch = bool(st.get("kill_switch"))
         self._pos = st.get("positions", {})
 
     def position(self, agent: str, sym: str) -> Position:
@@ -102,9 +103,9 @@ def decide_crisis(agent: str, held: dict[str, int], allocation_quote: float, pri
 
 class Session:
     def __init__(self, api: str, manifest: dict, dataset_dir: Path, portfolio: str = "main",
-                 stop_requested=lambda: False, progress=lambda *args: None):
+                 stop_requested=lambda: False, progress=lambda *args: None, api_headers: dict | None = None):
         TypeAdapter(Ident).validate_python(portfolio)
-        self.c = httpx.Client(base_url=api, timeout=60, params={"portfolio_id": portfolio},
+        self.c = httpx.Client(base_url=api, timeout=60, params={"portfolio_id": portfolio}, headers=api_headers,
                              event_hooks={"response": [lambda r: r.raise_for_status()]})
         self.m = manifest
         self.run_id = manifest["run_id"]
@@ -117,9 +118,13 @@ class Session:
         self.price_tick = 1 if dataset.get("unit_version") == "base-lot-v2" else 10000
         self.stop_requested = stop_requested
         self.progress = progress
-        self.specs = {f["spec"]["agent_id"]: StrategySpec.model_validate(f["spec"]) for f in manifest["fitted"]}
+        # the passive core (when the manifest has one) trades like any other slot but takes no crisis decisions
+        entries = manifest["fitted"] + ([manifest["core"]] if manifest.get("core") else [])
+        self.specs = {f["spec"]["agent_id"]: StrategySpec.model_validate(f["spec"]) for f in entries}
         self.alloc = {self.specs[a].agent_id: manifest["allocations"]["by_strategy"][s.strategy_id]["capital_micros"]
                       for a, s in self.specs.items()}
+        self.base_alloc = dict(self.alloc)
+        self.initial_cash = manifest.get("policy", {}).get("initial_cash_micros", 10_000 * MICROS)
         self.stats = {"bars": 0, "orders": 0, "approved": 0, "reduced": 0, "rejected": 0, "duplicates": 0}
 
     def say(self, agent: str, role: str, content: dict) -> None:
@@ -170,6 +175,8 @@ class Session:
     def crisis(self, ts: datetime, closes: dict[str, int], state: ApiState) -> None:
         for agent in sorted(self.specs):
             spec = self.specs[agent]
+            if spec.family == StrategyFamily.BUY_HOLD:
+                continue
             held = {s: state.position(agent, s).qty for s in spec.universe}
             act = decide_crisis(agent, held, self.alloc[agent] / MICROS,
                                 {s: closes.get(s, 0) / MICROS for s in spec.universe}, self.units)
@@ -211,7 +218,8 @@ class Session:
         self.say("system", "session_start", {"steps": len(groups), "crash_start_step": crash_start,
                                              "units": self.units,
                                              "speed_steps_per_s": speed})
-        base_hist = {sym: self.p.history(sym, te[0])[0] for sym in self.p.symbols()}
+        base_hist = {sym: self.p.history(sym, te[0]) for sym in self.p.symbols()}
+        live_ts: dict[str, list[int]] = {s: [] for s in self.p.symbols()}
         live_close: dict[str, list[float]] = {s: [] for s in self.p.symbols()}
         live_high: dict[str, list[float]] = {s: [] for s in self.p.symbols()}
         live_low: dict[str, list[float]] = {s: [] for s in self.p.symbols()}
@@ -236,28 +244,44 @@ class Session:
             self.stats["bars"] += len(pub)
             closes = {b.symbol: b.close for b in pub}
             for b in pub:
+                live_ts[b.symbol].append(int(b.ts.timestamp()))
                 live_close[b.symbol].append(b.close / MICROS)
                 live_high[b.symbol].append(b.high / MICROS)
                 live_low[b.symbol].append(b.low / MICROS)
-            st = ApiState(self.c.get("/v1/portfolio").json()["state"])
+            port = self.c.get("/v1/portfolio").json()
+            st, equity = ApiState(port["state"]), port["equity"]
             if crash_start is not None and i == crash_start:
                 self.say("system", "market_crash", {"step": i, "ts": pub[0].ts.isoformat(),
                                                      "overlay": "-16% over 4 bars, 3x volume, stress slippage"})
                 self.crisis(pub[0].ts, closes, st)
-                st = ApiState(self.c.get("/v1/portfolio").json()["state"])
+                port = self.c.get("/v1/portfolio").json()
+                st, equity = ApiState(port["state"]), port["equity"]
             for agent in sorted(self.specs):
                 spec = self.specs[agent]
                 if self.alloc[agent] <= 0:
                     continue
+                histories = {}
+                for sym in spec.universe:
+                    bh, bts = base_hist[sym]
+                    histories[sym] = (Series(np.concatenate([bh.close, live_close[sym]]),
+                                             np.concatenate([bh.high, live_high[sym]]),
+                                             np.concatenate([bh.low, live_low[sym]])),
+                                      np.concatenate([bts, np.array(live_ts[sym], dtype=np.int64)]))
+                weights = universe_weights(spec.family, spec.params, histories)
+                if any(int(weights[sym][-1]) for sym in spec.universe if sym in closes):
+                    resized = reentry_capital(st, spec, self.base_alloc[agent], self.initial_cash, equity)
+                    if resized is not None and resized != self.alloc[agent]:
+                        r = self.post("/v1/admin/allocations",
+                                      json={"agent_id": agent, "capital_usd": f"{resized / MICROS:.6f}"},
+                                      headers={"Idempotency-Key": f"{self.run_id}:{agent}:{int(g[0].ts.timestamp())}"})
+                        if r.get("status") == "ok":
+                            self.alloc[agent] = resized
                 for sym in sorted(spec.universe):
                     if sym not in closes:
                         continue
-                    bh = base_hist[sym]
-                    series = Series(np.concatenate([bh.close, live_close[sym]]),
-                                    np.concatenate([bh.high, live_high[sym]]),
-                                    np.concatenate([bh.low, live_low[sym]]))
-                    w = int(signal(spec.family, spec.params, series)[-1])
-                    act = rebalance_order(st, agent, sym, w, self.alloc[agent], closes[sym], len(spec.universe))
+                    w = int(weights[sym][-1])
+                    act = rebalance_order(st, agent, sym, w, self.alloc[agent], closes[sym], len(spec.universe),
+                                          hold=spec.family in HOLD_FAMILIES)
                     if act is None:
                         continue
                     res = self.submit(agent, sym, act[0], act[1], g[0].ts)

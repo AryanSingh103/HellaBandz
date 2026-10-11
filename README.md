@@ -1,5 +1,7 @@
 # QuantSwarm
 
+Private accounts and Kalshi connections: follow [Accounts and Kalshi setup](docs/ACCOUNTS_AND_KALSHI.md) before deployment. Authentication defaults to locked until Supabase is configured. Research uses virtual capital; manual demo exchange orders are optional and production connections are read-only.
+
 **Autonomous AI strategy agents on top of trading infrastructure they cannot break.**
 HackRU Fall 2026 · Lucera Trading Systems Challenge (also: Tiger Data, Solana)
 
@@ -134,4 +136,5 @@ the synthetic dataset generator, the schema, the docs, and the recorded fixture 
 ## Docs
 
 [ARCHITECTURE](docs/ARCHITECTURE.md) · [INVARIANTS](docs/INVARIANTS.md) · [PERFORMANCE](docs/PERFORMANCE.md) ·
-[DATA_SOURCES](docs/DATA_SOURCES.md) · [INTEGRATIONS](docs/INTEGRATIONS.md) · [LIMITATIONS](docs/LIMITATIONS.md) · [PLAN](PLAN.md)
+[DATA_SOURCES](docs/DATA_SOURCES.md) · [INTEGRATIONS](docs/INTEGRATIONS.md) · [LIMITATIONS](docs/LIMITATIONS.md) ·
+[STRATEGY_EVALUATION](docs/STRATEGY_EVALUATION.md) · [PLAN](PLAN.md)

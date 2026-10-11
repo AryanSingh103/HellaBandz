@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import psycopg
-from fastapi import FastAPI, Header, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -47,6 +47,7 @@ from quantswarm.ledger import replay
 from quantswarm.config import load_env  # noqa: E402
 
 load_env()
+from quantswarm.api.auth import authorize, claim, current_user, disabled, identity, owned, verify_token
 log = logging.getLogger("api")
 WAIT_TIMEOUT_S = float(os.environ.get("QS_API_WAIT_TIMEOUT", "5"))
 
@@ -109,8 +110,13 @@ async def lifespan(app: FastAPI):
     await pool.close()
 
 
-app = FastAPI(title="QuantSwarm API", version="0.1.0", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app = FastAPI(title="QuantSwarm API", version="0.1.0", lifespan=lifespan, dependencies=[Depends(authorize)])
+app.add_middleware(CORSMiddleware, allow_origins=os.environ.get("QS_ALLOWED_ORIGINS", "http://localhost:3000").split(","), allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"], allow_headers=["Authorization", "Content-Type", "Idempotency-Key"])
+
+
+@app.get("/healthz")
+async def liveness():
+    return {"api": "ok", "auth_required": not disabled()}
 
 
 @app.exception_handler(RequestValidationError)
@@ -191,12 +197,14 @@ class BarsIn(BaseModel):
 
 @app.post("/v1/bars")
 async def post_bars(body: BarsIn, portfolio_id: Ident = "main", wait: bool = True):
+    user = current_user()
+    dataset_id = f"user:{user.id}:{body.dataset_id}" if user else body.dataset_id
     async with pool.connection() as conn:
         cur = conn.cursor()
         await cur.executemany(
             "INSERT INTO market_bars (ts, dataset_id, symbol, open, high, low, close, volume, stress) "
             "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING",
-            [(b.ts, body.dataset_id, b.symbol, b.open, b.high, b.low, b.close, b.volume, b.stress) for b in body.bars])
+            [(b.ts, dataset_id, b.symbol, b.open, b.high, b.low, b.close, b.volume, b.stress) for b in body.bars])
     last = None
     for b in sorted(body.bars, key=lambda b: (b.ts, b.symbol)):
         cmd = ApplyBar(bar=b)
@@ -350,6 +358,11 @@ async def throughput_analytics(portfolio_id: Ident = "main"):
 
 @app.get("/v1/bars")
 async def bars(dataset_id: str = "live", symbol: str | None = None, limit: int = Query(2000, ge=1, le=20_000)):
+    user = current_user()
+    if user:
+        from quantswarm.ingestion.registry import registered
+        if dataset_id not in registered():
+            dataset_id = f"user:{user.id}:{dataset_id}"
     if symbol:
         return await q("SELECT * FROM market_bars WHERE dataset_id = %s AND symbol = %s ORDER BY ts DESC LIMIT %s",
                        (dataset_id, symbol, limit))
@@ -411,6 +424,14 @@ async def save_tournament(body: TournamentIn):
         raise HTTPException(422, "body run_id must match manifest.run_id")
     if sha256_hex(canonical(body.manifest)) != body.manifest_hash:
         raise HTTPException(422, "manifest_hash does not match canonical manifest content")
+    user = current_user()
+    if user and not user.scope:
+        existing_owner = await q("SELECT owner_id FROM account_resources WHERE kind='run' AND resource_id=%s", (body.run_id,))
+        if existing_owner:
+            await owned("run", body.run_id)
+        else:
+            async with pool.connection() as conn, conn.transaction():
+                await claim(conn, "run", body.run_id)
     await q("INSERT INTO tournaments (run_id, manifest, manifest_hash) VALUES (%s, %s, %s) "
             "ON CONFLICT (run_id) DO NOTHING RETURNING run_id",
             (body.run_id, Jsonb(body.manifest), body.manifest_hash))
@@ -422,6 +443,9 @@ async def save_tournament(body: TournamentIn):
 
 @app.get("/v1/tournaments")
 async def list_tournaments(limit: int = Query(20, ge=1, le=200)):
+    user = current_user()
+    if user:
+        return await q("SELECT t.run_id, t.created_at, t.manifest_hash, t.manifest FROM tournaments t JOIN account_resources a ON a.kind='run' AND a.resource_id=t.run_id WHERE a.owner_id=%s ORDER BY t.created_at DESC LIMIT %s", (user.id, limit))
     return await q("SELECT run_id, created_at, manifest_hash, manifest FROM tournaments "
                    "ORDER BY created_at DESC LIMIT %s", (limit,))
 
@@ -450,6 +474,9 @@ async def agent_messages(run_id: Ident | None = None, limit: int = 200, portfoli
                        "ORDER BY id LIMIT %s", (portfolio_id, portfolio_id, limit))
     if run_id:
         return await q("SELECT * FROM agent_messages WHERE run_id = %s ORDER BY id LIMIT %s", (run_id, limit))
+    user = current_user()
+    if user:
+        return await q("SELECT m.* FROM agent_messages m JOIN account_resources a ON a.kind='run' AND a.resource_id=m.run_id WHERE a.owner_id=%s ORDER BY id DESC LIMIT %s", (user.id, min(max(limit, 1), 2000)))
     return await q("SELECT * FROM agent_messages ORDER BY id DESC LIMIT %s", (limit,))
 
 
@@ -467,6 +494,7 @@ class AskIn(BaseModel):
 
 @app.post("/v1/ask")
 async def ask(body: AskIn):
+    await owned("portfolio", body.portfolio_id)
     from quantswarm.agents.ask import answer
 
     ctx = {
@@ -532,9 +560,46 @@ async def stream(ws: WebSocket, portfolio_id: Ident = "main", after_seq: int = 0
         await ws.close(code=1008, reason="portfolio_id must appear only once")
         return
     await ws.accept()
+    token = None
+    if not disabled():
+        try:
+            # Tokens never travel in URLs, browser history, or access logs.
+            first = await asyncio.wait_for(ws.receive_json(), timeout=10)
+            token = first.get("access_token") if isinstance(first, dict) else None
+            if not isinstance(token, str) or len(token) > 16384:
+                raise HTTPException(401, "Sign in required")
+            user = await verify_token(token)
+            if user.scope:
+                raise HTTPException(403, "Account session required")
+            identity.set(user)
+            await owned("portfolio", portfolio_id)
+        except (HTTPException, ValueError, asyncio.TimeoutError, WebSocketDisconnect):
+            await ws.close(code=1008, reason="Account session or portfolio access invalid")
+            return
     last = after_seq
+    checked_at = asyncio.get_running_loop().time()
+
+    async def disconnected():
+        # Read the disconnect frame even on a quiet portfolio with no events.
+        try:
+            while (await ws.receive())["type"] != "websocket.disconnect":
+                pass
+        except (WebSocketDisconnect, RuntimeError):
+            return
+
+    disconnect_task = asyncio.create_task(disconnected())
     try:
         while True:
+            if disconnect_task.done():
+                return
+            if token and asyncio.get_running_loop().time() - checked_at > 60:
+                try:
+                    identity.set(await verify_token(token))
+                    await owned("portfolio", portfolio_id)
+                except HTTPException:
+                    await ws.close(code=1008, reason="Session expired; reconnect")
+                    return
+                checked_at = asyncio.get_running_loop().time()
             rows = await q("SELECT seq, type, event FROM ledger_events WHERE portfolio_id = %s AND seq > %s "
                            "ORDER BY seq LIMIT 500", (portfolio_id, last))
             if rows:
@@ -543,9 +608,12 @@ async def stream(ws: WebSocket, portfolio_id: Ident = "main", after_seq: int = 0
                 st = await q("SELECT seq, digest, equity, state FROM portfolio_state WHERE portfolio_id = %s", (portfolio_id,))
                 if st:
                     await ws.send_json({"type": "portfolio", "portfolio": st[0]}, mode="text")
-            await asyncio.sleep(0.3)
+            await asyncio.wait({disconnect_task}, timeout=0.3)
     except (WebSocketDisconnect, RuntimeError):
         return
+    finally:
+        disconnect_task.cancel()
+        await asyncio.gather(disconnect_task, return_exceptions=True)
 
 
 def micros(x: int) -> float:
@@ -554,3 +622,5 @@ def micros(x: int) -> float:
 
 from quantswarm.api.workflows import router as workflow_router  # noqa: E402
 app.include_router(workflow_router)
+from quantswarm.api.accounts import router as account_router  # noqa: E402
+app.include_router(account_router)

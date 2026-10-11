@@ -80,6 +80,7 @@ main { width:calc(100% - 48px); max-width:1270px; margin:auto; min-height:calc(1
 .performance>span:first-child { position:relative; padding-bottom:6px; }
 .line-mark { position:absolute; left:0; bottom:0; height:2px; width:75px; background:#397cda; }
 .line-mark.rose { background:#c83d67; width:95px; }
+.line-mark.green { background:#00ae7a; width:115px; }
 .performance .muted { font-size:11px; }
 .performance strong { border:1px solid #00c88e; border-radius:22px; padding:7px 6px; text-align:center; font-size:13px; font-weight:500; }
 .performance strong.negative { border-color:#da7590; }

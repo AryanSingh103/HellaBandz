@@ -3,7 +3,9 @@
 API ?= http://localhost:8000
 RUN ?= $(shell uv run python -c "import glob, os; f = [p for p in glob.glob('data/manifests/T*.json') if p.count('.') == 1]; print(max(f, key=os.path.getmtime).replace(os.sep, '/') if f else '')")
 
-.PHONY: check-integrations setup up backend down reset fixture tournament session demo web test prove prove-docker bench report crash-worker restart-worker
+SEEDS ?= 101-130
+
+.PHONY: check-integrations setup up backend down reset fixture tournament session evaluate demo web test prove prove-docker bench report crash-worker restart-worker
 
 setup:            ## install Python + web dependencies
 	uv sync
@@ -29,6 +31,9 @@ tournament:       ## agents propose -> grid search on train -> rank on validatio
 
 session:          ## replay the held-out period through API -> worker, with a crash at 50%
 	uv run python -m quantswarm.agents.session --api $(API)
+
+evaluate:         ## tournament vs buy-and-hold on independent synthetic markets, recorded proposals (slow)
+	uv run python scripts/evaluate_vs_baseline.py --seeds $(SEEDS) --out artifacts/strategy-eval/seeds-$(SEEDS).json
 
 demo: up tournament session   ## full pipeline end to end
 

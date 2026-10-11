@@ -14,6 +14,7 @@ from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
 
 from quantswarm.api import app as gateway
+from quantswarm.api.auth import claim, current_user, owned
 from quantswarm.contracts import MICROS, Ident, StrategySpec
 from quantswarm.execution.worker import public_state
 from quantswarm.ingestion.registry import MANIFESTS, describe, registered, resolve
@@ -37,6 +38,14 @@ async def capabilities():
 
 @router.get("/portfolios")
 async def portfolios():
+    user = current_user()
+    if user:
+        return await gateway.q(
+            "SELECT a.resource_id AS portfolio_id, s.seq, s.digest, c.run_id, c.dataset_id, c.session_job_id, c.provenance, "
+            "CASE WHEN w.portfolio_id IS NULL THEN 'external' ELSE 'supervisor' END AS ownership "
+            "FROM account_resources a LEFT JOIN portfolio_state s ON s.portfolio_id=a.resource_id "
+            "LEFT JOIN portfolio_context c ON c.portfolio_id=a.resource_id LEFT JOIN managed_workers w ON w.portfolio_id=a.resource_id "
+            "WHERE a.kind='portfolio' AND a.owner_id=%s ORDER BY a.resource_id", (user.id,))
     return await gateway.q(
         "SELECT p.portfolio_id, s.seq, s.digest, c.run_id, c.dataset_id, c.session_job_id, c.provenance, "
         "CASE WHEN w.portfolio_id IS NULL THEN 'external' ELSE 'supervisor' END AS ownership "
@@ -66,6 +75,7 @@ async def reserve_portfolio(conn, portfolio_id: str):
         (portfolio_id,) * 4)).fetchone()
     if portfolio_id == "main" or exists:
         raise HTTPException(409, "choose a fresh isolated portfolio ID")
+    await claim(conn, "portfolio", portfolio_id)
     await conn.execute("INSERT INTO managed_workers (portfolio_id) VALUES (%s)", (portfolio_id,))
 
 
@@ -140,6 +150,7 @@ async def launch_job(body: JobIn):
     config = body.model_dump(mode="json")
     existing = await gateway.q("SELECT * FROM jobs WHERE request_id = %s", (body.request_id,))
     if existing:
+        await owned("request", body.request_id)
         if existing[0]["config"] != config:
             raise HTTPException(409, "request ID reused with different configuration")
         return existing[0]
@@ -164,7 +175,9 @@ async def launch_job(body: JobIn):
         if manifest["dataset"].get("content_sha256") != info["content_sha256"]:
             raise HTTPException(409, "frozen manifest and registered dataset must match")
         try:
-            specs = [StrategySpec.model_validate(f["spec"]) for f in manifest["fitted"]]
+            # the passive core, when present, is a frozen slot like any fitted strategy
+            entries = manifest["fitted"] + ([manifest["core"]] if manifest.get("core") else [])
+            specs = [StrategySpec.model_validate(f["spec"]) for f in entries]
             if not specs or len({s.agent_id for s in specs}) != len(specs):
                 raise ValueError("frozen strategy agents must be nonempty and unique")
             if manifest["policy"]["initial_cash_micros"] != 10000 * MICROS:
@@ -184,6 +197,10 @@ async def launch_job(body: JobIn):
             raise HTTPException(422, "incomplete or incompatible frozen session manifest: " + str(exc)[:180])
     try:
         async with gateway.pool.connection() as conn, conn.transaction():
+            await claim(conn, "request", body.request_id)
+            await claim(conn, "job", job_id)
+            if body.kind == "research":
+                await claim(conn, "run", run_id)
             if body.kind == "session":
                 await reserve_portfolio(conn, body.portfolio_id)
                 await conn.execute("INSERT INTO portfolio_context (portfolio_id, run_id, dataset_id, session_job_id) "
@@ -195,6 +212,7 @@ async def launch_job(body: JobIn):
         # Another identical request may have committed while this request validated its dataset.
         existing = await gateway.q("SELECT * FROM jobs WHERE request_id = %s", (body.request_id,))
         if existing and existing[0]["config"] == config:
+            await owned("request", body.request_id)
             return existing[0]
         raise HTTPException(409, "portfolio or request ID already reserved")
     return (await gateway.q("SELECT * FROM jobs WHERE job_id = %s", (job_id,)))[0]
@@ -203,6 +221,10 @@ async def launch_job(body: JobIn):
 @router.get("/jobs")
 async def jobs(portfolio_id: Ident | None = None, run_id: Ident | None = None):
     clauses, args = [], []
+    user = current_user()
+    if user:
+        clauses.append("job_id IN (SELECT resource_id FROM account_resources WHERE kind='job' AND owner_id=%s)")
+        args.append(user.id)
     if portfolio_id:
         clauses.append("portfolio_id = %s")
         args.append(portfolio_id)

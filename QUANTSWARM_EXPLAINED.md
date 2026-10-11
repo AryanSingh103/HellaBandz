@@ -217,25 +217,31 @@ Three AI agents run **in parallel**. Each sees only **training-period statistics
 how often prices are above their average, and so on), never validation or test data. Each must answer in strict
 JSON: *which strategy family, which stocks, which parameter values to try, and why.* Answers are validated:
 wrong family, unknown stock, or impossible parameters ⇒ one retry with the error, then fall back to a recorded
-proposal. The AI can **only** choose from four pre-approved strategy families; it cannot write code.
+proposal. The AI can **only** choose from five pre-approved strategy families; it cannot write code.
 
 ### Step 5: Fit (deterministic)
-For each agent, a plain grid search tries every parameter combination it suggested (up to 48) on the
-**training** period and keeps the best. No AI here, so the step is reproducible.
+For each agent, a plain grid search tries every parameter combination it suggested (up to 48), plus the
+recorded house proposal for that agent, on the **training** period. Training is cut into three consecutive
+blocks and every candidate is compared with the **passive core** (simply holding every symbol in equal
+amounts) on each block. The best over all three blocks is kept. No AI here, so the step is reproducible.
 
-### Step 6: Rank on validation
-Each agent's tuned strategy is backtested on the **validation** period it has never seen, plus on three
-"stability" slices of history. Pass/fail gates: at least 10 trades and a drawdown no worse than 25%.
-Score = Sharpe × (1 − drawdown) × stability. **This is where overfitters get caught:** on the synthetic
-dataset, the mean-reversion agent had the best training score (1.84) but failed validation (−0.03) and got $0.
+### Step 6: Rank on data the strategy was not fitted on
+The question is no longer "did it make money?" but "did it beat just holding the basket?". Evidence comes
+from three out-of-sample periods: training block 2 (using the choice made from block 1 alone), training
+block 3 (using the choice made from blocks 1 and 2), and the **validation** period. Gates: at least 10
+trades, a drawdown no worse than 25% (or no worse than the core's), and a positive excess return over the
+core. Two t-statistics size the bet: one for the excess return, one for skill after removing market
+exposure (a strategy that merely sat in cash while the market fell has none). The weaker of the two,
+capped at 1, scales the allocation, so thin evidence earns a thin slice.
 
 ### Step 7: Allocate the $10,000
 The AI supervisor reads the scores and *suggests* weights. A fixed formula then decides:
-- weights proportional to score;
+- weights proportional to score, then scaled by the strength of the out-of-sample evidence;
 - the supervisor can nudge each weight by at most ±20 percentage points;
 - no strategy gets more than 40%;
 - 10% always stays in cash;
-- a strategy that failed its gates gets **zero**, whatever the AI says.
+- a strategy that failed its gates gets **zero**, whatever the AI says;
+- whatever no strategy earned stays in the **passive core**, not in cash.
 
 ### Step 8: Freeze, then test once
 Strategies and allocations are frozen. Only **then** is the held-out **test** period run, exactly once, and
@@ -379,6 +385,11 @@ following their 5-part report template (environment, workload, metric, procedure
 ---
 
 ## 10. Real results
+
+> The two tables below were recorded with the earlier scoring (absolute validation Sharpe, unearned capital
+> left in cash). Neither run was compared with buy-and-hold at the time. Measured later, that scoring trailed
+> buy-and-hold on synthetic markets, and on the real Alpaca period buy-and-hold returned about +15.8% against
+> the +6.3% shown here. Current scoring and its results are in `docs/STRATEGY_EVALUATION.md`.
 
 ### Synthetic data (offline demo)
 | Agent | Train Sharpe | Validation Sharpe | Capital |

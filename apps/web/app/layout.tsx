@@ -1,15 +1,16 @@
 import "./globals.css";
 import type { ReactNode } from "react";
+import { AccountGate } from "./account-gate";
 
 export const metadata = {
   title: "QuantSwarm | Browse Strategies",
-  description: "Autonomous strategy agents on deterministic, fault-tolerant trading infrastructure (paper trading only).",
+  description: "Private trading research workspaces and authenticated Kalshi account connections.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body><AccountGate>{children}</AccountGate></body>
     </html>
   );
 }

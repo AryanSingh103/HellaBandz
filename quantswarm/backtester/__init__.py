@@ -35,7 +35,7 @@ from quantswarm.contracts import (
 )
 from quantswarm.ingestion.dataset import BarTable
 from quantswarm.ledger import EngineConfig, PortfolioState, canonical, check_invariants, process, sha256_hex
-from quantswarm.strategies import BARS_PER_YEAR, Series, signal
+from quantswarm.strategies import BARS_PER_YEAR, HOLD_FAMILIES, Series, signal, universe_weights
 
 ExecutionModel = EngineConfig  # fill/slippage/fee model is part of the engine config
 Portfolio = PortfolioState
@@ -90,14 +90,24 @@ class Slot:
 
 
 def rebalance_order(state: PortfolioState, agent_id: str, symbol: str, w_bps: int, slot_capital: int,
-                    close: int, n_symbols: int, threshold_bps: int = 1_000) -> tuple[str, int] | None:
-    """Translate a target weight into a buy/sell quantity. Shared by backtests and live sessions."""
+                    close: int, n_symbols: int, threshold_bps: int = 1_000, hold: bool = False) -> tuple[str, int] | None:
+    """Translate a target weight into a buy/sell quantity. Shared by backtests and live sessions.
+
+    With `hold`, the slot is deployed once against its cost budget and never trimmed while the
+    target stays long, so a held position is not sold into strength or topped up into weakness.
+    While the kill switch blocks buying, an exit could not be reversed, so a hold slot stays as it is."""
     if any(o.agent_id == agent_id and o.symbol == symbol for o in state.orders.values()):
         return None  # one working order per agent/symbol
+    if hold and state.kill_switch:
+        return None
     per_symbol = slot_capital // n_symbols
     pos = state.position(agent_id, symbol)
     if w_bps == 0:
         return ("SELL", pos.qty) if pos.qty > 0 else None
+    if hold:
+        diff = per_symbol * w_bps // 10_000 - pos.basis
+        q = diff // close
+        return ("BUY", q) if diff * 10_000 >= per_symbol * threshold_bps and q > 0 else None
     diff = per_symbol * w_bps // 10_000 - pos.qty * close
     if abs(diff) * 10_000 < per_symbol * threshold_bps:
         return None
@@ -105,6 +115,17 @@ def rebalance_order(state: PortfolioState, agent_id: str, symbol: str, w_bps: in
     if diff < 0:
         q = min(q, pos.qty)
     return (("BUY" if diff > 0 else "SELL"), q) if q > 0 else None
+
+
+def reentry_capital(state, spec: StrategySpec, slot_capital: int, initial_cash: int, equity: int) -> int | None:
+    """A hold slot that is fully in cash is re-sized to its original share of current equity before it
+    re-enters, so realized gains are reinvested and losses shrink it. Returns None when no resize applies.
+    Shared by backtests and live sessions."""
+    if spec.family not in HOLD_FAMILIES or any(o.agent_id == spec.agent_id for o in state.orders.values()):
+        return None
+    if any(state.position(spec.agent_id, sym).qty for sym in spec.universe):
+        return None
+    return slot_capital * equity // initial_cash
 
 
 @dataclass
@@ -173,12 +194,12 @@ def run_backtest(provider: SnapshotProvider, slots: list[Slot], start_ts: int, e
     # Precompute causal signals on history strictly before end_ts (nothing after the split leaks in).
     sig: dict[tuple[str, str], dict[int, int]] = {}
     for sl in slots:
-        strat = SpecStrategy(sl.spec)
-        for sym in sl.spec.universe:
-            series, ts = provider.history(sym, end_ts)
-            w = strat.weights(sym, series)
-            sig[(sl.spec.strategy_id, sym)] = dict(zip(ts.tolist(), w.tolist()))
+        histories = {sym: provider.history(sym, end_ts) for sym in sl.spec.universe}
+        weights = universe_weights(sl.spec.family, sl.spec.params, histories)
+        for sym, (_, ts) in histories.items():
+            sig[(sl.spec.strategy_id, sym)] = dict(zip(ts.tolist(), weights[sym].tolist()))
 
+    capital = {sl.spec.strategy_id: sl.capital for sl in slots}
     fills: list[dict] = []
     eq_ts: list[int] = []
     eq: list[int] = []
@@ -205,11 +226,17 @@ def run_backtest(provider: SnapshotProvider, slots: list[Slot], start_ts: int, e
             closes[b.symbol] = b.close
         for sl in slots:
             spec = sl.spec
-            for sym in sorted(spec.universe):
-                if sym not in closes:
-                    continue
-                w = sig[(spec.strategy_id, sym)].get(ts, 0)
-                act = rebalance_order(s, spec.agent_id, sym, w, sl.capital, closes[sym], len(spec.universe))
+            targets = {sym: sig[(spec.strategy_id, sym)].get(ts, 0) for sym in sorted(spec.universe) if sym in closes}
+            if any(targets.values()):
+                resized = reentry_capital(s, spec, sl.capital, initial_cash, s.equity())
+                if resized is not None and resized != capital[spec.strategy_id]:
+                    evs, resp = process(s, SetAllocation(agent_id=spec.agent_id, capital=resized), cfg)
+                    n_events += len(evs)
+                    if resp["status"] == "ok":
+                        capital[spec.strategy_id] = resized
+            for sym, w in targets.items():
+                act = rebalance_order(s, spec.agent_id, sym, w, capital[spec.strategy_id], closes[sym],
+                                      len(spec.universe), hold=spec.family in HOLD_FAMILIES)
                 if act is None:
                     continue
                 side, qty = act
