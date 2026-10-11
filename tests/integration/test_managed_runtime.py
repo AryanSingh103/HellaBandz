@@ -7,6 +7,7 @@ from contextlib import contextmanager
 import httpx
 import pytest
 
+from quantswarm.agents.tournament import AGENTS
 from quantswarm.contracts import OrderRequest
 from quantswarm.ledger import canonical, sha256_hex
 from tests.conftest import ROOT, wait_until
@@ -166,7 +167,7 @@ def test_real_research_job_persists_manifest_baseline_and_session(stack, tmp_pat
         assert job(job_id)["status"] == "completed", job(job_id)
         run_id = job(job_id)["run_id"]
         frozen = c.get(f"/v1/tournaments/{run_id}/manifest").json()
-        assert len(frozen["proposals"]) == 3 and len(frozen["fitted"]) == 3
+        assert len(frozen["proposals"]) == len(AGENTS) and len(frozen["fitted"]) == len(AGENTS)
         assert all(p["source"] == "fixture" for p in frozen["proposals"])
         assert (tmp_path / f"{run_id}.json").is_file()
         assert (tmp_path / f"{run_id}.analytics.json").is_file()

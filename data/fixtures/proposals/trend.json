@@ -1,0 +1,7 @@
+{
+  "family": "ts_momentum",
+  "universe": ["SPY", "QQQ", "AAPL"],
+  "param_grid": {"lookback": [70, 140, 280, 560], "threshold": [0.0, 0.02, 0.05]},
+  "rationale": "Indexes spent most of the training window in sustained uptrends; holding only while the trailing multi-week return is positive keeps exposure in trends and steps aside in prolonged declines.",
+  "evidence": ["frac_above_sma200 > 0.5 for SPY/QQQ", "positive training-period drift in index ETFs"]
+}

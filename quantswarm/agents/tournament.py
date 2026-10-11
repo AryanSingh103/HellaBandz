@@ -49,12 +49,18 @@ DEPLOYABLE = 0.90
 SUPERVISOR_BAND = 0.20
 
 AGENTS = {
-    "momentum": {"families": [StrategyFamily.SMA_CROSSOVER, StrategyFamily.BREAKOUT],
-                 "brief": "trend-following researcher (moving-average crossovers, breakouts)"},
+    "momentum": {"families": [StrategyFamily.SMA_CROSSOVER],
+                 "brief": "trend-following researcher (moving-average crossovers)"},
+    "breakout": {"families": [StrategyFamily.BREAKOUT],
+                 "brief": "breakout researcher (buy closes above the prior N-bar high, exit below the recent low)"},
     "mean_reversion": {"families": [StrategyFamily.ZSCORE_REVERSION],
                        "brief": "mean-reversion researcher (rolling z-score deviations)"},
     "volatility": {"families": [StrategyFamily.VOL_TARGET],
                    "brief": "volatility-regime researcher (exposure scaled to realized volatility with a trend filter)"},
+    "rsi": {"families": [StrategyFamily.RSI_REVERSION],
+            "brief": "oversold-bounce researcher (buy when RSI is low, exit once it recovers)"},
+    "trend": {"families": [StrategyFamily.TS_MOMENTUM],
+              "brief": "time-series momentum researcher (hold while the trailing N-bar return beats a threshold)"},
 }
 
 

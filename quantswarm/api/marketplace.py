@@ -21,7 +21,8 @@ from quantswarm.agents.reviews import ProviderConfigurationError, ReviewRequest,
 router = APIRouter(prefix="/v1/marketplace")
 review_slots = asyncio.Semaphore(2)
 NAMES = {"sma_crossover": "Moving Average Crossover", "breakout": "Price Breakout",
-         "zscore_reversion": "Z-Score Reversion", "vol_target": "Volatility Target"}
+         "zscore_reversion": "Z-Score Reversion", "vol_target": "Volatility Target",
+         "rsi_reversion": "RSI Reversion", "ts_momentum": "Trend Momentum"}
 NIKE = {"asset_id": "nike-review-radar-v1", "title": "Nike Review Radar", "family": "review_sentiment",
         "agent_id": "consumer_research", "universe": ["NKE"], "status": "research",
         "description": "Analyze dated customer reviews for weakening product quality, value and demand. "
